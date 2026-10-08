@@ -47,8 +47,8 @@ Aimanong 为此明确牺牲部分"灵活性"来换取"确定性"：
 | 里程碑 | 状态 | 说明 |
 |---|---|---|
 | M0 地基 | ✅ **完成** | Laravel 12.69.3 实测：安装、认证、登录、会话全部跑通 |
-| M1 Schema 编译层 | ⬜ 下一个 | 一份声明 → JSON Schema / TS / OpenAPI / AI 提示词 |
-| M2 核心 DSL + Vue | ⬜ | Grid / Form / Show 端到端 |
+| M1 Schema 编译层 | ✅ **完成** | 一份声明 → 四份产物，漂移检测可阻断 CI |
+| M2 核心 DSL + Vue | ⬜ 下一个 | Grid / Form / Show 端到端 |
 | M3 AI 能力层 | ⬜ | 自省 API + MCP Server |
 | M4 组件库 | ⬜ | 字段与展示器 |
 | M5 增强 | ⬜ | Tree / 分步表单 / 多应用 |
@@ -79,6 +79,31 @@ packages/framework/
 - ✅ 认证链路：`attempt()` 成功 / 错误密码拒绝 / 会话保持
 - ✅ HTTP 层：登录页 200、CSRF 生效（419）、登录后首页 200
 - ✅ 已规避硬断点：`rehashPasswordIfRequired()`、`getAuthPasswordName()`、`redirectTo($request)`
+
+### M1 已交付
+
+```
+packages/framework/src/Schema/
+├── Compiler.php              声明 → AST 编译管道
+├── Ast/                      ResourceNode / ColumnNode / FieldNode
+└── Emitters/
+    ├── JsonSchemaEmitter.php 前端运行时 Schema
+    ├── TypeScriptEmitter.php 前端类型
+    ├── OpenApiEmitter.php    REST 文档
+    └── AiPromptEmitter.php   给 AI 读的上下文（本项目独有）
+```
+
+**四份产物由同一份声明编译，永不漂移**：
+
+```bash
+php artisan aimanong:schema           # 生成
+php artisan aimanong:schema --check   # 漂移检测（漂移 exit=1 阻断 CI）
+```
+
+实测：改动声明后四份产物**同时**检出漂移；重新生成后恢复一致。
+字段类型映射正确（`switch`→`boolean`、`number`→`number`）、22 项断言全绿。
+
+AI 打错类型时会得到可自愈提示：`texte` → 建议 `text`。
 
 ## 许可
 

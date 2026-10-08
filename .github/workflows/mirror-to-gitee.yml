@@ -1,0 +1,41 @@
+name: Mirror to Gitee
+
+# GitHub -> Gitee 镜像同步
+# 使用原生 git push --mirror，不依赖第三方 action（避免供应链风险）
+# 需要的 Secrets: GITEE_USERNAME, GITEE_TOKEN
+
+on:
+  push:
+    branches: [main, develop]
+    tags: ['v*']
+  delete:
+    branches: [main, develop]
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    if: github.repository == 'zyzyzzy/aimanong'
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mirror push to Gitee
+        env:
+          GITEE_USERNAME: ${{ secrets.GITEE_USERNAME }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+        run: |
+          set -e
+          git config --global user.name "aimanong-bot"
+          git config --global user.email "bot@aimanong.com"
+
+          # 用 token 构造远端地址，避免交互式认证
+          REMOTE="https://${GITEE_USERNAME}:${GITEE_TOKEN}@gitee.com/${GITEE_USERNAME}/aimanong.git"
+
+          git remote add gitee "$REMOTE" 2>/dev/null || git remote set-url gitee "$REMOTE"
+
+          # 同步分支与标签（--mirror 会覆盖远端，保持与 GitHub 完全一致）
+          git push --mirror --force gitee
+
+          echo "✅ 已镜像到 Gitee"

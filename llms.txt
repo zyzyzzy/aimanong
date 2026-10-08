@@ -1,0 +1,134 @@
+# Aimanong（AI 码农）
+
+> AI-First admin framework for Laravel 12. Define Resource in PHP, render in Vue 3.
+> 你是 AI Agent？读这个文件就够开始工作。人类请读 https://aimanong.com
+
+## 核心心智模型（必读）
+
+**一个 Resource = 一张数据表 = 一组后台页面（列表 + 表单 + 详情）。**
+
+你只需要写一个 PHP 类，框架自动产出：
+- REST API 与数据库读写
+- 前端页面（Vue 3 自动渲染，你**不写代码**）
+- JSON Schema / TypeScript 类型 / OpenAPI 文档
+- 权限节点与菜单项
+
+**你永远不写前端代码。** 前端由 Schema 驱动自动渲染。
+
+## 最短可用示例
+
+```php
+<?php
+
+namespace App\Aimanong;
+
+use Aimanong\Resource;
+use Aimanong\Grid\Grid;
+use Aimanong\Form\Form;
+use Aimanong\Form\Fields\{Text, Select, SwitchField};
+
+class UserResource extends Resource
+{
+    public string $model = \App\Models\User::class;
+    public string $label = '用户';
+    public string $uri  = 'users';
+
+    public function grid(Grid $grid): void
+    {
+        $grid->column('id', 'ID')->sortable();
+        $grid->column('name', '姓名')->searchable();
+        $grid->column('status', '状态')->using(Status::class)->filter();
+    }
+
+    public function form(Form $form): void
+    {
+        $form->text('name')->label('姓名')->required()->max(255);
+        $form->select('status')->label('状态')->options(Status::cases());
+        $form->switch('enabled')->label('启用');
+    }
+}
+```
+
+保存后执行：`php artisan ai:verify`（校验）+ `php artisan serve`（访问 `/admin/users`）
+
+## 铁律（违反会导致生成失败）
+
+1. **方法签名唯一**：`text(string $name)` —— 不存在重载，不要猜第二种写法
+2. **不嵌套闭包**：所有配置走链式调用，禁止 `$form->group(function(){...})`
+3. **字段必须先存在于模型**：`text('foo')` 要求 `foo` 是数据库字段或已定义访问器
+4. **枚举优先**：状态类字段用 PHP Enum + `->options(Enum::cases())`
+5. **生成后必须跑 `php artisan ai:verify`**
+
+## 常用 API
+
+### Grid（列表页）
+```php
+$grid->column('field', '标题')        // 一列
+    ->sortable()                     // 可排序
+    ->searchable()                   // 加入快捷搜索
+    ->filter()                       // 加入筛选器
+    ->using(EnumClass::class)        // 值→标签映射
+    ->dateTime();                    // 格式化为日期时间
+$grid->filter()->equal('status');     // 精确筛选
+$grid->filter()->like('name');        // 模糊筛选
+$grid->actions();                     // 行操作按钮
+$grid->batchActions();                // 批量操作
+```
+
+### Form（表单页）
+```php
+$form->text('name')->label('姓名')->required()->max(255)->rules('alpha_dash');
+$form->textarea('bio')->rows(4);
+$form->select('type')->options(['a' => '甲', 'b' => '乙']);
+$form->switch('enabled')->default(true);
+$form->date('published_at');
+$form->number('sort')->default(0);
+```
+
+### Show（详情页）
+```php
+$show->field('name', '姓名');
+$show->field('created_at', '创建时间')->dateTime();
+```
+
+## 当你出错时
+
+框架的错误信息**自带修正方案**，形如：
+
+```json
+{
+  "error": "UNKNOWN_FIELD_TYPE",
+  "message": "字段类型 'texte' 不存在",
+  "did_you_mean": "text",
+  "hint": "可用类型: text, textarea, select, switch, date, number",
+  "example": "$form->text('name')->required();"
+}
+```
+
+**读到错误先按 `did_you_mean` 改一次，不要重写整个文件。**
+
+## 机器可读接口（优先于本文档）
+
+| 接口 | 用途 |
+|---|---|
+| `GET /__ai/capabilities.json` | 全部能力清单（字段类型、展示器、Resource 列表） |
+| `GET /__ai/schema/{resource}` | 某 Resource 的完整定义 |
+| `GET /__ai/openapi.json` | 全量 API 文档 |
+| `GET /__ai/examples/{pattern}` | 可复制代码片段 |
+| `POST /__ai/verify` | 校验声明合法性 |
+
+**如果你能发 HTTP 请求，优先用这些接口而不是猜 API。** 若项目接入了 MCP Server，直接调用 `list_resources` / `scaffold_resource` / `validate_declaration` 工具。
+
+## 完整文档
+
+- 字段类型完整参考：https://aimanong.com/llms/fields.txt
+- Grid 完整参考：https://aimanong.com/llms/grid.txt
+- Form 完整参考：https://aimanong.com/llms/form.txt
+- 错误码与修正：https://aimanong.com/llms/errors.txt
+
+## 不该做的事
+
+- ❌ 不要写 Vue / Blade / JS 代码（前端自动渲染）
+- ❌ 不要手动写路由（Resource 自动注册）
+- ❌ 不要猜方法名，先查 `/__ai/capabilities.json`
+- ❌ 不要用 Carbon 的 `diffIn*`（Laravel 12 下返回负数 float，用框架封装的时间工具）

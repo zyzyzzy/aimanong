@@ -25,26 +25,44 @@ namespace App\Aimanong;
 use Aimanong\Resource;
 use Aimanong\Grid\Grid;
 use Aimanong\Form\Form;
-use Aimanong\Form\Fields\{Text, Select, SwitchField};
+use Aimanong\Show\Show;
+use App\Models\User;
 
 class UserResource extends Resource
 {
-    public string $model = \App\Models\User::class;
-    public string $label = '用户';
-    public string $uri  = 'users';
+    // 注意：以下三个方法必须是 static，且没有 $model 属性。
+    public static function model(): string
+    {
+        return User::class;
+    }
 
-    public function grid(Grid $grid): void
+    public static function label(): string
+    {
+        return '用户';
+    }
+
+    public static function uri(): string
+    {
+        return 'users';
+    }
+
+    public static function grid(Grid $grid): void
     {
         $grid->column('id', 'ID')->sortable();
         $grid->column('name', '姓名')->searchable();
-        $grid->column('status', '状态')->using(Status::class)->filter();
+        $grid->column('status', '状态')->using(Status::class);
     }
 
-    public function form(Form $form): void
+    public static function form(Form $form): void
     {
         $form->text('name')->label('姓名')->required()->max(255);
         $form->select('status')->label('状态')->options(Status::cases());
         $form->switch('enabled')->label('启用');
+    }
+
+    public static function show(Show $show): void
+    {
+        $show->fields(['id', 'name']);
     }
 }
 ```
@@ -53,11 +71,16 @@ class UserResource extends Resource
 
 ## 铁律（违反会导致生成失败）
 
-1. **方法签名唯一**：`text(string $name)` —— 不存在重载，不要猜第二种写法
-2. **不嵌套闭包**：所有配置走链式调用，禁止 `$form->group(function(){...})`
-3. **字段必须先存在于模型**：`text('foo')` 要求 `foo` 是数据库字段或已定义访问器
-4. **枚举优先**：状态类字段用 PHP Enum + `->options(Enum::cases())`
-5. **生成后必须跑 `php artisan ai:verify`**
+1. **三个方法必须是 `static`**：`grid()` / `form()` / `show()` 都是静态方法，**没有 `$model` / `$uri` 属性**（用静态方法返回）
+2. **方法签名唯一**：`text(string $name)` —— 不存在重载，不要猜第二种写法
+3. **不嵌套闭包**：所有配置走链式调用，禁止 `$form->group(function(){...})`
+4. **字段必须先存在于模型**：`text('foo')` 要求 `foo` 是数据库字段或已定义访问器
+5. **枚举优先**：状态类字段用 PHP Enum + `->options(Enum::cases())`
+6. **生成后必须跑 `php artisan ai:verify`**
+
+> ⚠️ **不要凭记忆写代码。** 本框架的 API 与其它后台框架不同，
+> 请先调 `scaffold_resource`（从表结构生成）或 `describe_resource`，
+> 再照抄本文件末尾的示例。历史上有 AI 因照搬训练数据里的写法而失败。
 
 ## 生成产物（M1 已实现）
 

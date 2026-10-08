@@ -142,3 +142,72 @@ public static function form(Form $form): void
 | `status` 生成为 text 而非 select | 列表显示 `on_sale` 原始值 | `scaffold_resource` 按列名语义（status/type/state）建议 select |
 | `published` 布尔显示 `true/false` | 不直观 | 布尔列默认渲染为标签 |
 | 参数名写错与资源不存在返回同一错误 | 无法区分 | 缺失参数应返回 MISSING_PARAMETER |
+
+---
+
+## L2-4 重测（orders 表，7 条验收要求）
+
+**日期**：2026-10-09（修复后第二轮）
+**任务**：为 `orders` 表创建 Resource，7 条明确要求（含"每页 30 条"这类易漏项）
+
+### 结果
+
+| 项 | 结果 |
+|---|---|
+| **一次成功率** | **0.5**（仍需修正，但**框架参与了一半纠错**） |
+| 7 条验收要求 | ✅ 全部满足 |
+| 框架纠错贡献 | **50%**（3 项由框架发现，3 项由 AI 自己读源码发现） |
+
+### 框架的纠错机制**这次起作用了**
+
+| 问题 | 谁发现的 |
+|---|---|
+| 缺 searchable/sortable/perPage（3 条需求） | ✅ **requirements 校验器**明确报出并给修正代码 |
+| `App\Models\Order` 不存在 | ✅ **框架**报 MODEL_NOT_FOUND |
+| `perPage()` API 存在但无文档 | ❌ AI 自己读源码 |
+| `perPage(30)` 声明了却不生效 | ❌ AI 自己实测 |
+| 幽灵列不被拦截 | ❌ AI 自己注入实验 |
+
+AI 原话：
+
+> **requirements 校验器是本次唯一救命机制。** 如果不用它，`validate_declaration` 对那份缺 3 条需求的产物会返回「✅ 语法校验通过」，我会误判成功并交付一个不合格的 Resource。
+
+**对比第一轮（框架纠错贡献 0）→ 第二轮（贡献 50%），说明修复方向正确。**
+
+### 但暴露了一个更严重的问题：验证器假阳性
+
+**AI 发现 `perPage(30)` 是假的** —— 校验器报「每页 30 条 ✅ 已设置」，
+但 `EloquentRepository::paginate()` 只读 HTTP 参数，**从不读 `$grid->perPage()`**。
+
+实测确认：37 行数据，不传参 → `perPage=20`。
+
+**这是比"不检查"更危险的问题**：校验器给了绿灯，功能却没实现。
+上一轮的问题是"缺需求也全绿"，这一轮是"需求写了但不生效也全绿"——
+**同一类失效的两种表现：只验证声明，不验证运行时行为。**
+
+### 本轮发现并修复的 5 个缺陷
+
+| # | 缺陷 | 修复 | 验证 |
+|---|---|---|---|
+| A | `perPage` 声明不生效（假阳性） | Controller 传声明值 + Repository 接收 `$defaultPerPage` | ✅ 实测 30 生效，`?per_page=5` 仍可覆盖 |
+| B | requirements 在语法失败时被丢弃 | 失败分支也输出需求核对 | ✅ |
+| C | 幽灵列静默通过 | 新增 `GhostColumnException` + 编译期检查，带 `did_you_mean` | ✅ `customer_nmae` → `customer_name` |
+| D | 未注册的 Resource 也能全绿 | 新增 `NOT_REGISTERED` 检查 | ✅ |
+| E | AGENTS.md 谎称检查"路由/权限/迁移" | 改为实际能力描述 + 补充 requirements 用法 | ✅ |
+
+### 关键改进：需求校验从"读声明"改为"跑运行时"
+
+```diff
+- $actual = $node->meta['perPage'];        // 只读声明 → 假阳性
++ $actual = $this->runtimePerPage($node);  // 真跑一次分页 → 可信
+```
+
+现在输出：`✅ 每页 30 条 — 已生效（运行时实测 30 条）`
+
+### 教训（写进开发原则）
+
+> **校验器只读元数据 = 假阳性工厂。**
+> 任何"已设置"的断言，都必须有对应的运行时验证。
+
+回归测试：新增 `RuntimeVerificationTest`（5 项），
+专门覆盖"声明了但没生效"这一类问题。

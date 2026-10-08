@@ -87,6 +87,23 @@ class ValidateDeclaration extends Tool
             $lines[] = '';
         }
 
+        /*
+         * 语法失败时也要输出需求核对结果（若有）。
+         * 原先只在 valid 分支输出，导致必须"先修语法、再重跑一轮"
+         * 才能看到需求达标情况，浪费 AI 的往返次数。
+         */
+        if ($requirementReport !== null && ($requirementReport['checked'] ?? false)) {
+            $lines[] = '## 需求核对（语法未通过，结果仅供参考）';
+            $lines[] = '';
+
+            foreach ($requirementReport['results'] as $r) {
+                $icon = $r['satisfied'] ? '✅' : '❌';
+                $lines[] = sprintf('%s %s — %s', $icon, $r['requirement'], $r['detail']);
+            }
+
+            $lines[] = '';
+        }
+
         return Response::text(implode("\n", $lines));
     }
 

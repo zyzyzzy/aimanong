@@ -37,16 +37,28 @@ class ResourceController extends Controller
             array_filter($node->columns, fn ($c): bool => $c->searchable)
         ));
 
+        $perPage = $request->query('per_page');
+
+        // 请求未指定时回退到 Resource 中声明的 perPage，
+        // 否则 $grid->perPage(30) 只会写进 schema.json 而 API 仍用 20，
+        // 造成"校验器报已设置、功能却没生效"的假阳性。
+        if (! is_numeric($perPage)) {
+            $perPage = $node->meta['perPage'] ?? 20;
+        }
+
         $params = [
             'keyword' => $request->query('keyword'),
             'sort' => $request->query('sort'),
             'direction' => $request->query('direction'),
-            'per_page' => $request->query('per_page'),
+            'per_page' => $perPage,
             'searchable' => $searchable,
             'filters' => $request->query('filters'),
         ];
 
-        $paginator = $this->repository($node)->paginate($params);
+        $paginator = $this->repository($node)->paginate(
+            $params,
+            (int) ($node->meta['perPage'] ?? 20)
+        );
 
         return response()->json([
             'data' => $paginator->items(),

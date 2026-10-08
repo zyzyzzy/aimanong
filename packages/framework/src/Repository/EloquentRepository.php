@@ -31,8 +31,9 @@ class EloquentRepository implements RepositoryContract
      * 分页列表。支持搜索、排序、筛选。
      *
      * @param  array<string, mixed>  $params
+     * @param  int|null  $defaultPerPage  Resource 声明的每页条数，请求未指定时使用
      */
-    public function paginate(array $params = []): LengthAwarePaginator
+    public function paginate(array $params = [], ?int $defaultPerPage = null): LengthAwarePaginator
     {
         $query = $this->model::query();
 
@@ -40,9 +41,10 @@ class EloquentRepository implements RepositoryContract
         $this->applySort($query, $params);
         $this->applyFilters($query, $params);
 
+        // 优先级：请求参数 > Resource 声明 > 框架默认
         $perPage = is_numeric($params['per_page'] ?? null)
             ? (int) $params['per_page']
-            : (int) ($params['perPage'] ?? 20);
+            : ($defaultPerPage ?? (int) ($params['perPage'] ?? 20));
 
         return $query->paginate($perPage);
     }

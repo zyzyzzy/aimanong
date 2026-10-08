@@ -47,12 +47,19 @@ class Compiler
             $resource::show($show);
         }
 
+        $columns = $grid->toNodes();
+        $fields = $form->toNodes();
+
+        // 幽灵列/字段检测：拼错列名会静默消失，AI 拿不到任何反馈。
+        // 这里在编译期显式抛出，错误信息里给出真实字段列表。
+        $this->assertColumnsExist($resource, $columns, $fields);
+
         return new ResourceNode(
             uri: $resource::uri(),
             label: $resource::label(),
             model: $resource::model(),
-            columns: $grid->toNodes(),
-            fields: $form->toNodes(),
+            columns: $columns,
+            fields: $fields,
             detailFields: $show->toNodes(),
             meta: [
                 'perPage' => $grid->toArray()['perPage'],
@@ -74,5 +81,77 @@ class Compiler
         }
 
         return $nodes;
+    }
+
+    /**
+     * 校验列/字段在模型中真实存在。
+     *
+     * 背景：`$grid->column('typo_col')` 原先会静默通过，
+     * 该列在结果里凭空消失，AI 拼错列名拿不到任何反馈。
+     *
+     * 兼容性：模型表不存在时（如单元测试 fixture）跳过检查，
+     * 避免把环境问题误报成声明错误。
+     *
+     * @param  class-string  $resource
+     * @param  array<int, \Aimanong\Schema\Ast\ColumnNode>  $columns
+     * @param  array<int, \Aimanong\Schema\Ast\FieldNode>  $fields
+     */
+    protected function assertColumnsExist(string $resource, array $columns, array $fields): void
+    {
+        try {
+            $model = $resource::model();
+        } catch (\Throwable) {
+            return; // model() 未实现，交由 Verifier 报告
+        }
+
+        if (! class_exists($model)) {
+            return; // 模型缺失，交由 Verifier 报告
+        }
+
+        try {
+            /** @var \Illuminate\Database\Eloquent\Model $instance */
+            $instance = new $model();
+            $table = $instance->getTable();
+
+            if (! \Illuminate\Support\Facades\Schema::hasTable($table)) {
+                return; // 表不存在（如测试环境），跳过
+            }
+
+            $real = \Illuminate\Support\Facades\Schema::getColumnListing($table);
+        } catch (\Throwable) {
+            return; // 无数据库连接等情况，跳过检查
+        }
+
+        $ghosts = [];
+
+        foreach ($columns as $c) {
+            // 允许访问器等非物理列：仅当模型声明了该属性时才跳过
+            if (in_array($c->name, $real, true) || $instance->hasAttribute($c->name)
+                || method_exists($instance, 'getAttribute') && $instance->hasGetMutator($c->name)) {
+                continue;
+            }
+            $ghosts[] = "column:{$c->name}";
+        }
+
+        foreach ($fields as $f) {
+            if (in_array($f->name, $real, true) || $instance->hasAttribute($f->name)) {
+                continue;
+            }
+            $ghosts[] = "field:{$f->name}";
+        }
+
+        if ($ghosts === []) {
+            return;
+        }
+
+        throw new \Aimanong\Exceptions\GhostColumnException(
+            sprintf(
+                '%s 声明了不存在的列/字段: %s',
+                class_basename($resource),
+                implode(', ', $ghosts)
+            ),
+            $ghosts,
+            $real
+        );
     }
 }

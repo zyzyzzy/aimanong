@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Ai;
 
+use Aimanong\Aimanong;
 use Aimanong\Schema\Compiler;
 
 /**
@@ -86,6 +87,19 @@ class Verifier
                 'code' => 'COMPILE_FAILED',
                 'message' => '编译失败: '.$e->getMessage(),
                 'hint' => '检查 grid()/form()/show() 中的语法与类型',
+            ];
+        }
+
+        // 是否已注册到 Registry
+        // 未注册的 Resource 后台根本看不到，但原先能通过全部校验
+        $registered = in_array($class, array_values(Aimanong::registry()->all()), true);
+
+        if (! $registered) {
+            $issues[] = [
+                'code' => 'NOT_REGISTERED',
+                'message' => '该 Resource 尚未注册，后台无法访问',
+                'hint' => '在 ServiceProvider 的 boot() 中调用 Aimanong::registry()->register('.$class.'::class)',
+                'example' => "Aimanong::registry()->register(\\{$class}::class);",
             ];
         }
 

@@ -58,7 +58,22 @@ Conventional Commits：`feat:` `fix:` `docs:` `refactor:` `test:` `chore:`
 ## 验证你的产出
 
 ```bash
-php artisan ai:verify     # 声明合法性 + 路由/权限/迁移一致性
+php artisan ai:verify     # 声明合法性 + 是否已注册 + 幽灵列检测
 composer test             # 单元测试
 php artisan serve         # 访问 /admin 人工确认
 ```
+
+### ⚠️ 语法校验通过 ≠ 需求达标
+
+`validate_declaration` **默认只检查语法合法性**。若任务有具体要求
+（某列可搜索、每页 N 条等），**必须传 `requirements` 参数**：
+
+```json
+{"resource": "App\\Aimanong\\OrderResource",
+ "requirements": {"searchable": "order_no,customer_name",
+                  "sortable": "amount,paid_at",
+                  "required": "order_no",
+                  "per_page": 30}}
+```
+
+不传 `requirements` 就交付，等于没有验证。

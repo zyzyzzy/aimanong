@@ -106,18 +106,46 @@ class RequirementChecker
             );
         }
 
-        // 每页条数
+        /*
+         * 每页条数 —— 必须验证"功能真的生效"，而不只是"声明写了"。
+         *
+         * 背景：曾出现 $grid->perPage(30) 只写进 schema.json、
+         * 而 API 层仍用 20 的情况。校验器报"已设置"，功能却没实现，
+         * 属于假阳性 —— 比不检查更危险。
+         *
+         * 因此这里实际跑一次 Repository 分页，核对真实返回值。
+         */
         if (isset($requirements['per_page'])) {
-            $actual = $node->meta['perPage'] ?? 20;
             $expected = (int) $requirements['per_page'];
-            $ok = $actual === $expected;
+            $declared = $node->meta['perPage'] ?? 20;
 
-            $results[] = [
-                'requirement' => "每页 {$expected} 条",
-                'satisfied' => $ok,
-                'detail' => $ok ? "已设置" : "实际为 {$actual} 条",
-                'fix' => $ok ? null : "\$grid->perPage({$expected});",
-            ];
+            $actual = $this->runtimePerPage($node);
+
+            if ($actual === null) {
+                // 无法运行时验证（表不存在等），降级为声明检查并说明
+                $ok = $declared === $expected;
+
+                $results[] = [
+                    'requirement' => "每页 {$expected} 条",
+                    'satisfied' => $ok,
+                    'detail' => $ok
+                        ? "声明为 {$declared} 条（未能运行时验证：表不可用）"
+                        : "声明为 {$declared} 条，期望 {$expected}",
+                    'fix' => $ok ? null : "\$grid->perPage({$expected});",
+                ];
+            } else {
+                // 运行时值与声明值都要对，才算真正生效
+                $ok = $actual === $expected;
+
+                $results[] = [
+                    'requirement' => "每页 {$expected} 条",
+                    'satisfied' => $ok,
+                    'detail' => $ok
+                        ? "已生效（运行时实测 {$actual} 条）"
+                        : "❌ 声明为 {$declared}，但运行时实际返回 {$actual} 条 —— 声明未生效",
+                    'fix' => $ok ? null : "\$grid->perPage({$expected}); 并确认 ResourceController 读取了该值",
+                ];
+            }
         }
 
         $failed = array_values(array_filter($results, fn (array $r): bool => ! $r['satisfied']));
@@ -133,6 +161,44 @@ class RequirementChecker
                 ? '✅ 全部需求已满足'
                 : sprintf('⚠️ %d 项需求未满足 —— 请修正后再交付', count($failed)),
         ];
+    }
+
+    /**
+     * 运行时验证每页条数：真的跑一次分页，看返回多少条。
+     *
+     * 这是与"只读 schema 元数据"的关键区别 —— 能发现
+     * "声明了但没生效"这类假阳性。
+     *
+     * @return int|null null 表示无法验证（表不可用等）
+     */
+    protected function runtimePerPage(ResourceNode $node): ?int
+    {
+        try {
+            $model = $node->model;
+
+            if (! class_exists($model)) {
+                return null;
+            }
+
+            /** @var \Illuminate\Database\Eloquent\Model $instance */
+            $instance = new $model();
+            $table = $instance->getTable();
+
+            if (! \Illuminate\Support\Facades\Schema::hasTable($table)) {
+                return null;
+            }
+
+            // 模拟 ResourceController 的调用方式：不传 per_page，
+            // 让 Repository 自行决定 —— 这正是原先断链的地方。
+            $repo = new \Aimanong\Repository\EloquentRepository($model);
+            $paginator = $repo->paginate([
+                'searchable' => [],
+            ], $node->meta['perPage'] ?? null);
+
+            return $paginator->perPage();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**

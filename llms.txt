@@ -125,17 +125,49 @@ $show->field('created_at', '创建时间')->dateTime();
 
 **读到错误先按 `did_you_mean` 改一次，不要重写整个文件。**
 
-## 机器可读接口（优先于本文档）
+## 机器的可读接口（优先于本文档，M3 已实现）
+
+### 方式一：MCP 工具（推荐，如果你支持 MCP）
+
+本框架自带 MCP Server。启动：
+
+```bash
+php artisan mcp:start aimanong
+```
+
+可用工具：
+
+| 工具 | 用途 | 何时用 |
+|---|---|---|
+| `list_resources` | 列出全部 Resource 及字段 | **第一步总是调它** |
+| `describe_resource` | 看某 Resource 完整定义 | 修改前先看字段名 |
+| `scaffold_resource` | **从数据库表生成代码** | 表已存在时首选，不会猜错字段 |
+| `create_page` | 按指定字段生成代码 | 表尚未创建时用 |
+| `validate_declaration` | 校验声明合法性 | **生成后必调** |
+| `run_verify` | 项目整体自检 | 改动多个 Resource 后调 |
+| `query_data` | 只读查询真实数据 | 调试、确认真实形态 |
+| `search_docs` | 检索框架用法 | 不确定 API 时调 |
+
+**标准工作流**：`list_resources` → `scaffold_resource` → `validate_declaration` → `run_verify`
+
+### 方式二：HTTP 自省接口
 
 | 接口 | 用途 |
 |---|---|
-| `GET /__ai/capabilities.json` | 全部能力清单（字段类型、展示器、Resource 列表） |
-| `GET /__ai/schema/{resource}` | 某 Resource 的完整定义 |
+| `GET /__ai/capabilities.json` | 全部能力清单（含每个字段类型的特有方法） |
+| `GET /__ai/schema/{uri}` | 某 Resource 的完整定义 |
 | `GET /__ai/openapi.json` | 全量 API 文档 |
-| `GET /__ai/examples/{pattern}` | 可复制代码片段 |
+| `GET /__ai/context` | Markdown 版上下文 |
+| `GET /__ai/examples/{pattern}` | 可复制代码片段（resource/grid/form） |
 | `POST /__ai/verify` | 校验声明合法性 |
 
-**如果你能发 HTTP 请求，优先用这些接口而不是猜 API。** 若项目接入了 MCP Server，直接调用 `list_resources` / `scaffold_resource` / `validate_declaration` 工具。
+### 方式三：命令行自检
+
+```bash
+php artisan ai:verify              # 校验全部 Resource
+php artisan ai:verify --json       # JSON 输出（便于程序解析）
+php artisan ai:verify "App\\Aimanong\\UserResource"   # 校验单个
+```
 
 ## 完整文档
 
@@ -148,5 +180,6 @@ $show->field('created_at', '创建时间')->dateTime();
 
 - ❌ 不要写 Vue / Blade / JS 代码（前端自动渲染）
 - ❌ 不要手动写路由（Resource 自动注册）
-- ❌ 不要猜方法名，先查 `/__ai/capabilities.json`
+- ❌ 不要猜方法名，先调 `list_resources` 或查 `/__ai/capabilities.json`
+- ❌ 不要用 `$request->string()` 的返回值做 `?:` 判空（返回 Stringable 对象，恒为真）
 - ❌ 不要用 Carbon 的 `diffIn*`（Laravel 12 下返回负数 float，用框架封装的时间工具）

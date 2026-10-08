@@ -182,6 +182,7 @@ class AimanongServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 InstallCommand::class,
+                Console\SchemaCommand::class,
             ]);
         }
     }

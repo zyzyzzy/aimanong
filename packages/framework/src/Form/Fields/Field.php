@@ -1,0 +1,167 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Aimanong\Form\Fields;
+
+use Aimanong\Exceptions\UnknownFieldTypeException;
+use Aimanong\Schema\Ast\FieldNode;
+use Aimanong\Support\FieldType;
+
+/**
+ * 字段基类。
+ *
+ * AI-First 约定：
+ *   - 链式调用扁平化，无重载
+ *   - 所有配置可序列化（无闭包）
+ *   - 类型必须在 FieldType 中登记，否则抛可自愈异常
+ */
+abstract class Field
+{
+    /**
+     * 字段类型标识，子类覆盖。
+     */
+    protected string $type = 'text';
+
+    protected string $label;
+
+    protected mixed $default = null;
+
+    protected bool $required = false;
+
+    protected bool $readonly = false;
+
+    protected bool $hidden = false;
+
+    /**
+     * @var array<int, string>
+     */
+    protected array $rules = [];
+
+    /**
+     * @var array<string, mixed>
+     */
+    protected array $props = [];
+
+    public function __construct(
+        protected string $name,
+        ?string $label = null,
+    ) {
+        $this->label = $label ?? $name;
+
+        // 类型合法性校验：AI 写错类型时立刻给出可自愈错误
+        if (! FieldType::exists($this->type)) {
+            throw UnknownFieldTypeException::make($this->type, static::class);
+        }
+    }
+
+    public function label(string $label): static
+    {
+        $this->label = $label;
+
+        return $this;
+    }
+
+    public function default(mixed $value): static
+    {
+        $this->default = $value;
+
+        return $this;
+    }
+
+    public function required(bool $value = true): static
+    {
+        $this->required = $value;
+
+        if ($value && ! in_array('required', $this->rules, true)) {
+            $this->rules[] = 'required';
+        }
+
+        return $this;
+    }
+
+    public function readonly(bool $value = true): static
+    {
+        $this->readonly = $value;
+
+        return $this;
+    }
+
+    public function hidden(bool $value = true): static
+    {
+        $this->hidden = $value;
+
+        return $this;
+    }
+
+    /**
+     * 追加 Laravel 验证规则。
+     */
+    public function rules(string|array $rules): static
+    {
+        foreach ((array) $rules as $rule) {
+            if (! in_array($rule, $this->rules, true)) {
+                $this->rules[] = $rule;
+            }
+        }
+
+        return $this;
+    }
+
+    public function max(int $value): static
+    {
+        return $this->rules("max:{$value}");
+    }
+
+    public function min(int $value): static
+    {
+        return $this->rules("min:{$value}");
+    }
+
+    public function help(string $text): static
+    {
+        $this->props['help'] = $text;
+
+        return $this;
+    }
+
+    public function placeholder(string $text): static
+    {
+        $this->props['placeholder'] = $text;
+
+        return $this;
+    }
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function getType(): string
+    {
+        return $this->type;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getProps(): array
+    {
+        return $this->props;
+    }
+
+    public function toNode(): FieldNode
+    {
+        return new FieldNode(
+            name: $this->name,
+            type: $this->type,
+            label: $this->label,
+            props: $this->props,
+            rules: $this->rules,
+            default: $this->default,
+            required: $this->required,
+            readonly: $this->readonly,
+            hidden: $this->hidden,
+        );
+    }
+}

@@ -48,7 +48,9 @@ class QueryData extends Tool
 
             $paginator = $repo->paginate([
                 'per_page' => $limit,
-                'keyword' => $request->string('keyword'),
+                // 显式转字符串：string() 返回 Stringable，
+                // 仓库层的 is_string 守卫会静默忽略不可字符串化的值
+                'keyword' => trim((string) $request->string('keyword')),
                 'searchable' => array_values(array_map(
                     fn ($c): string => $c->name,
                     array_filter($node->columns, fn ($c): bool => $c->searchable)

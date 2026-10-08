@@ -132,6 +132,58 @@ abstract class Field
         return $this;
     }
 
+    /**
+     * 格式化为日期时间。
+     *
+     * 放在基类而非仅 Show：llms.txt 的示例包含
+     * `$show->field('created_at')->dateTime()`，而 Show::field()
+     * 返回的就是 Field 子类 —— 基类缺失该方法会导致照文档写必崩。
+     */
+    public function dateTime(string $format = 'Y-m-d H:i:s'): static
+    {
+        $this->props['format'] = $format;
+        $this->props['display'] = 'datetime';
+
+        return $this;
+    }
+
+    /**
+     * 格式化为日期。
+     */
+    public function dateFormat(string $format = 'Y-m-d'): static
+    {
+        $this->props['format'] = $format;
+        $this->props['display'] = 'date';
+
+        return $this;
+    }
+
+    /**
+     * 值 → 标签映射（详情页与列表通用）。
+     *
+     * @param  array<string, mixed>  $map
+     */
+    public function map(array $map): static
+    {
+        $this->props['map'] = $map;
+        $this->props['display'] = 'map';
+
+        return $this;
+    }
+
+    /**
+     * 枚举值 → 标签映射。
+     *
+     * @param  class-string  $enumClass
+     */
+    public function using(string $enumClass): static
+    {
+        $this->props['enum'] = $enumClass;
+        $this->props['display'] = 'enum';
+
+        return $this;
+    }
+
     public function getName(): string
     {
         return $this->name;

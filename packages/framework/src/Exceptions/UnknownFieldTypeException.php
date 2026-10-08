@@ -14,16 +14,20 @@ use Aimanong\Support\FieldType;
  */
 class UnknownFieldTypeException extends AiReadableException
 {
+    protected ?string $suggestion = null;
+
     public static function make(string $given, string $class): static
     {
         $suggestion = FieldType::suggest($given);
-        $available = implode(', ', FieldType::all());
 
         $message = $suggestion !== null
             ? "字段类型 '{$given}' 不存在，是否想用 '{$suggestion}'？"
             : "字段类型 '{$given}' 不存在。";
 
-        return new static($message);
+        $e = new static($message);
+        $e->suggestion = $suggestion;
+
+        return $e;
     }
 
     /**
@@ -31,7 +35,13 @@ class UnknownFieldTypeException extends AiReadableException
      */
     public function context(): array
     {
+        /*
+         * did_you_mean 必须在此显式输出。
+         * 基类 didYouMean() 只读这个键 —— 曾漏掉它导致
+         * llms.txt 承诺的字段实际返回 null，AI 拿不到建议。
+         */
         return [
+            'did_you_mean' => $this->suggestion,
             'hint' => '可用字段类型: '.implode(', ', FieldType::all()),
             'example' => '$form->text(\'name\')->label(\'名称\')->required();',
             'docs' => 'https://aimanong.com/llms/fields.txt',

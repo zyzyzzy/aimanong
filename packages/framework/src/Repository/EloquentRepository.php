@@ -93,6 +93,13 @@ class EloquentRepository implements RepositoryContract
     {
         $keyword = $params['keyword'] ?? $params['search'] ?? null;
 
+        // 兼容 Stringable 等可字符串化对象。
+        // 曾因只判断 is_string，导致 MCP 传入 Stringable 时搜索被静默忽略，
+        // 返回全表数据 —— 静默失败比报错更危险，AI 会误判数据形态。
+        if ($keyword instanceof \Stringable) {
+            $keyword = (string) $keyword;
+        }
+
         if (! is_string($keyword) || $keyword === '') {
             return;
         }

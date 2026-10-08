@@ -1,0 +1,41 @@
+# ===== 安全：绝不提交 =====
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+id_rsa
+id_ed25519
+*.token
+auth.json
+
+# ===== 依赖 =====
+/vendor/
+node_modules/
+composer.lock.bak
+
+# ===== 构建产物 =====
+/dist/
+/build/
+/public/build/
+/public/hot
+*.tsbuildinfo
+
+# ===== 缓存与日志 =====
+/storage/*.key
+/storage/logs/*.log
+/storage/framework/cache/**
+/storage/framework/views/**
+/bootstrap/ssr
+.phpunit.result.cache
+.phpstan.cache
+/.fleet
+/.idea
+/.vscode
+.DS_Store
+*.swp
+*.swo
+
+# ===== 测试覆盖率 =====
+/coverage/
+/tests/**/screenshots/

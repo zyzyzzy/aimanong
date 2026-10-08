@@ -39,3 +39,9 @@ composer.lock.bak
 # ===== 测试覆盖率 =====
 /coverage/
 /tests/**/screenshots/
+
+# ===== 子包依赖 =====
+packages/*/vendor/
+packages/*/composer.lock
+packages/*/.phpunit.cache
+packages/*/node_modules/

@@ -168,6 +168,53 @@ class AimanongServiceProvider extends ServiceProvider
             ->prefix($this->routePrefix())
             ->name('aimanong.')
             ->group(__DIR__.'/../routes/admin.php');
+
+        $this->bootAiRoutes();
+        $this->bootMcpServer();
+    }
+
+    /**
+     * 注册 MCP Server（stdio 传输）。
+     *
+     * AI 客户端通过 `php artisan mcp:start aimanong` 启动，
+     * 之后即可直接调用框架工具，无需读文档。
+     */
+    protected function bootMcpServer(): void
+    {
+        if (! class_exists(\Laravel\Mcp\Server\Registrar::class)) {
+            return;
+        }
+
+        try {
+            \Laravel\Mcp\Facades\Mcp::local('aimanong', Mcp\AimanongServer::class);
+        } catch (\Throwable) {
+            // MCP 未安装或版本不匹配时静默跳过，不影响框架其它功能
+        }
+    }
+
+    /**
+     * 注册 AI 自省接口。
+     *
+     * 独立于后台路由，不套 admin 中间件（AI 用 token 访问）。
+     */
+    protected function bootAiRoutes(): void
+    {
+        if (! $this->aiEnabled()) {
+            return;
+        }
+
+        Route::prefix(config('aimanong.ai.route_prefix', '__ai'))
+            ->name('aimanong.ai.')
+            ->group(__DIR__.'/../routes/ai.php');
+    }
+
+    protected function aiEnabled(): bool
+    {
+        $enabled = config('aimanong.ai.enable');
+
+        return $enabled === null
+            ? ($this->app->environment('local') || (bool) config('app.debug'))
+            : (bool) $enabled;
     }
 
     protected function routePrefix(): string
@@ -183,6 +230,7 @@ class AimanongServiceProvider extends ServiceProvider
             $this->commands([
                 InstallCommand::class,
                 Console\SchemaCommand::class,
+                Console\VerifyCommand::class,
             ]);
         }
     }

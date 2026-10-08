@@ -48,8 +48,8 @@ Aimanong 为此明确牺牲部分"灵活性"来换取"确定性"：
 |---|---|---|
 | M0 地基 | ✅ **完成** | Laravel 12.69.3 实测：安装、认证、登录、会话全部跑通 |
 | M1 Schema 编译层 | ✅ **完成** | 一份声明 → 四份产物，漂移检测可阻断 CI |
-| M2 核心 DSL + Vue | ⬜ 下一个 | Grid / Form / Show 端到端 |
-| M3 AI 能力层 | ⬜ | 自省 API + MCP Server |
+| M2 核心 DSL + Vue | ✅ **完成** | CRUD API + Schema 驱动渲染，浏览器实测通过 |
+| M3 AI 能力层 | ⬜ 下一个 | 自省 API + MCP Server |
 | M4 组件库 | ⬜ | 字段与展示器 |
 | M5 增强 | ⬜ | Tree / 分步表单 / 多应用 |
 | M6 生态与文档 | ⬜ | 文档站 / 代码生成器 / v1.0 |
@@ -104,6 +104,34 @@ php artisan aimanong:schema --check   # 漂移检测（漂移 exit=1 阻断 CI�
 字段类型映射正确（`switch`→`boolean`、`number`→`number`）、22 项断言全绿。
 
 AI 打错类型时会得到可自愈提示：`texte` → 建议 `text`。
+
+### M2 已交付
+
+**用户只需写一个 Resource 类，即得到完整 CRUD 后台**（API + 页面）：
+
+```
+packages/framework/
+├── src/Repository/EloquentRepository.php   数据源抽象（松耦合，可换 API/数组源）
+├── src/Http/Controllers/ResourceController.php  通用 CRUD
+└── resources/views/resource.blade.php      Vue 3 SPA 外壳
+```
+
+**核心特性：行为全部由 Schema 驱动**
+- 可搜索列：从 `->searchable()` 推导，控制器零硬编码
+- 校验规则：从 `->required()->max(255)` 推导，与表单声明永远一致
+- 前端表格：列名/排序/格式化/分页全部来自 schema.json
+
+**浏览器实测**（25 条真实数据）：
+
+| 功能 | 结果 |
+|---|---|
+| 列表分页 | ✅ 共 27 条，2 页 |
+| 快捷搜索 | ✅ "演示用户3" → 精确 1 条 |
+| 列排序 | ✅ 点击 ID 表头出现 ↑ 指示 |
+| 新增/删除 | ✅ 201 / 204 |
+| 校验失败 | ✅ 422 精确到字段 |
+
+![M2 用户管理页面](docs/screenshot-m2-users.png)
 
 ## 许可
 

@@ -44,15 +44,41 @@ Aimanong 为此明确牺牲部分"灵活性"来换取"确定性"：
 
 ## 状态
 
-| 里程碑 | 状态 |
-|---|---|
-| M0 地基 | 🚧 进行中 |
-| M1 Schema 编译层 | ⬜ |
-| M2 核心 DSL + Vue | ⬜ |
-| M3 AI 能力层 | ⬜ |
-| M4 组件库 | ⬜ |
-| M5 增强 | ⬜ |
-| M6 生态与文档 | ⬜ |
+| 里程碑 | 状态 | 说明 |
+|---|---|---|
+| M0 地基 | ✅ **完成** | Laravel 12.69.3 实测：安装、认证、登录、会话全部跑通 |
+| M1 Schema 编译层 | ⬜ 下一个 | 一份声明 → JSON Schema / TS / OpenAPI / AI 提示词 |
+| M2 核心 DSL + Vue | ⬜ | Grid / Form / Show 端到端 |
+| M3 AI 能力层 | ⬜ | 自省 API + MCP Server |
+| M4 组件库 | ⬜ | 字段与展示器 |
+| M5 增强 | ⬜ | Tree / 分步表单 / 多应用 |
+| M6 生态与文档 | ⬜ | 文档站 / 代码生成器 / v1.0 |
+
+### M0 已交付
+
+```
+packages/framework/
+├── src/
+│   ├── AimanongServiceProvider.php   中间件组 / 路由 / 配置注入
+│   ├── Auth/AdminGuard.php           GuardHelpers 实现
+│   ├── Auth/AdminUserProvider.php    含 Laravel 11+ 新契约方法
+│   ├── Http/Middleware/              Authenticate / Session / Bootstrap
+│   ├── Http/Controllers/             Auth / Home
+│   ├── Models/Administrator.php      Authenticatable 契约
+│   ├── Registry.php                  Resource 注册表
+│   └── Contracts/Resource.php
+├── config/aimanong.php
+├── database/migrations/              admin_users 表
+├── resources/views/                  登录页 / 控制台
+└── routes/admin.php
+```
+
+**Laravel 12 兼容性实测结论**：
+
+- ✅ 安装命令用 `addProviderToBootstrapFile()` 正确写入 `bootstrap/providers.php`
+- ✅ 认证链路：`attempt()` 成功 / 错误密码拒绝 / 会话保持
+- ✅ HTTP 层：登录页 200、CSRF 生效（419）、登录后首页 200
+- ✅ 已规避硬断点：`rehashPasswordIfRequired()`、`getAuthPasswordName()`、`redirectTo($request)`
 
 ## 许可
 

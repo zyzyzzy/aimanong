@@ -35,9 +35,11 @@ class AimanongServiceProvider extends ServiceProvider
      */
     protected array $middlewareGroups = [
         'admin' => [
-            // 必须包含 web 组的会话基础中间件，否则视图无 $errors / session
-            'web',
+            // admin.session 必须在 web 之前：web 含 StartSession，
+            // 若它先跑，session 会用旧 cookie path 启动，改配置就晚了。
             'admin.session',
+            // web 提供会话基础（$errors / CSRF / session store）
+            'web',
             'admin.bootstrap',
             'admin.auth',
         ],
@@ -353,9 +355,18 @@ class AimanongServiceProvider extends ServiceProvider
         // 该应用专属的中间件组，认证走它自己的 guard
         $group = 'admin.'.$name;
 
+        /*
+         * admin.session 必须排在 web **之前**。
+         *
+         * web 组内部含 StartSession —— 若它先执行，
+         * session 会用旧的 cookie path 启动，之后改配置无效，
+         * 表现为登录态丢失 / CSRF 419 / 无限重定向。
+         * 我们的 Session 中间件只改 config，不依赖 session 实例，
+         * 因此可以安全地前置。
+         */
         $this->app->make('router')->middlewareGroup($group, [
-            'web',
             'admin.session',
+            'web',
             'admin.bootstrap',
             'admin.auth:'.$guard,
         ]);
@@ -392,6 +403,7 @@ class AimanongServiceProvider extends ServiceProvider
                 Console\VerifyCommand::class,
                 Console\DocsCommand::class,
                 Console\MakeExtensionCommand::class,
+                Console\MakeResourceCommand::class,
                 Console\ExtensionsCommand::class,
             ]);
         }

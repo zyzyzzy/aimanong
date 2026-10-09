@@ -41,7 +41,20 @@ class VerifyCommand extends Command
             return $this->reportOne($result);
         }
 
+        // 登记失败的 Resource 必须报告出来，否则用户不知道
+        // ServiceProvider 里有一行指向已删除的类
+        $failures = Aimanong::registry()->failures();
+
         $all = Aimanong::registry()->all();
+
+        if ($failures !== []) {
+            foreach ($failures as $f) {
+                $this->error("✗ 注册失败: {$f}");
+            }
+
+            $this->line('    → 这些类不存在或未继承 Aimanong\Resource，请检查 ServiceProvider');
+            $this->newLine();
+        }
 
         if ($all === []) {
             if ($isJson) {

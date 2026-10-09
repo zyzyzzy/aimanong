@@ -18,20 +18,60 @@ class Registry
     protected array $resources = [];
 
     /**
+     * 登记失败记录（类不存在等）。
+     *
+     * @var array<int, string>
+     */
+    protected array $failures = [];
+
+    /**
      * 登记一个 Resource。
      *
-     * @param  class-string<Contracts\Resource>  $resource
+     * 容错设计：类不存在时**记录失败而非抛异常**。
+     *
+     * 原因：用户的 ServiceProvider 里可能残留已删除的 Resource 注册，
+     * 抛异常会导致整个应用（含所有 artisan 命令）崩溃 ——
+     * 连 `ai:verify` 都用不了，用户无法自救。
+     *
+     * 失败信息可通过 failures() 查看，`ai:verify` 会报告出来。
+     *
+     * @param  class-string<Contracts\Resource>|string  $resource
      */
     public function register(string $resource): static
     {
         if (! class_exists($resource)) {
-            throw new \InvalidArgumentException("Resource 类不存在: {$resource}");
+            $this->failures[] = $resource;
+
+            return $this;
         }
 
-        $uri = $resource::uri();
+        if (! is_subclass_of($resource, Contracts\Resource::class)) {
+            $this->failures[] = $resource.'（未继承 Aimanong\\Resource）';
+
+            return $this;
+        }
+
+        try {
+            $uri = $resource::uri();
+        } catch (\Throwable $e) {
+            $this->failures[] = $resource.'（uri() 抛错: '.$e->getMessage().'）';
+
+            return $this;
+        }
+
         $this->resources[$uri] = $resource;
 
         return $this;
+    }
+
+    /**
+     * 登记失败的 Resource（类不存在 / 未继承 / uri() 抛错）。
+     *
+     * @return array<int, string>
+     */
+    public function failures(): array
+    {
+        return $this->failures;
     }
 
     /**

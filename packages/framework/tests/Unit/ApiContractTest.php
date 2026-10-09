@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Aimanong\Tests\Unit;
 
-use Aimanong\Schema\Emitters\OpenApiEmitter;
 use Aimanong\Schema\Compiler;
+use Aimanong\Schema\Emitters\OpenApiEmitter;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -16,11 +16,14 @@ use PHPUnit\Framework\TestCase;
  */
 class ApiContractTest extends TestCase
 {
+    /** @return array<string, mixed> */
     protected function openApi(): array
     {
-        $node = (new Compiler())->compile(Fixtures\ArticleResource::class);
+        /** @var class-string<\Aimanong\Contracts\Resource> $class */
+        $class = Fixtures\ArticleResource::class;
+        $node = (new Compiler)->compile($class);
 
-        return (new OpenApiEmitter())->emit($node);
+        return (new OpenApiEmitter)->emit($node);
     }
 
     public function test_list_operation_documents_direction(): void

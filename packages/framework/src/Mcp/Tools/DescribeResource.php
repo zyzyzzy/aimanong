@@ -35,9 +35,9 @@ class DescribeResource extends Tool
             ));
         }
 
-        $node = (new Compiler())->compile($class);
+        $node = (new Compiler)->compile($class);
 
-        return Response::text((new AiPromptEmitter())->emit($node));
+        return Response::text((new AiPromptEmitter)->emit($node));
     }
 
     public function schema(JsonSchema $schema): array

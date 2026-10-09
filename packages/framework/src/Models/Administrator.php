@@ -6,6 +6,7 @@ namespace Aimanong\Models;
 
 use Illuminate\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -15,6 +16,9 @@ use Illuminate\Database\Eloquent\Model;
  * 使用 Illuminate\Auth\Authenticatable trait，它已自带
  * Laravel 11+ 契约新增的 getAuthPasswordName()，
  * 无需手写 —— 但自定义密码字段名时需覆盖 $authPasswordName。
+ */
+/**
+ * @use HasFactory<Factory<static>>
  */
 class Administrator extends Model implements AuthenticatableContract
 {

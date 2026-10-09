@@ -14,8 +14,8 @@ class FieldNode
 {
     /**
      * @param  array<string, mixed>  $props  字段特有属性（options / rows 等）
-     * @param  array<int, string>  $rules   Laravel 验证规则
-     * @param  array<string, mixed>  $meta   AI 提示词用的元信息
+     * @param  array<int, string>  $rules  Laravel 验证规则
+     * @param  array<string, mixed>  $meta  AI 提示词用的元信息
      */
     public function __construct(
         public readonly string $name,
@@ -28,8 +28,7 @@ class FieldNode
         public readonly bool $readonly = false,
         public readonly bool $hidden = false,
         public readonly array $meta = [],
-    ) {
-    }
+    ) {}
 
     /**
      * @return array<string, mixed>

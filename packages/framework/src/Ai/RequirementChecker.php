@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Aimanong\Ai;
 
+use Aimanong\Repository\EloquentRepository;
 use Aimanong\Schema\Ast\ResourceNode;
 use Aimanong\Schema\Compiler;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * 需求达标度校验。
@@ -35,7 +38,7 @@ class RequirementChecker
         }
 
         try {
-            $node = (new Compiler())->compile($class);
+            $node = (new Compiler)->compile($class);
         } catch (\Throwable $e) {
             return [
                 'checked' => false,
@@ -180,17 +183,19 @@ class RequirementChecker
                 return null;
             }
 
-            /** @var \Illuminate\Database\Eloquent\Model $instance */
-            $instance = new $model();
+            /** @var Model $instance */
+            $instance = new $model;
             $table = $instance->getTable();
 
-            if (! \Illuminate\Support\Facades\Schema::hasTable($table)) {
+            if (! Schema::hasTable($table)) {
                 return null;
             }
 
             // 模拟 ResourceController 的调用方式：不传 per_page，
             // 让 Repository 自行决定 —— 这正是原先断链的地方。
-            $repo = new \Aimanong\Repository\EloquentRepository($model);
+            /** @var class-string<Model> $modelClass */
+            $modelClass = $model;
+            $repo = new EloquentRepository($modelClass);
             $paginator = $repo->paginate([
                 'searchable' => [],
             ], $node->meta['perPage'] ?? null);
@@ -239,7 +244,8 @@ class RequirementChecker
     }
 
     /**
-     * @param  array<int, string>  $names
+     * 取出带指定标记的列名。
+     *
      * @return array<int, string>
      */
     protected function flagged(ResourceNode $node, string $flag): array

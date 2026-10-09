@@ -8,6 +8,7 @@ use Aimanong\Contracts\Repository as RepositoryContract;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
  * Eloquent 数据源。
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class EloquentRepository implements RepositoryContract
 {
+    /** @var Builder<Model> */
     protected Builder $query;
 
     /**
@@ -32,6 +34,7 @@ class EloquentRepository implements RepositoryContract
      *
      * @param  array<string, mixed>  $params
      * @param  int|null  $defaultPerPage  Resource 声明的每页条数，请求未指定时使用
+     * @return LengthAwarePaginator<int, Model>
      */
     public function paginate(array $params = [], ?int $defaultPerPage = null): LengthAwarePaginator
     {
@@ -78,7 +81,7 @@ class EloquentRepository implements RepositoryContract
         $model = $this->model::query()->find($id);
 
         if ($model === null) {
-            throw new \Illuminate\Database\Eloquent\ModelNotFoundException(
+            throw new ModelNotFoundException(
                 "记录不存在: {$this->model}#{$id}"
             );
         }
@@ -89,6 +92,7 @@ class EloquentRepository implements RepositoryContract
     /**
      * 快捷搜索：对 searchable 列做 OR like。
      *
+     * @param  Builder<Model>  $query
      * @param  array<string, mixed>  $params
      */
     protected function applySearch(Builder $query, array $params): void
@@ -122,6 +126,7 @@ class EloquentRepository implements RepositoryContract
     }
 
     /**
+     * @param  Builder<Model>  $query
      * @param  array<string, mixed>  $params
      */
     protected function applySort(Builder $query, array $params): void
@@ -138,6 +143,7 @@ class EloquentRepository implements RepositoryContract
     }
 
     /**
+     * @param  Builder<Model>  $query
      * @param  array<string, mixed>  $params
      */
     protected function applyFilters(Builder $query, array $params): void

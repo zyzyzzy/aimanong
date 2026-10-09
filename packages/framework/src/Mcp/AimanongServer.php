@@ -4,10 +4,16 @@ declare(strict_types=1);
 
 namespace Aimanong\Mcp;
 
-use Aimanong\Mcp\Tools\{
-    CreatePage, DescribeResource, ListResources, QueryData, RunVerify, ScaffoldResource, SearchDocs, ValidateDeclaration
-};
+use Aimanong\Mcp\Tools\CreatePage;
+use Aimanong\Mcp\Tools\DescribeResource;
+use Aimanong\Mcp\Tools\ListResources;
+use Aimanong\Mcp\Tools\QueryData;
+use Aimanong\Mcp\Tools\RunVerify;
+use Aimanong\Mcp\Tools\ScaffoldResource;
+use Aimanong\Mcp\Tools\SearchDocs;
+use Aimanong\Mcp\Tools\ValidateDeclaration;
 use Laravel\Mcp\Server;
+use Laravel\Mcp\Server\Tool;
 
 /**
  * Aimanong MCP Server。
@@ -44,7 +50,7 @@ class AimanongServer extends Server
     MARKDOWN;
 
     /**
-     * @var array<int, class-string<\Laravel\Mcp\Server\Tool>>
+     * @var array<int, class-string<Tool>>
      */
     protected array $tools = [
         ListResources::class,

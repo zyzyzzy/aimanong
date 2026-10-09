@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\Http\Controllers;
 
 use Aimanong\Aimanong;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,7 +14,7 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function showLoginForm(Request $request): \Illuminate\View\View|RedirectResponse
+    public function showLoginForm(Request $request): View|RedirectResponse
     {
         if (Aimanong::user() !== null) {
             return redirect(Aimanong::url('/'));

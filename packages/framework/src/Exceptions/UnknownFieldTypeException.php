@@ -24,6 +24,7 @@ class UnknownFieldTypeException extends AiReadableException
             ? "字段类型 '{$given}' 不存在，是否想用 '{$suggestion}'？"
             : "字段类型 '{$given}' 不存在。";
 
+        // @phpstan-ignore new.static
         $e = new static($message);
         $e->suggestion = $suggestion;
 

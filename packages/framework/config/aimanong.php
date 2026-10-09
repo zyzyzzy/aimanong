@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use Aimanong\Models\Administrator;
 
 return [
 
@@ -27,7 +28,7 @@ return [
         'enable' => true,
         'guard' => 'admin',
         'provider' => 'admin',
-        'model' => Aimanong\Models\Administrator::class,
+        'model' => Administrator::class,
 
         // 登录时按需重新哈希密码（Laravel 11+ 契约要求）
         'rehash_on_login' => false,

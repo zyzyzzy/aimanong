@@ -6,6 +6,7 @@ namespace Aimanong\Http\Controllers\Ai;
 
 use Aimanong\Ai\Capabilities;
 use Aimanong\Ai\Verifier;
+use Aimanong\Aimanong;
 use Aimanong\Schema\Compiler;
 use Aimanong\Schema\Emitters\AiPromptEmitter;
 use Aimanong\Schema\Emitters\OpenApiEmitter;
@@ -34,7 +35,7 @@ class IntrospectionController extends Controller
      */
     public function capabilities(): JsonResponse
     {
-        return response()->json((new Capabilities())->toArray());
+        return response()->json((new Capabilities)->toArray());
     }
 
     /**
@@ -42,17 +43,17 @@ class IntrospectionController extends Controller
      */
     public function schema(Request $request, string $uri): JsonResponse
     {
-        $class = \Aimanong\Aimanong::registry()->find($uri);
+        $class = Aimanong::registry()->find($uri);
 
         if ($class === null) {
             return response()->json([
                 'error' => 'RESOURCE_NOT_FOUND',
                 'message' => "Resource [{$uri}] 未注册",
-                'available' => array_keys(\Aimanong\Aimanong::registry()->all()),
+                'available' => array_keys(Aimanong::registry()->all()),
             ], 404);
         }
 
-        $node = (new Compiler())->compile($class);
+        $node = (new Compiler)->compile($class);
 
         return response()->json([
             'uri' => $node->uri,
@@ -69,13 +70,13 @@ class IntrospectionController extends Controller
      */
     public function openapi(): JsonResponse
     {
-        $compiler = new Compiler();
-        $emitter = new OpenApiEmitter();
+        $compiler = new Compiler;
+        $emitter = new OpenApiEmitter;
 
         $paths = [];
         $schemas = [];
 
-        foreach (\Aimanong\Aimanong::registry()->all() as $class) {
+        foreach (Aimanong::registry()->all() as $class) {
             $oa = $emitter->emit($compiler->compile($class));
             $paths = array_merge($paths, $oa['paths']);
             $schemas = array_merge($schemas, $oa['components']['schemas']);
@@ -85,7 +86,7 @@ class IntrospectionController extends Controller
             'openapi' => '3.1.0',
             'info' => [
                 'title' => 'Aimanong Admin API',
-                'version' => \Aimanong\Aimanong::version(),
+                'version' => Aimanong::version(),
             ],
             'paths' => $paths,
             'components' => ['schemas' => $schemas],
@@ -97,11 +98,11 @@ class IntrospectionController extends Controller
      */
     public function context(): JsonResponse
     {
-        $compiler = new Compiler();
-        $emitter = new AiPromptEmitter();
+        $compiler = new Compiler;
+        $emitter = new AiPromptEmitter;
 
         $parts = [];
-        foreach (\Aimanong\Aimanong::registry()->all() as $class) {
+        foreach (Aimanong::registry()->all() as $class) {
             $parts[] = $emitter->emit($compiler->compile($class));
         }
 
@@ -129,7 +130,7 @@ class IntrospectionController extends Controller
             ], 422);
         }
 
-        return response()->json((new Verifier())->verify($class));
+        return response()->json((new Verifier)->verify($class));
     }
 
     /**
@@ -244,10 +245,13 @@ PHP,
         // 生产环境需要 token
         if (! $isLocal) {
             $expected = config('aimanong.ai.token');
-            $given = request()->header('X-Aimanong-Token')
-                ?? request()->query('token');
 
-            if (! is_string($expected) || $expected === '' || ! hash_equals($expected, (string) $given)) {
+            $header = request()->header('X-Aimanong-Token');
+            $query = request()->query('token');
+
+            $given = is_string($header) ? $header : (is_string($query) ? $query : '');
+
+            if (! is_string($expected) || $expected === '' || ! hash_equals($expected, $given)) {
                 abort(401, 'Aimanong AI 接口需要有效 token');
             }
         }

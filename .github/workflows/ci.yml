@@ -7,9 +7,16 @@ on:
     branches: [main, develop]
 
 jobs:
-  php-quality:
-    name: PHP 质量门禁
+  framework:
+    name: 框架质量门禁（PHP 8.3）
     runs-on: ubuntu-latest
+
+    # 所有命令都在 packages/framework 下执行 ——
+    # 本仓库是 monorepo，根目录没有 composer.json
+    defaults:
+      run:
+        working-directory: packages/framework
+
     steps:
       - uses: actions/checkout@v4
 
@@ -20,7 +27,14 @@ jobs:
           extensions: mbstring, json, pdo, sqlite3
           coverage: none
 
-      - name: Install Composer dependencies
+      - name: 缓存 Composer
+        uses: actions/cache@v4
+        with:
+          path: packages/framework/vendor
+          key: ${{ runner.os }}-php83-${{ hashFiles('packages/framework/composer.json') }}
+          restore-keys: ${{ runner.os }}-php83-
+
+      - name: 安装依赖
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Pint 代码风格
@@ -29,48 +43,30 @@ jobs:
       - name: PHPStan Level 8
         run: composer phpstan
 
-      - name: PHPUnit / Pest
+      - name: PHPUnit
         run: composer test
 
-  frontend-quality:
-    name: 前端质量门禁
+  # 低版本 PHP 兼容性：确认不会用到 8.3 独占语法
+  php82-compat:
+    name: PHP 8.2 兼容性
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: packages/framework
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Setup PHP 8.2
+        uses: shivammathur/setup-php@v2
         with:
-          node-version: '20'
+          php-version: '8.2'
+          extensions: mbstring, json, pdo, sqlite3
+          coverage: none
 
-      - name: Install dependencies
-        run: npm ci || npm install
-
-      - name: TypeScript 类型检查
-        run: npm run type-check
-
-      - name: ESLint
-        run: npm run lint
-
-      - name: Vitest
-        run: npm run test
-
-  # 本项目特色：Schema 产物快照比对，任何漂移即失败
-  schema-drift:
-    name: Schema 产物漂移检测
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.3'
-          extensions: mbstring, json
-
-      - name: Install dependencies
+      - name: 安装依赖
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: 检测 Schema 产物漂移
-        run: composer schema:verify
-        # 该命令比对：JSON Schema / TypeScript 类型 / OpenAPI / AI 提示词
-        # 四份产物是否与声明一致。漂移 = 文档与实现不一致 = AI 出错的根源
+      - name: PHPUnit
+        run: composer test

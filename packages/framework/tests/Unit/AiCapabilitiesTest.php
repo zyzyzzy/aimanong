@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Aimanong\Tests\Unit;
 
 use Aimanong\Ai\Capabilities;
+use Aimanong\Exceptions\UnknownFieldTypeException;
+use Aimanong\Form\Fields\Field;
 use Aimanong\Support\FieldType;
 use PHPUnit\Framework\TestCase;
 
@@ -45,12 +47,12 @@ class AiCapabilitiesTest extends TestCase
     public function test_ai_readable_exception_exposes_structured_context(): void
     {
         try {
-            new class('x') extends \Aimanong\Form\Fields\Field
+            new class('x') extends Field
             {
                 protected string $type = 'texte';
             };
             $this->fail('应当抛出 UnknownFieldTypeException');
-        } catch (\Aimanong\Exceptions\UnknownFieldTypeException $e) {
+        } catch (UnknownFieldTypeException $e) {
             $ctx = $e->context();
 
             $this->assertSame('UNKNOWN_FIELD_TYPE', $e::errorCode());

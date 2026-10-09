@@ -7,12 +7,13 @@ namespace Aimanong\Http\Controllers;
 use Aimanong\Aimanong;
 use Aimanong\Schema\Compiler;
 use Aimanong\Schema\Emitters\JsonSchemaEmitter;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 
 class HomeController extends Controller
 {
-    public function index(): \Illuminate\View\View
+    public function index(): View
     {
         return view('aimanong::index', [
             'user' => Aimanong::user(),
@@ -25,7 +26,7 @@ class HomeController extends Controller
      *
      * 页面本身不含任何字段硬编码 —— 表格长什么样由 schema.json 决定。
      */
-    public function resource(Request $request, string $uri): \Illuminate\View\View
+    public function resource(Request $request, string $uri): View
     {
         $class = Aimanong::registry()->find($uri);
 
@@ -33,8 +34,8 @@ class HomeController extends Controller
             abort(404, "Resource [{$uri}] 未注册");
         }
 
-        $node = (new Compiler())->compile($class);
-        $schema = (new JsonSchemaEmitter())->emit($node);
+        $node = (new Compiler)->compile($class);
+        $schema = (new JsonSchemaEmitter)->emit($node);
 
         return view('aimanong::resource', [
             'uri' => $uri,

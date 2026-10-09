@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\Tests\Unit;
 
 use Aimanong\Exceptions\GhostColumnException;
+use Aimanong\Http\Controllers\ResourceController;
 use Aimanong\Repository\EloquentRepository;
 use Aimanong\Schema\Compiler;
 use PHPUnit\Framework\TestCase;
@@ -38,9 +39,8 @@ class RuntimeVerificationTest extends TestCase
      */
     public function test_controller_passes_declared_per_page(): void
     {
-        $src = file_get_contents(
-            (new \ReflectionClass(\Aimanong\Http\Controllers\ResourceController::class))->getFileName() ?: ''
-        );
+        $file = (new \ReflectionClass(ResourceController::class))->getFileName();
+        $src = $file !== false ? (string) file_get_contents($file) : '';
 
         $this->assertStringContainsString(
             "meta['perPage']",
@@ -73,7 +73,8 @@ class RuntimeVerificationTest extends TestCase
      */
     public function test_compiler_performs_existence_check(): void
     {
-        $src = file_get_contents((new \ReflectionClass(Compiler::class))->getFileName() ?: '');
+        $file = (new \ReflectionClass(Compiler::class))->getFileName();
+        $src = $file !== false ? (string) file_get_contents($file) : '';
 
         $this->assertStringContainsString(
             'assertColumnsExist',
@@ -88,7 +89,7 @@ class RuntimeVerificationTest extends TestCase
     public function test_ghost_check_skips_when_table_unavailable(): void
     {
         // Fixtures\ArticleResource 绑定的 stdClass 不是模型，应安全跳过
-        $node = (new Compiler())->compile(Fixtures\ArticleResource::class);
+        $node = (new Compiler)->compile(Fixtures\ArticleResource::class);
 
         $this->assertNotEmpty($node->columns, '跳过检查时仍应正常产出 AST');
     }

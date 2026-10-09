@@ -4,23 +4,24 @@ declare(strict_types=1);
 
 namespace Aimanong\Tests\Unit;
 
-use Aimanong\Form\Form;
-use Aimanong\Grid\Grid;
-use Aimanong\Resource;
 use Aimanong\Schema\Compiler;
 use Aimanong\Support\FieldType;
 use PHPUnit\Framework\TestCase;
 
 class CompilerTest extends TestCase
 {
+    /** @return class-string<\Aimanong\Contracts\Resource> */
     protected function makeResource(): string
     {
-        return Fixtures\ArticleResource::class;
+        /** @var class-string<\Aimanong\Contracts\Resource> $class */
+        $class = Fixtures\ArticleResource::class;
+
+        return $class;
     }
 
     public function test_compile_produces_all_nodes(): void
     {
-        $node = (new Compiler())->compile($this->makeResource());
+        $node = (new Compiler)->compile($this->makeResource());
 
         $this->assertSame('articles', $node->uri);
         $this->assertSame('文章', $node->label);
@@ -30,7 +31,7 @@ class CompilerTest extends TestCase
 
     public function test_column_flags_are_compiled(): void
     {
-        $node = (new Compiler())->compile($this->makeResource());
+        $node = (new Compiler)->compile($this->makeResource());
 
         $id = $node->columns[0];
         $this->assertTrue($id->sortable);
@@ -42,7 +43,7 @@ class CompilerTest extends TestCase
 
     public function test_validation_rules_are_collected(): void
     {
-        $node = (new Compiler())->compile($this->makeResource());
+        $node = (new Compiler)->compile($this->makeResource());
 
         $rules = $node->meta['rules'];
 

@@ -23,8 +23,7 @@ class ColumnNode
         public readonly ?string $enumClass = null,
         public readonly array $props = [],
         public readonly array $meta = [],
-    ) {
-    }
+    ) {}
 
     /**
      * @return array<string, mixed>

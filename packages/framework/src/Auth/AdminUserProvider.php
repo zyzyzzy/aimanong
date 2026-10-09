@@ -7,6 +7,7 @@ namespace Aimanong\Auth;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Contracts\Auth\UserProvider;
 use Illuminate\Contracts\Hashing\Hasher as HasherContract;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -32,7 +33,10 @@ class AdminUserProvider implements UserProvider
         /** @var class-string<Model> $model */
         $model = $this->model;
 
-        return $model::query()->find($identifier);
+        /** @var AuthenticatableContract|null $user */
+        $user = $model::query()->find($identifier);
+
+        return $user;
     }
 
     public function retrieveByToken($identifier, $token): ?AuthenticatableContract
@@ -59,8 +63,9 @@ class AdminUserProvider implements UserProvider
 
     public function retrieveByCredentials(array $credentials): ?AuthenticatableContract
     {
-        if (($credentials['password'] ?? null) === null
-            || ($credentials['password'] ?? null) === '') {
+        $password = $credentials['password'] ?? null;
+
+        if (! is_string($password) || $password === '') {
             return null;
         }
 
@@ -78,7 +83,10 @@ class AdminUserProvider implements UserProvider
             $query->where($key, $value);
         }
 
-        return $query->first();
+        /** @var AuthenticatableContract|null $user */
+        $user = $query->first();
+
+        return $user;
     }
 
     public function validateCredentials(AuthenticatableContract $user, array $credentials): bool
@@ -129,7 +137,7 @@ class AdminUserProvider implements UserProvider
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Builder<Model>
+     * @return Builder<Model>
      */
     protected function newModelQuery()
     {

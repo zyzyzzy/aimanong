@@ -7,7 +7,6 @@ namespace Aimanong\Console;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Str;
 
 /**
  * 安装命令。
@@ -37,7 +36,8 @@ class InstallCommand extends Command
 
         $this->newLine();
         $this->info('✅ 安装完成');
-        $this->line('   访问: '.url(config('aimanong.route.prefix', 'admin')));
+        $prefix = config('aimanong.route.prefix', 'admin');
+        $this->line('   访问: /'.(is_string($prefix) ? $prefix : 'admin'));
 
         return self::SUCCESS;
     }
@@ -49,16 +49,10 @@ class InstallCommand extends Command
     {
         $provider = 'Aimanong\\AimanongServiceProvider';
 
-        // Laravel 11+ 的正确做法
-        if (method_exists(ServiceProvider::class, 'addProviderToBootstrapFile')) {
-            ServiceProvider::addProviderToBootstrapFile($provider);
-            $this->info('✓ 已注册服务提供者到 bootstrap/providers.php');
-
-            return;
-        }
-
-        // Laravel 10 及以下回退路径
-        $this->warn('! 未检测到 bootstrap/providers.php，请手动注册: '.$provider);
+        // Laravel 11+ 起 config/app.php 不再有 providers 数组，
+        // 必须写入 bootstrap/providers.php
+        ServiceProvider::addProviderToBootstrapFile($provider);
+        $this->info('✓ 已注册服务提供者到 bootstrap/providers.php');
     }
 
     protected function publishAssets(): void

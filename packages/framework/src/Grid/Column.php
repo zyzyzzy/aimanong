@@ -101,7 +101,7 @@ class Column
      */
     public function map(array $map): static
     {
-        $object = new \stdClass();
+        $object = new \stdClass;
 
         foreach ($map as $key => $label) {
             $object->{(string) $key} = $label;

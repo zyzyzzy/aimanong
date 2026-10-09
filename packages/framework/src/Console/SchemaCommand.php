@@ -29,7 +29,7 @@ class SchemaCommand extends Command
 
     public function handle(): int
     {
-        $compiler = new Compiler();
+        $compiler = new Compiler;
         $registry = Aimanong::registry();
 
         $resources = $registry->all();
@@ -43,10 +43,10 @@ class SchemaCommand extends Command
         $isCheck = (bool) $this->option('check');
         $outDir = $this->outDir();
 
-        $json = new JsonSchemaEmitter();
-        $ts = new TypeScriptEmitter();
-        $openapi = new OpenApiEmitter();
-        $ai = new AiPromptEmitter();
+        $json = new JsonSchemaEmitter;
+        $ts = new TypeScriptEmitter;
+        $openapi = new OpenApiEmitter;
+        $ai = new AiPromptEmitter;
 
         $allJson = [];
         $allTs = [];

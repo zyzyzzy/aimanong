@@ -27,14 +27,14 @@ class ValidateDeclaration extends Tool
     {
         $class = (string) $request->string('resource');
 
-        $result = (new Verifier())->verify($class);
+        $result = (new Verifier)->verify($class);
 
         // 需求核对（若提供）
         $requirements = $request->get('requirements');
         $requirementReport = null;
 
         if (is_array($requirements) && $requirements !== []) {
-            $requirementReport = (new RequirementChecker())->check($class, $requirements);
+            $requirementReport = (new RequirementChecker)->check($class, $requirements);
         }
 
         if ($result['valid']) {

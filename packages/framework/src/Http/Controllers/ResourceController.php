@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Aimanong\Http\Controllers;
 
+use Aimanong\Aimanong;
 use Aimanong\Repository\EloquentRepository;
 use Aimanong\Schema\Ast\ResourceNode;
 use Aimanong\Schema\Compiler;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -98,7 +100,10 @@ class ResourceController extends Controller
     {
         $supported = ['keyword', 'search', 'sort', 'direction', 'per_page', 'filters', 'page'];
 
-        return array_values(array_diff(array_keys($request->query()), $supported));
+        /** @var array<string, mixed> $query */
+        $query = $request->query();
+
+        return array_values(array_diff(array_keys($query), $supported));
     }
 
     /**
@@ -189,17 +194,20 @@ class ResourceController extends Controller
             return $this->node;
         }
 
-        $class = \Aimanong\Aimanong::registry()->find($uri);
+        $class = Aimanong::registry()->find($uri);
 
         if ($class === null) {
             abort(404, "Resource [{$uri}] 未注册");
         }
 
-        return $this->node = (new Compiler())->compile($class);
+        return $this->node = (new Compiler)->compile($class);
     }
 
     protected function repository(ResourceNode $node): EloquentRepository
     {
-        return new EloquentRepository($node->model);
+        /** @var class-string<Model> $modelClass */
+        $modelClass = $node->model;
+
+        return new EloquentRepository($modelClass);
     }
 }

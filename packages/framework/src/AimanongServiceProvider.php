@@ -8,11 +8,10 @@ use Aimanong\Auth\AdminGuard;
 use Aimanong\Auth\AdminUserProvider;
 use Aimanong\Console\InstallCommand;
 use Aimanong\Support\Asset;
-use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Mcp\Server\Registrar;
 
 class AimanongServiceProvider extends ServiceProvider
 {
@@ -67,7 +66,7 @@ class AimanongServiceProvider extends ServiceProvider
     protected function registerServices(): void
     {
         $this->app->singleton('aimanong.asset', Asset::class);
-        $this->app->singleton(Registry::class, fn (): Registry => new Registry());
+        $this->app->singleton(Registry::class, fn (): Registry => new Registry);
     }
 
     /**
@@ -181,7 +180,7 @@ class AimanongServiceProvider extends ServiceProvider
      */
     protected function bootMcpServer(): void
     {
-        if (! class_exists(\Laravel\Mcp\Server\Registrar::class)) {
+        if (! class_exists(Registrar::class)) {
             return;
         }
 

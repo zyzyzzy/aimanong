@@ -26,8 +26,7 @@ class ResourceNode
         public readonly array $fields = [],
         public readonly array $detailFields = [],
         public readonly array $meta = [],
-    ) {
-    }
+    ) {}
 
     /**
      * @return array<int, ColumnNode>

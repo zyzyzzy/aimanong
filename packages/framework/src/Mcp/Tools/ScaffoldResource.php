@@ -28,10 +28,13 @@ class ScaffoldResource extends Tool
 
     public function handle(Request $request): Response
     {
-        $table = (string) $request->string('table');
-        $modelInput = $request->string('model');
-        $model = ($modelInput !== null && (string) $modelInput !== '')
-            ? (string) $modelInput
+        $table = trim((string) $request->string('table'));
+
+        // string() 返回 Stringable（缺失时是空对象，永不为 null），
+        // 必须转字符串再判空 —— 与 null 比较恒为 true。
+        $modelInput = trim((string) $request->string('model'));
+        $model = $modelInput !== ''
+            ? $modelInput
             : 'App\\Models\\'.Str::studly(Str::singular($table));
 
         try {
@@ -208,7 +211,7 @@ class ScaffoldResource extends Tool
      */
     protected function join(array $lines): string
     {
-        return $lines === [] ? "        // 无字段" : implode("\n", $lines);
+        return $lines === [] ? '        // 无字段' : implode("\n", $lines);
     }
 
     protected function classBasename(string $fqcn): string

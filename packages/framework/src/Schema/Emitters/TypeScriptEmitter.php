@@ -74,12 +74,12 @@ class TypeScriptEmitter
         $name = $this->pascal($node->uri).'Schema';
 
         $json = json_encode(
-            (new JsonSchemaEmitter())->emit($node),
+            (new JsonSchemaEmitter)->emit($node),
             JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE
         );
 
         return sprintf(
-            "export const %s: %s = %s as %s;",
+            'export const %s: %s = %s as %s;',
             lcfirst($name),
             $name,
             $json ?: '{}',

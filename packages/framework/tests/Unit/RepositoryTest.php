@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Aimanong\Tests\Unit;
 
+use Aimanong\Contracts\Repository;
+use Aimanong\Http\Controllers\ResourceController;
 use Aimanong\Repository\EloquentRepository;
 use PHPUnit\Framework\TestCase;
 
@@ -16,7 +18,7 @@ class RepositoryTest extends TestCase
 {
     public function test_contract_methods_exist(): void
     {
-        $ref = new \ReflectionClass(\Aimanong\Contracts\Repository::class);
+        $ref = new \ReflectionClass(Repository::class);
 
         foreach (['paginate', 'create', 'update', 'delete', 'find'] as $m) {
             $this->assertTrue($ref->hasMethod($m), "契约缺少方法 {$m}");
@@ -25,8 +27,11 @@ class RepositoryTest extends TestCase
 
     public function test_eloquent_repository_implements_contract(): void
     {
-        $this->assertTrue(
-            is_subclass_of(EloquentRepository::class, \Aimanong\Contracts\Repository::class),
+        $ref = new \ReflectionClass(EloquentRepository::class);
+
+        $this->assertContains(
+            Repository::class,
+            $ref->getInterfaceNames(),
             'EloquentRepository 必须实现 Repository 契约'
         );
     }
@@ -36,9 +41,11 @@ class RepositoryTest extends TestCase
      */
     public function test_controller_depends_on_contract_not_implementation(): void
     {
-        $ref = new \ReflectionClass(\Aimanong\Http\Controllers\ResourceController::class);
-        $method = $ref->getMethod('repository');
+        $ref = new \ReflectionClass(ResourceController::class);
 
-        $this->assertNotNull($method, 'Controller 应通过 repository() 获取数据源');
+        $this->assertTrue(
+            $ref->hasMethod('repository'),
+            'Controller 应通过 repository() 获取数据源'
+        );
     }
 }

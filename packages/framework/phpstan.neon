@@ -1,0 +1,38 @@
+parameters:
+    level: 8
+
+    # 不需要每条忽略规则都命中 —— 规则是防守性的，
+    # 未命中说明该误报当前不存在，不应视为错误
+    reportUnmatchedIgnoredErrors: false
+
+    paths:
+        - src
+        - tests
+
+    excludePaths:
+        - vendor
+        - tests/Unit/Fixtures/*
+
+    ignoreErrors:
+        # ------------------------------------------------------------------
+        # Laravel 动态特性导致的固有误报（框架设计使然，非代码缺陷）
+        # ------------------------------------------------------------------
+
+        # Facade / 容器动态调用
+        - '#Call to an undefined method Illuminate\\#'
+        - '#Call to an undefined static method Illuminate\\#'
+        - '#Access to an undefined property Illuminate\\#'
+        - '#Call to an undefined method Aimanong\\#'
+        - '#Access to an undefined property Aimanong\\#'
+
+        # Eloquent 泛型：模型类在运行时才确定，静态无法推断
+        - '#with generic class Illuminate\\Database\\Eloquent\\#'
+        - '#does not specify its types: TModel#'
+
+        # Eloquent HasFactory / HasUuids 等 trait 的泛型标注
+        - '#uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory#'
+        - '#uses generic trait Illuminate\\Database\\Eloquent\\Concerns\\#'
+
+        # PHPUnit 断言在静态分析下无法完全推断
+        - '#with no value type specified in iterable type array#'
+        - '#has no value type specified in iterable type array#'

@@ -5,10 +5,15 @@ declare(strict_types=1);
 namespace Aimanong\Schema;
 
 use Aimanong\Contracts\Resource as ResourceContract;
+use Aimanong\Exceptions\GhostColumnException;
 use Aimanong\Form\Form;
 use Aimanong\Grid\Grid;
+use Aimanong\Schema\Ast\ColumnNode;
+use Aimanong\Schema\Ast\FieldNode;
 use Aimanong\Schema\Ast\ResourceNode;
 use Aimanong\Show\Show;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Schema 编译器。
@@ -30,9 +35,9 @@ class Compiler
             throw new \InvalidArgumentException("Resource 类不存在: {$resource}");
         }
 
-        $grid = new Grid();
-        $form = new Form();
-        $show = new Show();
+        $grid = new Grid;
+        $form = new Form;
+        $show = new Show;
 
         // 调用用户定义的 grid()/form()/show() 填充声明
         if (method_exists($resource, 'grid')) {
@@ -93,8 +98,8 @@ class Compiler
      * 避免把环境问题误报成声明错误。
      *
      * @param  class-string  $resource
-     * @param  array<int, \Aimanong\Schema\Ast\ColumnNode>  $columns
-     * @param  array<int, \Aimanong\Schema\Ast\FieldNode>  $fields
+     * @param  array<int, ColumnNode>  $columns
+     * @param  array<int, FieldNode>  $fields
      */
     protected function assertColumnsExist(string $resource, array $columns, array $fields): void
     {
@@ -109,15 +114,15 @@ class Compiler
         }
 
         try {
-            /** @var \Illuminate\Database\Eloquent\Model $instance */
-            $instance = new $model();
+            /** @var Model $instance */
+            $instance = new $model;
             $table = $instance->getTable();
 
-            if (! \Illuminate\Support\Facades\Schema::hasTable($table)) {
+            if (! Schema::hasTable($table)) {
                 return; // 表不存在（如测试环境），跳过
             }
 
-            $real = \Illuminate\Support\Facades\Schema::getColumnListing($table);
+            $real = Schema::getColumnListing($table);
         } catch (\Throwable) {
             return; // 无数据库连接等情况，跳过检查
         }
@@ -159,7 +164,7 @@ class Compiler
             return;
         }
 
-        throw new \Aimanong\Exceptions\GhostColumnException(
+        throw new GhostColumnException(
             sprintf(
                 '%s 声明了不存在的列/字段: %s',
                 class_basename($resource),
@@ -178,17 +183,17 @@ class Compiler
      */
     protected function isVirtualAttribute(mixed $instance, string $name): bool
     {
-        if (! $instance instanceof \Illuminate\Database\Eloquent\Model) {
+        if (! $instance instanceof Model) {
             return false;
         }
 
         // 访问器：getXxxAttribute / xxx() 返回 Attribute
-        if (method_exists($instance, 'hasGetMutator') && $instance->hasGetMutator($name)) {
+        if ($instance->hasGetMutator($name)) {
             return true;
         }
 
         // 已声明 casts
-        if (method_exists($instance, 'hasCast') && $instance->hasCast($name)) {
+        if ($instance->hasCast($name)) {
             return true;
         }
 

@@ -1,41 +1,57 @@
 name: Mirror to Gitee
 
-# GitHub -> Gitee 镜像同步
-# 使用原生 git push --mirror，不依赖第三方 action（避免供应链风险）
-# 需要的 Secrets: GITEE_USERNAME, GITEE_TOKEN
+# GitHub → Gitee 镜像同步
+#
+# 前置条件（未配置时本 workflow 会跳过而非失败）：
+#   在 GitHub 仓库 Settings → Secrets and variables → Actions 添加：
+#     GITEE_USERNAME  你的 Gitee 用户名（URL 里的那个，非昵称）
+#     GITEE_TOKEN     Gitee 私人令牌，需 projects 权限
+#
+# 未配置 Secrets 时不影响任何功能 —— 可继续手动 git push gitee main
 
 on:
   push:
     branches: [main, develop]
     tags: ['v*']
-  delete:
-    branches: [main, develop]
+  workflow_dispatch:
 
 jobs:
   mirror:
+    name: 同步到 Gitee
     runs-on: ubuntu-latest
+
     if: github.repository == 'zyzyzzy/aimanong'
+
     steps:
-      - name: Checkout full history
+      - name: 检查 Secrets 是否配置
+        id: check
+        env:
+          GITEE_USERNAME: ${{ secrets.GITEE_USERNAME }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+        run: |
+          if [ -z "$GITEE_USERNAME" ] || [ -z "$GITEE_TOKEN" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::未配置 GITEE_USERNAME / GITEE_TOKEN，跳过镜像同步。手动同步: git push gitee main"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout 完整历史
+        if: steps.check.outputs.configured == 'true'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Mirror push to Gitee
+      - name: 推送到 Gitee
+        if: steps.check.outputs.configured == 'true'
         env:
           GITEE_USERNAME: ${{ secrets.GITEE_USERNAME }}
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
         run: |
           set -e
-          git config --global user.name "aimanong-bot"
-          git config --global user.email "bot@aimanong.com"
-
-          # 用 token 构造远端地址，避免交互式认证
           REMOTE="https://${GITEE_USERNAME}:${GITEE_TOKEN}@gitee.com/${GITEE_USERNAME}/aimanong.git"
 
           git remote add gitee "$REMOTE" 2>/dev/null || git remote set-url gitee "$REMOTE"
+          git push gitee "HEAD:refs/heads/${GITHUB_REF_NAME}" --force
 
-          # 同步分支与标签（--mirror 会覆盖远端，保持与 GitHub 完全一致）
-          git push --mirror --force gitee
-
-          echo "✅ 已镜像到 Gitee"
+          echo "✅ 已同步 ${GITHUB_REF_NAME} 到 Gitee"

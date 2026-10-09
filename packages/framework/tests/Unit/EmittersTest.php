@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Tests\Unit;
 
+use Aimanong\Schema\Ast\ResourceNode;
 use Aimanong\Schema\Compiler;
 use Aimanong\Schema\Emitters\AiPromptEmitter;
 use Aimanong\Schema\Emitters\JsonSchemaEmitter;
@@ -18,14 +19,17 @@ use PHPUnit\Framework\TestCase;
  */
 class EmittersTest extends TestCase
 {
-    protected function node()
+    protected function node(): ResourceNode
     {
-        return (new Compiler())->compile(Fixtures\ArticleResource::class);
+        /** @var class-string<\Aimanong\Contracts\Resource> $class */
+        $class = Fixtures\ArticleResource::class;
+
+        return (new Compiler)->compile($class);
     }
 
     public function test_json_schema_contains_all_fields(): void
     {
-        $json = (new JsonSchemaEmitter())->emit($this->node());
+        $json = (new JsonSchemaEmitter)->emit($this->node());
 
         $this->assertSame('articles', $json['uri']);
         $this->assertCount(3, $json['grid']['columns']);
@@ -37,7 +41,7 @@ class EmittersTest extends TestCase
 
     public function test_json_schema_maps_types_correctly(): void
     {
-        $json = (new JsonSchemaEmitter())->emit($this->node());
+        $json = (new JsonSchemaEmitter)->emit($this->node());
 
         $types = array_column($json['form']['fields'], 'type', 'name');
 
@@ -51,7 +55,7 @@ class EmittersTest extends TestCase
 
     public function test_typescript_emits_interface(): void
     {
-        $ts = (new TypeScriptEmitter())->emit($this->node());
+        $ts = (new TypeScriptEmitter)->emit($this->node());
 
         $this->assertStringContainsString('export interface Articles', $ts);
         $this->assertStringContainsString('title: string;', $ts);
@@ -60,7 +64,7 @@ class EmittersTest extends TestCase
 
     public function test_openapi_has_crud_paths(): void
     {
-        $oa = (new OpenApiEmitter())->emit($this->node());
+        $oa = (new OpenApiEmitter)->emit($this->node());
 
         $this->assertArrayHasKey('/admin/articles', $oa['paths']);
         $this->assertArrayHasKey('/admin/articles/{id}', $oa['paths']);
@@ -69,7 +73,7 @@ class EmittersTest extends TestCase
 
     public function test_ai_prompt_is_human_readable(): void
     {
-        $ai = (new AiPromptEmitter())->emit($this->node());
+        $ai = (new AiPromptEmitter)->emit($this->node());
 
         $this->assertStringContainsString('文章', $ai);
         $this->assertStringContainsString('必填', $ai);
@@ -83,9 +87,9 @@ class EmittersTest extends TestCase
     {
         $node = $this->node();
 
-        $json = (new JsonSchemaEmitter())->emit($node);
-        $ai = (new AiPromptEmitter())->emit($node);
-        $oa = (new OpenApiEmitter())->emit($node);
+        $json = (new JsonSchemaEmitter)->emit($node);
+        $ai = (new AiPromptEmitter)->emit($node);
+        $oa = (new OpenApiEmitter)->emit($node);
 
         $jsonCount = count($json['form']['fields']);
         $oaCount = count($oa['components']['schemas']['Articles']['properties']);

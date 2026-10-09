@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\Show;
 
 use Aimanong\Form\Fields\Field;
+use Aimanong\Form\Fields\Text;
 use Aimanong\Schema\Ast\FieldNode;
 
 /**
@@ -21,7 +22,7 @@ class Show
 
     public function field(string $name, ?string $label = null): Field
     {
-        $field = new \Aimanong\Form\Fields\Text($name, $label);
+        $field = new Text($name, $label);
         $field->readonly(true);
 
         $this->fields[$name] = $field;

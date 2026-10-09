@@ -4,9 +4,19 @@ declare(strict_types=1);
 
 namespace Aimanong\Form;
 
-use Aimanong\Form\Fields\{
-    Date, Datetime, Decimal, Display, Email, Field, Hidden, Number, Select, SwitchField, Text, Textarea, Url
-};
+use Aimanong\Form\Fields\Date;
+use Aimanong\Form\Fields\Datetime;
+use Aimanong\Form\Fields\Decimal;
+use Aimanong\Form\Fields\Display;
+use Aimanong\Form\Fields\Email;
+use Aimanong\Form\Fields\Field;
+use Aimanong\Form\Fields\Hidden;
+use Aimanong\Form\Fields\Number;
+use Aimanong\Form\Fields\Select;
+use Aimanong\Form\Fields\SwitchField;
+use Aimanong\Form\Fields\Text;
+use Aimanong\Form\Fields\Textarea;
+use Aimanong\Form\Fields\Url;
 use Aimanong\Schema\Ast\FieldNode;
 
 /**

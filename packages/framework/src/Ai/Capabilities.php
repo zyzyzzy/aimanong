@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\Ai;
 
 use Aimanong\Aimanong;
+use Aimanong\Form\Fields\Field;
 use Aimanong\Schema\Compiler;
 use Aimanong\Support\FieldType;
 
@@ -46,7 +47,7 @@ class Capabilities
      */
     public function resources(): array
     {
-        $compiler = new Compiler();
+        $compiler = new Compiler;
         $out = [];
 
         foreach (Aimanong::registry()->all() as $uri => $class) {
@@ -174,7 +175,7 @@ class Capabilities
             return [];
         }
 
-        $base = new \ReflectionClass(\Aimanong\Form\Fields\Field::class);
+        $base = new \ReflectionClass(Field::class);
         $baseMethods = array_map(
             fn (\ReflectionMethod $m): string => $m->getName(),
             $base->getMethods(\ReflectionMethod::IS_PUBLIC)

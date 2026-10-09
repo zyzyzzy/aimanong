@@ -17,7 +17,7 @@ class RequirementCheckerTest extends TestCase
 {
     protected function checker(): RequirementChecker
     {
-        return new RequirementChecker();
+        return new RequirementChecker;
     }
 
     protected function fixture(): string

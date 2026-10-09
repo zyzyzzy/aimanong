@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Aimanong\Ai;
 
 use Aimanong\Aimanong;
+use Aimanong\Resource;
 use Aimanong\Schema\Compiler;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * 声明校验器。
@@ -16,7 +19,7 @@ use Aimanong\Schema\Compiler;
 class Verifier
 {
     /**
-     * @param  class-string  $class
+     * @param  string  $class  Resource 类全限定名
      * @return array<string, mixed>
      */
     public function verify(string $class): array
@@ -72,7 +75,7 @@ class Verifier
 
         // 编译是否成功
         try {
-            $node = (new Compiler())->compile($class);
+            $node = (new Compiler)->compile($class);
 
             if ($node->columns === [] && $node->fields === []) {
                 $issues[] = [
@@ -110,7 +113,7 @@ class Verifier
                 'code' => 'SUSPECT_FIELD',
                 'message' => "表单字段 '{$name}' 既不是数据库列，也未定义为模型属性/关系",
                 'hint' => '若这是有意的虚拟字段，可忽略；否则请检查是否拼写错误或漏建字段',
-                'example' => "// 确认无误则忽略；否则改为真实列名",
+                'example' => '// 确认无误则忽略；否则改为真实列名',
             ];
         }
 
@@ -139,7 +142,7 @@ class Verifier
      */
     protected function suggestClass(string $class): ?string
     {
-        $all = \Aimanong\Aimanong::registry()->all();
+        $all = Aimanong::registry()->all();
 
         if ($all === []) {
             return null;
@@ -191,16 +194,17 @@ class Verifier
                 return [];
             }
 
-            /** @var \Illuminate\Database\Eloquent\Model $instance */
-            $instance = new $model();
+            /** @var Model $instance */
+            $instance = new $model;
             $table = $instance->getTable();
 
-            if (! \Illuminate\Support\Facades\Schema::hasTable($table)) {
+            if (! Schema::hasTable($table)) {
                 return [];
             }
 
-            $real = \Illuminate\Support\Facades\Schema::getColumnListing($table);
-            $node = (new Compiler())->compile($class);
+            $real = Schema::getColumnListing($table);
+            /** @var class-string<\Aimanong\Contracts\Resource> $class */
+            $node = (new Compiler)->compile($class);
         } catch (\Throwable) {
             return [];
         }
@@ -213,10 +217,10 @@ class Verifier
             }
 
             // 排除虚拟属性（访问器 / casts / 关系）
-            if (method_exists($instance, 'hasGetMutator') && $instance->hasGetMutator($f->name)) {
+            if ($instance->hasGetMutator($f->name)) {
                 continue;
             }
-            if (method_exists($instance, 'hasCast') && $instance->hasCast($f->name)) {
+            if ($instance->hasCast($f->name)) {
                 continue;
             }
             if (method_exists($instance, $f->name)) {

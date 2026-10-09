@@ -17,8 +17,9 @@ interface Repository
 {
     /**
      * @param  array<string, mixed>  $params
+     * @return LengthAwarePaginator<int, Model>
      */
-    public function paginate(array $params = []): LengthAwarePaginator;
+    public function paginate(array $params = [], ?int $defaultPerPage = null): LengthAwarePaginator;
 
     /**
      * @param  array<string, mixed>  $data

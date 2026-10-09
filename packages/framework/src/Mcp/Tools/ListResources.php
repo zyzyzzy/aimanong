@@ -19,7 +19,7 @@ class ListResources extends Tool
 
     public function handle(Request $request): Response
     {
-        $capabilities = new Capabilities();
+        $capabilities = new Capabilities;
         $resources = $capabilities->resources();
 
         if ($resources === []) {

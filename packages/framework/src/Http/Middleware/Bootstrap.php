@@ -7,6 +7,7 @@ namespace Aimanong\Http\Middleware;
 use Aimanong\Aimanong;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Context;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -22,7 +23,7 @@ class Bootstrap
 
         $user = Aimanong::guard()->user();
         if ($user !== null) {
-            \Illuminate\Support\Facades\Context::add('aimanong.user_id', $user->getAuthIdentifier());
+            Context::add('aimanong.user_id', $user->getAuthIdentifier());
         }
 
         return $next($request);

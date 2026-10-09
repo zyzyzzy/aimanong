@@ -8,6 +8,7 @@ use Aimanong\Aimanong;
 use Aimanong\Repository\EloquentRepository;
 use Aimanong\Schema\Compiler;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\Database\Eloquent\Model;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
@@ -33,7 +34,7 @@ class QueryData extends Tool
 
         if ($class === null) {
             return Response::text(sprintf(
-                "Resource [%s] 未注册。已注册: %s",
+                'Resource [%s] 未注册。已注册: %s',
                 $uri,
                 implode(', ', array_keys(Aimanong::registry()->all())) ?: '（无）'
             ));
@@ -43,8 +44,10 @@ class QueryData extends Tool
         $limit = max(1, min(20, $limit));
 
         try {
-            $node = (new Compiler())->compile($class);
-            $repo = new EloquentRepository($node->model);
+            $node = (new Compiler)->compile($class);
+            /** @var class-string<Model> $modelClass */
+            $modelClass = $node->model;
+            $repo = new EloquentRepository($modelClass);
 
             $paginator = $repo->paginate([
                 'per_page' => $limit,

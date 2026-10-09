@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Aimanong\Mcp\Tools;
 
-use Aimanong\Aimanong;
 use Aimanong\Ai\Verifier;
+use Aimanong\Aimanong;
 use Aimanong\Schema\Compiler;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -29,11 +29,11 @@ class RunVerify extends Tool
         $all = Aimanong::registry()->all();
 
         if ($all === []) {
-            return Response::text("项目中尚未注册任何 Resource，无需校验。");
+            return Response::text('项目中尚未注册任何 Resource，无需校验。');
         }
 
-        $verifier = new Verifier();
-        $compiler = new Compiler();
+        $verifier = new Verifier;
+        $compiler = new Compiler;
 
         $ok = 0;
         $failed = [];

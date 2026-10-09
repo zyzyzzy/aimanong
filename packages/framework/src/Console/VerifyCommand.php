@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Aimanong\Console;
 
-use Aimanong\Aimanong;
 use Aimanong\Ai\Verifier;
+use Aimanong\Aimanong;
 use Illuminate\Console\Command;
 
 /**
@@ -24,7 +24,7 @@ class VerifyCommand extends Command
 
     public function handle(): int
     {
-        $verifier = new Verifier();
+        $verifier = new Verifier;
         $isJson = (bool) $this->option('json');
 
         $target = $this->argument('resource');

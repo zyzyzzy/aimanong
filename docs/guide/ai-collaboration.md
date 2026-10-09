@@ -69,7 +69,7 @@ php artisan ai:verify "App\\Aimanong\\UserResource"   # 校验单个
   "did_you_mean": "text",
   "hint": "可用字段类型: text, textarea, select, switch, ...",
   "example": "$form->text('name')->label('名称')->required();",
-  "docs": "https://aimanong.com/llms/fields.txt"
+  "docs": "https://zyzyzzy.github.io/aimanong/api/fields.html"
 }
 ```
 

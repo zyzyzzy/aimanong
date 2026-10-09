@@ -1,7 +1,7 @@
 # Aimanong（AI 码农）
 
 > AI-First admin framework for Laravel 12. Define Resource in PHP, render in Vue 3.
-> 你是 AI Agent？读这个文件就够开始工作。人类请读 https://aimanong.com
+> 你是 AI Agent？读这个文件就够开始工作。人类请读 https://zyzyzzy.github.io/aimanong/
 
 ## 核心心智模型（必读）
 
@@ -194,10 +194,14 @@ php artisan ai:verify "App\\Aimanong\\UserResource"   # 校验单个
 
 ## 完整文档
 
-- 字段类型完整参考：https://aimanong.com/llms/fields.txt
-- Grid 完整参考：https://aimanong.com/llms/grid.txt
-- Form 完整参考：https://aimanong.com/llms/form.txt
-- 错误码与修正：https://aimanong.com/llms/errors.txt
+以下链接均可直接访问（已上线）：
+
+- 字段类型完整参考：https://zyzyzzy.github.io/aimanong/api/fields.html
+- 列展示器参考：https://zyzyzzy.github.io/aimanong/api/columns.html
+- HTTP API 与查询参数：https://zyzyzzy.github.io/aimanong/api/api.html
+- 核心概念：https://zyzyzzy.github.io/aimanong/guide/concepts.html
+- AI 协作指南：https://zyzyzzy.github.io/aimanong/guide/ai-collaboration.html
+- Playground（在线试玩）：https://zyzyzzy.github.io/aimanong/playground/
 
 ## 不该做的事
 

@@ -107,6 +107,39 @@ php artisan aimanong:schema --check   # 漂移检测（漂移 exit=1 阻断 CI�
 AI 打错类型时会得到可自愈提示：`texte` → 建议 `text`。
 
 
+### M4 已交付
+
+**字段类型：12 → 27 个**（Form 容器 30 个方法）
+
+| 类别 | 字段类型 |
+|---|---|
+| 文本 | text · textarea · email · url · password · tel |
+| 数值 | number · decimal · money · rate · slider |
+| 选择 | select · multiselect · radio · checkbox · switch |
+| 日期 | date · datetime · time · daterange |
+| 其它 | color · icon · tags · hidden · display · divider |
+
+**列展示器**（新增 6 个）：`bool()` · `badge()` · `money()` · `image()` · `link()` · `progress()`
+
+**关键修复：前端渲染断层**
+
+此前 12 个后端类型中，前端只处理了 4 类分支 —— `date`/`datetime`/`decimal`
+等**声明了却渲染不出效果**。现已补齐：单选组、多选组、原生日期选择器、
+小数步进、帮助文本、空值占位、语义标签配色。
+
+**修复 AI 实测反馈的两个体验问题**：
+
+1. 布尔列显示 `true`/`false` → 现渲染为「是/否」标签，且可自定义文案
+2. `status` 类字段生成为 `text` → `scaffold_resource` 现按列名语义生成 `select` + `badge`
+
+**scaffold_resource 增强**：
+- 语义推断：数据库 `boolean` 类型优先，其次按列名（`is_`/`has_` 前缀、`_at` 后缀、金额/邮箱/电话关键词）
+- 中文标签：120+ 精确映射 + 前缀组合（`user_name` → 「用户名」）
+
+![列展示器效果](docs/screenshot-m4-displayers.png)
+
+![字段类型渲染](docs/screenshot-m4-fields.png)
+
 ### M3 已交付
 
 **自省 API**（`/__ai/*`，默认仅 local/debug，生产需 token）：

@@ -249,3 +249,11 @@ $form->display('info')->label('说明');
 ```php
 $form->divider('分组标题');
 ```
+
+### `region`
+
+- JSON 类型：`string`
+
+```php
+$form->region('field')->label('标签');
+```

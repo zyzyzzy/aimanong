@@ -2,6 +2,115 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.1.0] - 2026-10-09
+
+> 本版本的新增能力，全部来自**真实业务场景验证**与**官方插件开发** ——
+> 而非凭空设计。两轮验证共暴露 6 个缺口，均已修复。
+
+### 新增
+
+#### 关联列（真实场景暴露）
+
+商品列表要显示「分类名」而非 `category_id` —— 框架原来不支持，
+AI 只能手写 `->map()` 自己查表拼映射。
+
+```php
+// 点号命名自动识别为关联列
+$grid->column('category.name', '所属分类');
+
+// 或显式声明
+$grid->column('cat', '分类')->relation('category.name');
+```
+
+- Repository 自动 `with()` 预加载，**无 N+1**
+- 关联列可参与**搜索**（`whereHas`）、**筛选**（`whereHas`）、**排序**（子查询）
+- 前端 `cellValue()` 深取关联值
+
+#### 条件高亮（真实场景暴露）
+
+需求「库存少于 10 要一眼看出来」—— 框架原来**完全无法实现**。
+
+```php
+$grid->column('stock', '库存')->dangerBelow(10);        // 少于 10 标红
+$grid->column('sold_count', '销量')->warningAbove(100); // 多于 100 标橙
+$grid->column('score', '评分')->dangerWhen('<', 60, 'warning');  // 通用形式
+```
+
+- 三级样式：`danger` / `warning` / `success`
+- **条件用「运算符 + 阈值」而非闭包** —— 保证可序列化、AI 可读、无隐式魔法
+
+#### 插件可注入字段类型（官方插件暴露）
+
+原字段类型是硬编码常量，插件无法扩展。现在：
+
+```php
+// 插件侧
+class MyExtension extends Extension
+{
+    public function register(): void
+    {
+        $this->field(MyField::class, 'mytype', 'string', 'string');
+    }
+}
+
+// 使用侧（与内置字段无异）
+$form->mytype('field', '标签');
+```
+
+- `FieldType::register()` 运行期注册
+- `Form::__call()` 分发 —— 但**只服务已注册类型**，
+  未注册抛 `BadMethodCallException` 并列出可用类型（**不是任意魔法入口**）
+
+#### 查询列安全（电商场景暴露）
+
+关联列直接当列名用会 500，不存在的列会**静默返回错误结果**。
+
+新增 `Support\ColumnResolver` —— 查询列安全校验的唯一入口：
+
+| 防线 | 时机 | 拦截内容 |
+|---|---|---|
+| `GhostColumnException` | 编译期 | 本表不存在的列 / 关联不存在 / 非法字符 |
+| `InvalidQueryColumnException` | 编译期 | 关联目标表没有该列 |
+
+**设计原则：编译期拒绝，运行期兼容。**
+
+### 修复
+
+- **导出与界面不一致**（高危）：`map()` 列导出原始值（`paid` 而非「已付款」）、
+  关联列导出空值。文档承诺「导出内容与界面一致」，实际只有行数一致。
+  现已套用列的 formatter（map/bool/money/datetime）
+- **关联列搜索 500**（高危）：`orWhere('product.name')` 被 SQL 当列名，
+  且会**拖垮同一查询的其它条件**。现走 `whereHas`
+- **Repository 替换点对 HTTP 不生效**（中危）：Controller 硬编码
+  `new EloquentRepository()`，从未解析容器契约。现优先从容器解析
+- **幽灵列检测过松**：原来只检查 `method_exists()`，
+  模型上恰好有同名方法就会放行。现要求返回 `Eloquent Relation`
+- **校验器假阳性**：对可搜索的关联列增加**运行时探测**，
+  避免「必然 500 却拿到绿灯」
+
+### 文档
+
+- **AI 使用手册** —— 写给「指挥 AI 用本框架的人」：三个必做动作、
+  6 个真实踩过的坑、4 类场景建议、3 个提示词模板、三层验证法
+- **发布前验证流程** —— 7 节流程 + 4 条原则，附可执行脚本
+  `bash scripts/pre-release.sh --with-e2e`
+- 查询列规则同步到 AI 自省接口
+
+### 官方插件
+
+- **aimanong/region** —— 中国省市区三级联动选择器（首个官方插件）
+  - 三级联动 / 两级模式（`cityLevel()`）
+  - 自带数据源与级联查询路由
+  - 独立 Composer 包，不改框架核心
+
+### 流程改进
+
+**实测期间框架必须冻结** —— v1.0 期间犯过这个错：
+在 AI 实测进行中修改框架，导致其早期探测结论失效
+（同一文件 21:08 测 500、21:14 测 200）。已写入流程文档。
+
+---
+
 ## [1.0.0] - 2026-10-09
 
 首个正式版本。
@@ -119,4 +228,5 @@
 
 ## 版本链接
 
+- [1.1.0](https://github.com/zyzyzzy/aimanong/releases/tag/v1.1.0)
 - [1.0.0](https://github.com/zyzyzzy/aimanong/releases/tag/v1.0.0)

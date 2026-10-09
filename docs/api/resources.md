@@ -26,6 +26,125 @@
 | 字段 | 标签 | 类型 | 必填 | 校验规则 |
 |---|---|---|---|---|
 
+## 商品分类
+
+- URI：`shop-categories`
+- 模型：`App\Models\ShopCategory`
+- 类：`App\Aimanong\ShopCategoryResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID | ✓ |  |  |
+| `name` | 分类名称 |  | ✓ |  |
+| `parent_id` | 上级分类 |  |  | `map` |
+| `sort` | 排序 | ✓ |  |  |
+| `enabled` | 是否启用 |  |  | `bool` |
+| `created_at` | 创建时间 | ✓ |  | `datetime` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `name` | 分类名称 | `text` | ✓ | `required`, `max:64` |
+| `parent_id` | 上级分类 | `select` |  |  |
+| `sort` | 排序 | `number` |  |  |
+| `enabled` | 是否启用 | `switch` |  |  |
+
+## 商品
+
+- URI：`shop-products`
+- 模型：`App\Models\ShopProduct`
+- 类：`App\Aimanong\ShopProductResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `sku` | SKU |  | ✓ |  |
+| `name` | 商品名称 |  | ✓ |  |
+| `category_name` | 所属分类 |  |  |  |
+| `price` | 售价 | ✓ |  | `money` |
+| `market_price` | 市场价 |  |  | `money` |
+| `stock` | 库存 | ✓ |  |  |
+| `sold_count` | 销量 | ✓ |  |  |
+| `status_text` | 状态 |  |  | `badge` |
+| `is_recommended` | 是否推荐 |  |  | `bool` |
+| `listed_at` | 上架时间 | ✓ |  | `datetime` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `sku` | SKU | `text` | ✓ | `required`, `max:64` |
+| `name` | 商品名称 | `text` | ✓ | `required`, `max:128` |
+| `category_id` | 所属分类 | `select` | ✓ | `required` |
+| `status` | 状态 | `select` |  |  |
+| `is_recommended` | 是否推荐 | `switch` |  |  |
+| `price` | 售价 | `money` | ✓ | `required` |
+| `market_price` | 市场价 | `money` |  |  |
+| `stock` | 库存 | `number` |  |  |
+| `sold_count` | 销量 | `number` |  |  |
+| `description` | 商品描述 | `textarea` |  |  |
+| `cover_image` | 封面图 | `text` |  | `max:255` |
+| `listed_at` | 上架时间 | `datetime` |  |  |
+
+## 收货地址（插件验证）
+
+- URI：`shop-addresses`
+- 模型：`App\Models\ShopProduct`
+- 类：`App\Aimanong\ShopAddressResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID |  |  | `badge` |
+| `name` | 商品 |  |  |  |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `name` | 联系人 | `text` | ✓ | `required` |
+| `area` | 所在地区 | `region` |  |  |
+| `city_only` | 仅到市 | `region` |  |  |
+
+## 订单
+
+- URI：`shop-orders`
+- 模型：`App\Models\ShopOrder`
+- 类：`App\Aimanong\ShopOrderResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `order_no` | 订单号 |  | ✓ |  |
+| `product_name` | 商品 |  | ✓ |  |
+| `buyer_id` | 买家 |  |  | `map` |
+| `quantity` | 数量 | ✓ |  |  |
+| `amount` | 金额 | ✓ |  | `money` |
+| `status` | 状态 |  |  | `map` |
+| `payment_method` | 支付方式 |  |  | `map` |
+| `created_at` | 下单时间 | ✓ |  | `datetime` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `order_no` | 订单号 | `text` | ✓ | `required`, `max:32` |
+| `product_id` | 商品 | `select` | ✓ | `required` |
+| `buyer_id` | 买家 | `select` | ✓ | `required` |
+| `quantity` | 数量 | `number` | ✓ | `required` |
+| `amount` | 金额 | `money` | ✓ | `required` |
+| `status` | 状态 | `select` |  |  |
+| `payment_method` | 支付方式 | `select` |  |  |
+| `paid_at` | 支付时间 | `datetime` |  |  |
+| `shipped_at` | 发货时间 | `datetime` |  |  |
+| `remark` | 备注 | `textarea` |  |  |
+
 ## 用户
 
 - URI：`users`

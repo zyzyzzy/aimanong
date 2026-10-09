@@ -12,17 +12,21 @@
 
 | 项 | 值 |
 |---|---|
-| 框架版本 | 1.0.0 |
+| 框架版本 | 1.1.0 |
 | Laravel | 12.69.3 |
 | PHP | 8.2.29 |
-| 字段类型数 | 26 |
-| 已注册 Resource | 9 |
+| 字段类型数 | 27 |
+| 已注册 Resource | 13 |
 
 ## 已注册 Resource
 
 | 名称 | URI | 模型 | 列数 | 字段数 |
 |---|---|---|---|---|
 | SEO 元数据 | `seo-meta` | `App\Models\Course` | 3 | 0 |
+| 商品分类 | `shop-categories` | `App\Models\ShopCategory` | 6 | 4 |
+| 商品 | `shop-products` | `App\Models\ShopProduct` | 10 | 12 |
+| 收货地址（插件验证） | `shop-addresses` | `App\Models\ShopProduct` | 2 | 3 |
+| 订单 | `shop-orders` | `App\Models\ShopOrder` | 8 | 10 |
 | 用户 | `users` | `App\Models\User` | 4 | 4 |
 | 订单 | `orders` | `App\Models\Order` | 8 | 5 |
 | 工单 | `tickets` | `App\Models\Ticket` | 9 | 7 |

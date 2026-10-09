@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="ink" data-mode="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aimanong 设计系统 · 组件验证</title>
+<link rel="stylesheet" href="design-system.css">
+<link rel="stylesheet" href="themes.css">
+<style>
+  body{padding:var(--sp-6)}
+  .sec{margin-bottom:var(--sp-8)}
+  .sec>h2{font-size:var(--fs-lg);margin-bottom:var(--sp-4);padding-bottom:var(--sp-2);
+    border-bottom:1px solid var(--border-subtle)}
+  .demo{display:flex;gap:var(--sp-3);flex-wrap:wrap;align-items:center;margin-bottom:var(--sp-4)}
+  #bar{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;gap:var(--sp-2);
+    padding:var(--sp-2) var(--sp-4);background:var(--bg-surface);
+    border-bottom:1px solid var(--border-default);align-items:center}
+  body{padding-top:64px}
+</style>
+</head>
+<body>
+<div id="bar">
+  <strong style="font-size:var(--fs-sm)">主题</strong>
+  <span class="am-themeswitch">
+    <button data-t="ink" aria-pressed="true">墨玉</button>
+    <button data-t="deep" aria-pressed="false">深空</button>
+    <button data-t="aurora" aria-pressed="false">极光</button>
+  </span>
+  <span class="am-themeswitch">
+    <button data-m="light" aria-pressed="true">浅色</button>
+    <button data-m="dark" aria-pressed="false">深色</button>
+  </span>
+  <span class="am-text-xs am-text-muted am-ml-auto">84 项对比度校验全部通过</span>
+</div>
+
+<div class="sec">
+  <h2>按钮</h2>
+  <div class="demo">
+    <button class="am-btn am-btn--primary">新增</button>
+    <button class="am-btn">刷新</button>
+    <button class="am-btn am-btn--ghost">取消</button>
+    <button class="am-btn am-btn--danger">删除</button>
+    <button class="am-btn am-btn--danger-solid">确认删除</button>
+    <button class="am-btn am-btn--primary is-loading">保存中</button>
+    <button class="am-btn" disabled>已禁用</button>
+    <button class="am-btn am-btn--primary am-btn--sm">小按钮</button>
+    <button class="am-btn am-btn--primary am-btn--lg">大按钮</button>
+  </div>
+</div>
+
+<div class="sec">
+  <h2>表单</h2>
+  <div class="am-grid am-grid--2" style="max-width:760px">
+    <div class="am-field">
+      <label class="am-field__label" for="f1">工单号 <span class="am-field__required">*</span></label>
+      <input class="am-input" id="f1" placeholder="请输入工单号">
+      <div class="am-field__help">支持字母、数字与短横线</div>
+    </div>
+    <div class="am-field is-invalid">
+      <label class="am-field__label" for="f2">主题 <span class="am-field__required">*</span></label>
+      <input class="am-input" id="f2" value="错的值" aria-invalid="true">
+      <div class="am-field__error">主题不能为空</div>
+    </div>
+    <div class="am-field">
+      <label class="am-field__label" for="f3">优先级</label>
+      <select class="am-select" id="f3"><option>低</option><option>普通</option><option>紧急</option></select>
+    </div>
+    <div class="am-field">
+      <label class="am-field__label" for="f4">搜索</label>
+      <div class="am-input-group">
+        <svg class="am-input-group__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input class="am-input" id="f4" placeholder="搜索订单号…">
+      </div>
+    </div>
+    <div class="am-field" style="grid-column:1/-1">
+      <label class="am-field__label" for="f5">内容</label>
+      <textarea class="am-textarea" id="f5" placeholder="请描述问题"></textarea>
+    </div>
+    <div class="am-field">
+      <span class="am-field__label">是否解决</span>
+      <label class="am-switch"><input type="checkbox" checked><span class="am-switch__track"></span><span>已解决</span></label>
+    </div>
+    <div class="am-field">
+      <span class="am-field__label">标签</span>
+      <div class="am-check-group">
+        <label class="am-check"><input type="checkbox" checked>Laravel</label>
+        <label class="am-check"><input type="checkbox">Vue</label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <h2>徽章 / 标签 / 进度</h2>
+  <div class="demo">
+    <span class="am-badge am-badge--success"><i class="am-badge__dot"></i>已解决</span>
+    <span class="am-badge am-badge--warning"><i class="am-badge__dot"></i>处理中</span>
+    <span class="am-badge am-badge--danger"><i class="am-badge__dot"></i>已失败</span>
+    <span class="am-badge am-badge--info">新</span>
+    <span class="am-badge am-badge--brand">品牌</span>
+    <span class="am-badge am-badge--muted">草稿</span>
+    <span class="am-tag">方形标签</span>
+    <span class="am-count">12</span>
+    <span class="am-avatar">张三</span>
+  </div>
+  <div class="demo" style="max-width:420px">
+    <span class="am-progress"><span class="am-progress__track"><i class="am-progress__bar" style="width:82%"></i></span><span class="am-progress__value">82%</span></span>
+    <span class="am-progress"><span class="am-progress__track"><i class="am-progress__bar am-progress__bar--warning" style="width:45%"></i></span><span class="am-progress__value">45%</span></span>
+    <span class="am-progress"><span class="am-progress__track"><i class="am-progress__bar am-progress__bar--danger" style="width:12%"></i></span><span class="am-progress__value">12%</span></span>
+  </div>
+</div>
+
+<div class="sec">
+  <h2>表格</h2>
+  <div class="am-card am-card--flush">
+    <div class="am-toolbar">
+      <div class="am-input-group" style="max-width:240px">
+        <svg class="am-input-group__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input class="am-input" placeholder="搜索…">
+      </div>
+      <button class="am-btn am-btn--sm">刷新</button>
+      <button class="am-btn am-btn--sm">导出</button>
+      <span class="am-toolbar__spacer"></span>
+      <button class="am-btn am-btn--primary">+ 新增</button>
+    </div>
+    <div class="am-table-wrap">
+      <table class="am-table">
+        <thead><tr>
+          <th class="am-num" style="width:70px">ID</th>
+          <th>订单号</th><th>客户</th><th>状态</th>
+          <th style="width:150px">进度</th>
+          <th class="am-num">金额</th>
+          <th class="is-sortable is-sorted" data-dir="desc"><span class="am-th-sort">创建时间
+            <svg class="am-th-sort__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+          </span></th>
+          <th style="text-align:right;width:130px">操作</th>
+        </tr></thead>
+        <tbody>
+          <tr><td class="am-num">32</td><td>TK-1001</td><td>张三</td>
+            <td><span class="am-badge am-badge--success"><i class="am-badge__dot"></i>已解决</span></td>
+            <td><span class="am-progress"><span class="am-progress__track"><i class="am-progress__bar" style="width:100%"></i></span><span class="am-progress__value">100%</span></span></td>
+            <td class="am-num">12,480.00</td><td class="am-mono am-text-sm">2026-10-09 14:32</td>
+            <td><div class="am-table__actions"><button class="am-btn am-btn--sm">编辑</button><button class="am-btn am-btn--sm am-btn--danger">删除</button></div></td></tr>
+          <tr><td class="am-num">33</td><td>TK-1002</td><td>李四</td>
+            <td><span class="am-badge am-badge--warning"><i class="am-badge__dot"></i>处理中</span></td>
+            <td><span class="am-progress"><span class="am-progress__track"><i class="am-progress__bar am-progress__bar--warning" style="width:45%"></i></span><span class="am-progress__value">45%</span></span></td>
+            <td class="am-num">860.50</td><td class="am-mono am-text-sm">2026-10-08 09:10</td>
+            <td><div class="am-table__actions"><button class="am-btn am-btn--sm">编辑</button><button class="am-btn am-btn--sm am-btn--danger">删除</button></div></td></tr>
+          <tr><td class="am-num">34</td><td>TK-1003</td><td>王五</td>
+            <td><span class="am-badge am-badge--danger"><i class="am-badge__dot"></i>库存不足</span></td>
+            <td><span class="am-progress"><span class="am-progress__track"><i class="am-progress__bar am-progress__bar--danger" style="width:12%"></i></span><span class="am-progress__value">12%</span></span></td>
+            <td class="am-num">3,200.00</td><td class="am-mono am-text-sm">2026-10-07 22:04</td>
+            <td><div class="am-table__actions"><button class="am-btn am-btn--sm">编辑</button><button class="am-btn am-btn--sm am-btn--danger">删除</button></div></td></tr>
+          <tr><td class="am-num">35</td><td>TK-1004</td><td><span class="am-empty-cell">—</span></td>
+            <td><span class="am-tag">草稿</span></td>
+            <td><span class="am-hl-danger">-3</span></td>
+            <td class="am-num">0.00</td><td class="am-mono am-text-sm">—</td>
+            <td><div class="am-table__actions"><button class="am-btn am-btn--sm">编辑</button><button class="am-btn am-btn--sm am-btn--danger">删除</button></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="am-pagination">
+      <button class="am-btn am-btn--sm" disabled>上一页</button>
+      <button class="am-pagination__page is-active">1</button>
+      <button class="am-pagination__page">2</button>
+      <button class="am-pagination__page">3</button>
+      <button class="am-btn am-btn--sm">下一页</button>
+      <span class="am-pagination__spacer"></span>
+      <span>共 128 条</span>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <h2>统计卡 / 磁贴</h2>
+  <div class="am-grid am-grid--3">
+    <div class="am-card am-stat"><div class="am-stat__label">本月订单</div><div class="am-stat__value">1,284</div><div class="am-stat__delta am-stat__delta--up">↑ 12.4% 环比</div></div>
+    <div class="am-card am-stat"><div class="am-stat__label">营收（元）</div><div class="am-stat__value">86,420</div><div class="am-stat__delta am-stat__delta--down">↓ 3.1% 环比</div></div>
+    <div class="am-card am-stat"><div class="am-stat__label">转化率</div><div class="am-stat__value">4.8%</div></div>
+  </div>
+  <div class="am-grid am-grid--4 am-mt-4">
+    <a class="am-tile" href="#"><span class="am-tile__icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><span><span class="am-tile__label">用户</span></span></a>
+    <a class="am-tile" href="#"><span class="am-tile__icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span><span><span class="am-tile__label">角色</span></span></a>
+    <a class="am-tile" href="#"><span class="am-tile__icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span><span><span class="am-tile__label">订单</span><span class="am-tile__desc">共 128 条</span></span></a>
+    <a class="am-tile" href="#"><span class="am-tile__icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span><span><span class="am-tile__label">设置</span></span></a>
+  </div>
+</div>
+
+<div class="sec">
+  <h2>状态：空 / 错误 / 骨架屏</h2>
+  <div class="am-grid am-grid--3">
+    <div class="am-card am-card--flush"><div class="am-empty">
+      <svg class="am-empty__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+      <div class="am-empty__title">还没有任何工单</div>
+      <div class="am-empty__desc">工单会在这里按创建时间倒序展示，便于你快速处理待办。</div>
+      <div class="am-empty__actions"><button class="am-btn am-btn--primary am-btn--sm">新建工单</button></div>
+    </div></div>
+    <div class="am-card am-card--flush"><div class="am-error">
+      <svg class="am-error__icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+      <div class="am-error__title">数据加载失败</div>
+      <div class="am-error__desc">Failed to fetch /admin/api/orders</div>
+      <div class="am-empty__actions"><button class="am-btn am-btn--sm">重试</button></div>
+    </div></div>
+    <div class="am-card am-card__body">
+      <div class="am-skeleton am-skeleton--title am-mb-4"></div>
+      <div class="am-skeleton am-skeleton--text am-mb-2"></div>
+      <div class="am-skeleton am-skeleton--text am-mb-2" style="width:83%"></div>
+      <div class="am-skeleton am-skeleton--text" style="width:61%"></div>
+      <div class="am-flex am-gap-3 am-mt-4 am-items-center">
+        <span class="am-skeleton am-skeleton--circle" style="width:32px;height:32px"></span>
+        <span class="am-flex-1"><span class="am-skeleton am-skeleton--text" style="width:50%"></span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <h2>提示条 / 时间线 / 描述列表</h2>
+  <div class="am-flex am-flex-col am-gap-3" style="max-width:680px">
+    <div class="am-alert am-alert--info"><span>这是一条信息提示，用于说明当前页面的一些背景。</span></div>
+    <div class="am-alert am-alert--warning"><span>你还没有被分配任何权限，请联系管理员在「角色」里为你授权。</span></div>
+    <div class="am-alert am-alert--danger"><span>保存失败：工单号已存在。</span></div>
+    <div class="am-alert am-alert--success"><span>已保存。</span></div>
+  </div>
+  <div class="am-grid am-grid--2 am-mt-4">
+    <div class="am-card am-card__body">
+      <div class="am-timeline">
+        <div class="am-timeline__item"><span class="am-timeline__dot am-timeline__dot--success"></span>
+          <div class="am-timeline__time">2026-10-09 14:32</div><div class="am-timeline__title">工单已解决</div></div>
+        <div class="am-timeline__item"><span class="am-timeline__dot am-timeline__dot--brand"></span>
+          <div class="am-timeline__time">2026-10-08 09:10</div><div class="am-timeline__title">指派给张三</div></div>
+        <div class="am-timeline__item"><span class="am-timeline__dot"></span>
+          <div class="am-timeline__time">2026-10-07 22:04</div><div class="am-timeline__title">创建工单</div></div>
+      </div>
+    </div>
+    <div class="am-card am-card__body">
+      <div class="am-desc am-desc--2">
+        <div class="am-desc__item"><div class="am-desc__label">订单号</div><div class="am-desc__value am-mono">TK-1001</div></div>
+        <div class="am-desc__item"><div class="am-desc__label">客户</div><div class="am-desc__value">张三</div></div>
+        <div class="am-desc__item"><div class="am-desc__label">金额</div><div class="am-desc__value am-mono">¥12,480.00</div></div>
+        <div class="am-desc__item"><div class="am-desc__label">状态</div><div class="am-desc__value"><span class="am-badge am-badge--success"><i class="am-badge__dot"></i>已解决</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <h2>弹窗 + Toast</h2>
+  <div class="demo">
+    <button class="am-btn am-btn--primary" onclick="document.getElementById('m1').style.display='flex'">打开表单弹窗</button>
+    <button class="am-btn am-btn--danger" onclick="document.getElementById('m2').style.display='flex'">删除确认</button>
+  </div>
+</div>
+
+<div class="am-overlay" id="m1" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="am-modal" role="dialog" aria-modal="true">
+    <div class="am-modal__head"><span class="am-modal__title">新增工单</span>
+      <button class="am-modal__close" onclick="document.getElementById('m1').style.display='none'" aria-label="关闭">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="am-modal__body">
+      <div class="am-steps">
+        <div class="am-step is-done"><span class="am-step__dot">✓</span><span class="am-step__label">基本信息</span></div>
+        <span class="am-steps__line"></span>
+        <div class="am-step is-active"><span class="am-step__dot">2</span><span class="am-step__label">处理人</span></div>
+        <span class="am-steps__line"></span>
+        <div class="am-step"><span class="am-step__dot">3</span><span class="am-step__label">确认</span></div>
+      </div>
+      <div class="am-field"><label class="am-field__label" for="m_a">工单号 <span class="am-field__required">*</span></label>
+        <input class="am-input" id="m_a" placeholder="TK-"></div>
+      <div class="am-field"><label class="am-field__label" for="m_b">处理人</label>
+        <select class="am-select" id="m_b"><option>请选择…</option><option>张三</option></select></div>
+      <div class="am-field"><span class="am-field__label">是否解决</span>
+        <label class="am-switch"><input type="checkbox"><span class="am-switch__track"></span></label></div>
+    </div>
+    <div class="am-modal__foot">
+      <button class="am-btn" onclick="document.getElementById('m1').style.display='none'">取消</button>
+      <button class="am-btn am-btn--primary">下一步</button>
+    </div>
+  </div>
+</div>
+
+<div class="am-overlay" id="m2" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="am-modal am-modal--sm" role="alertdialog" aria-modal="true">
+    <div class="am-modal__body" style="text-align:center">
+      <div class="am-modal__icon am-modal__icon--danger" style="margin:0 auto var(--sp-3)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></div>
+      <div style="font-size:var(--fs-md);font-weight:var(--fw-semibold)">确认删除这条工单？</div>
+      <div class="am-text-sm am-text-muted am-mt-2">删除后不可恢复。</div>
+    </div>
+    <div class="am-modal__foot"><button class="am-btn" onclick="document.getElementById('m2').style.display='none'">取消</button>
+      <button class="am-btn am-btn--danger-solid">确认删除</button></div>
+  </div>
+</div>
+
+<div class="am-toasts">
+  <div class="am-toast am-toast--success"><span class="am-toast__icon">✓</span><div class="am-toast__body"><div class="am-toast__title">保存成功</div><div class="am-toast__desc">工单 TK-1001 已更新</div></div></div>
+  <div class="am-toast am-toast--danger"><span class="am-toast__icon">!</span><div class="am-toast__body"><div class="am-toast__title">保存失败</div><div class="am-toast__desc">工单号已存在</div></div></div>
+</div>
+
+<script>
+const root=document.documentElement;
+document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{
+  root.dataset.theme=b.dataset.t;
+  document.querySelectorAll('[data-t]').forEach(x=>x.setAttribute('aria-pressed',x===b));});
+document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{
+  root.dataset.mode=b.dataset.m;
+  document.querySelectorAll('[data-m]').forEach(x=>x.setAttribute('aria-pressed',x===b));});
+</script>
+</body>
+</html>

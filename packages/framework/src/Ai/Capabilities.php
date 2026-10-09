@@ -37,6 +37,7 @@ class Capabilities
             'tree_options' => $this->treeOptions(),
             'extension' => $this->extensionCapabilities(),
             'requirement_keys' => $this->requirementKeys(),
+            'query_columns' => $this->queryColumnRules(),
             'applications' => $this->applicationCapabilities(),
             'column_options' => $this->columnOptions(),
             'form_options' => $this->formOptions(),
@@ -164,6 +165,23 @@ class Capabilities
             'orderColumn' => '排序字段，参数: 字符串（默认 sort）',
             'draggable' => '（尚未实现）声明允许拖拽。当前前端无拖拽 UI，调整层级请用编辑表单或 PUT /{uri}/{id}/move',
             'maxDepth' => '最大层级，参数: int（0 = 不限制）',
+        ];
+    }
+
+    /**
+     * 查询列规则（搜索/排序/筛选支持的列名形态）。
+     *
+     * @return array<string, string>
+     */
+    public function queryColumnRules(): array
+    {
+        return [
+            '本表列' => '直接写列名，如 order_no',
+            '关联列' => '写 关联名.字段名，如 product.name；框架自动走 whereHas / 子查询',
+            '关联要求' => '模型上必须定义该关联（返回 Eloquent Relation），且目标表有该字段',
+            '非法列' => '不存在的列、非法字符会在**编译期**报错，不会等到运行时',
+            '排序限制' => '关联排序仅支持 belongsTo / hasOne（有唯一目标行）',
+            '错误码' => 'GHOST_COLUMN（列不存在）/ INVALID_QUERY_COLUMN（不可用于查询）',
         ];
     }
 

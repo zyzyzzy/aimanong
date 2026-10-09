@@ -10,6 +10,8 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * Eloquent 数据源。
@@ -230,7 +232,55 @@ class EloquentRepository implements RepositoryContract
 
         $direction = ($params['direction'] ?? 'asc') === 'desc' ? 'desc' : 'asc';
 
+        /*
+         * 关联路径排序需走 join 语义 —— 用子查询排序保持结果集不变。
+         * 直接 orderBy('product.name') 会报 no such column。
+         */
+        if (str_contains($sort, '.')) {
+            [$relation, $field] = explode('.', $sort, 2);
+
+            $query->orderBy(
+                $this->relationSubquery($relation, $field),
+                $direction
+            );
+
+            return;
+        }
+
         $query->orderBy($sort, $direction);
+    }
+
+    /**
+     * 构造关联字段的排序子查询。
+     *
+     * 用于 orderBy —— 避免 join 导致的分页计数偏差。
+     */
+    protected function relationSubquery(string $relation, string $field): \Illuminate\Database\Query\Builder
+    {
+        /** @var Model $instance */
+        $instance = new $this->model;
+        $related = $instance->{$relation}();
+
+        // 仅支持 belongsTo / hasOne —— 这类关联有唯一目标行
+        if (! $related instanceof BelongsTo
+            && ! $related instanceof HasOne) {
+            throw new \RuntimeException(
+                "关联 [{$relation}] 是 ".(new \ReflectionClass($related))->getShortName()
+                .'，不支持排序（仅支持 belongsTo / hasOne）'
+            );
+        }
+
+        /** @var Model $target */
+        $target = $related->getRelated();
+
+        return $target->newQuery()
+            ->select($field)
+            ->whereColumn(
+                $target->getTable().'.'.$related->getOwnerKeyName(),
+                $instance->getTable().'.'.$related->getForeignKeyName()
+            )
+            ->limit(1)
+            ->getQuery();
     }
 
     /**
@@ -247,6 +297,17 @@ class EloquentRepository implements RepositoryContract
 
         foreach ($filters as $column => $value) {
             if (! is_string($column) || $value === null || $value === '') {
+                continue;
+            }
+
+            // 关联路径筛选走 whereHas
+            if (str_contains($column, '.')) {
+                [$relation, $field] = explode('.', $column, 2);
+
+                $query->whereHas($relation, function (Builder $sub) use ($field, $value): void {
+                    $sub->where($field, $value);
+                });
+
                 continue;
             }
 

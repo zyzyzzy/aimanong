@@ -6,6 +6,7 @@ namespace Aimanong\Schema;
 
 use Aimanong\Contracts\Resource as ResourceContract;
 use Aimanong\Exceptions\GhostColumnException;
+use Aimanong\Exceptions\InvalidQueryColumnException;
 use Aimanong\Form\Form;
 use Aimanong\Grid\Grid;
 use Aimanong\Resource;
@@ -13,8 +14,10 @@ use Aimanong\Schema\Ast\ColumnNode;
 use Aimanong\Schema\Ast\FieldNode;
 use Aimanong\Schema\Ast\ResourceNode;
 use Aimanong\Show\Show;
+use Aimanong\Support\ColumnResolver;
 use Aimanong\Tree\Tree;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -73,6 +76,14 @@ class Compiler
         // 这里在编译期显式抛出，错误信息里给出真实字段列表。
         $this->assertColumnsExist($resource, $columns, $fields);
 
+        /*
+         * 查询列校验：参与**搜索/排序/筛选**的列必须可安全进 SQL。
+         *
+         * 真实场景验证发现：关联列直接当列名用会 500，
+         * 不存在的列会静默返回错误结果。这里在编译期就拒绝。
+         */
+        $this->assertQueryColumnsUsable($resource, $columns);
+
         return new ResourceNode(
             uri: $resource::uri(),
             label: $resource::label(),
@@ -107,6 +118,49 @@ class Compiler
         }
 
         return $nodes;
+    }
+
+    /**
+     * 校验参与查询的列（搜索/排序/筛选）可安全用于 SQL。
+     *
+     * @param  class-string  $resource
+     * @param  array<int, ColumnNode>  $columns
+     */
+    protected function assertQueryColumnsUsable(string $resource, array $columns): void
+    {
+        try {
+            $model = $resource::model();
+        } catch (\Throwable) {
+            return;
+        }
+
+        if (! class_exists($model)) {
+            return;
+        }
+
+        // 只校验会进 SQL 的列
+        $queryColumns = [];
+
+        foreach ($columns as $c) {
+            if ($c->searchable || $c->sortable || $c->filterable) {
+                $queryColumns[] = $c->name;
+            }
+        }
+
+        if ($queryColumns === []) {
+            return;
+        }
+
+        $issues = ColumnResolver::validateMany($model, $queryColumns);
+
+        if ($issues === []) {
+            return;
+        }
+
+        throw new InvalidQueryColumnException(
+            class_basename($resource),
+            $issues
+        );
     }
 
     /**
@@ -167,8 +221,21 @@ class Compiler
             if (str_contains($c->name, '.')) {
                 $relation = explode('.', $c->name)[0];
 
+                /*
+                 * 不仅要求方法存在，还要要求它返回 Eloquent 关联 ——
+                 * 否则 `foo.bar` 会因为模型上恰好有 foo() 方法而被放行，
+                 * 运行时才发现不是关联。
+                 */
                 if (method_exists($instance, $relation)) {
-                    continue;
+                    try {
+                        $result = $instance->{$relation}();
+
+                        if ($result instanceof Relation) {
+                            continue;
+                        }
+                    } catch (\Throwable) {
+                        // 关联定义有误 → 交给后续校验报告
+                    }
                 }
             }
 

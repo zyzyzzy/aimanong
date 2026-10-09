@@ -28,7 +28,7 @@ class AimanongServer extends Server
     protected string $version = '0.1.0';
 
     protected string $instructions = <<<'MARKDOWN'
-        Aimanong（AI 码农）是 AI-First 的 Laravel 后台框架。
+        Aimanong（AI 码农）是一个「AI 优先」的 Laravel 后台框架。
 
         核心心智模型：一个 Resource = 一张数据表 = 一组后台页面。
         你只需写一个 PHP 类，框架自动产出 API、页面、Schema、文档。

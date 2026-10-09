@@ -9,7 +9,7 @@ namespace Aimanong\Tree;
  *
  * 用于无限极分类、部门层级、菜单等场景。
  *
- * AI-First 约定：链式扁平、无重载、无闭包。
+ * Aimanong 约定：链式扁平、无重载、无闭包。
  */
 class Tree
 {

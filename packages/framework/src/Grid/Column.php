@@ -9,7 +9,7 @@ use Aimanong\Schema\Ast\ColumnNode;
 /**
  * 表格列。
  *
- * AI-First 约定：链式调用扁平化，方法签名唯一，无重载。
+ * Aimanong 约定：链式调用扁平化，方法签名唯一，无重载。
  */
 class Column
 {

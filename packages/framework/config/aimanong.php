@@ -36,6 +36,8 @@ return [
         'except' => [
             'auth/login',
             'auth/logout',
+            // 框架内置资源必须免登录 —— 登录页自身要用 LOGO
+            'assets',
         ],
     ],
 

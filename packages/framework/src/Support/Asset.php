@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Aimanong\Support;
 
+use Aimanong\Aimanong;
+
 /**
  * 静态资源登记。
  *
@@ -38,6 +40,19 @@ class Asset
         }
 
         return $this;
+    }
+
+    /**
+     * 框架内置资源的 URL。
+     *
+     * 指向包内的 resources/assets —— 通过路由提供，
+     * 用户无需执行 publish 即可使用（LOGO 等）。
+     */
+    public function url(string $path): string
+    {
+        // 用 Aimanong::url() 而非直接读 config —— 后者在多应用下
+        // 会被最后一次 switch() 污染（与 guard()/Session 同源的坑）
+        return url(Aimanong::url('assets/'.ltrim($path, '/')));
     }
 
     /**

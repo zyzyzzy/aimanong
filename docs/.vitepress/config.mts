@@ -2,13 +2,20 @@ import { defineConfig } from 'vitepress'
 
 export default defineConfig({
   title: 'AI 码农',
-  description: 'AI-First 后台开发框架 —— 让任何 AI Agent 5 分钟理解、30 分钟产出后台系统',
+  description: 'Aimanong（AI 码农）后台开发框架 —— 让任何 AI Agent 5 分钟理解、30 分钟产出后台系统',
   lang: 'zh-CN',
+
+  // LOGO
+  head: [
+    ['link', { rel: 'icon', type: 'image/png', href: '/favicon-32.png' }],
+    ['link', { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' }],
+  ],
   // 部署到 GitHub Pages 项目站点时路径是 /aimanong/，
   // 本地开发保持 / —— 用环境变量切换，避免两处硬编码不一致。
   base: process.env.DOCS_BASE || '/',
 
   themeConfig: {
+    logo: '/assets/logo.png',
     nav: [
       { text: '指南', link: '/guide/quickstart' },
       { text: 'API 参考', link: '/api/' },
@@ -56,8 +63,8 @@ export default defineConfig({
     ],
 
     footer: {
-      message: '基于 MIT 许可开源',
-      copyright: 'AI 码农 · Aimanong',
+      message: '基于 MIT 许可开源 · 允许免费商用',
+      copyright: 'Aimanong（AI 码农）',
     },
 
     outline: { label: '本页目录', level: [2, 3] },

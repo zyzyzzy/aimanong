@@ -11,7 +11,7 @@ use Aimanong\Support\FieldType;
 /**
  * 字段基类。
  *
- * AI-First 约定：
+ * Aimanong 约定：
  *   - 链式调用扁平化，无重载
  *   - 所有配置可序列化（无闭包）
  *   - 类型必须在 FieldType 中登记，否则抛可自愈异常

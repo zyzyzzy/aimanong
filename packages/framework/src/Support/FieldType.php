@@ -7,7 +7,7 @@ namespace Aimanong\Support;
 /**
  * 字段类型注册表。
  *
- * AI-First 设计：所有可用字段类型必须在此登记，
+ * Aimanong 设计：所有可用字段类型必须在此登记，
  * 使 /__ai/capabilities.json 能完整枚举 —— AI 不需要猜。
  */
 class FieldType

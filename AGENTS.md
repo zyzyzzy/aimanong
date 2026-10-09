@@ -4,7 +4,7 @@
 
 ## 项目定位
 
-AI 码农（Aimanong）—— AI-First 后台框架，基于 Laravel 12 + Vue 3。
+**Aimanong（AI 码农）** —— 后台开发框架，基于 Laravel 12 + Vue 3。
 **使用方主要是 AI Agent，人是审阅者。**
 
 ## 目录约定

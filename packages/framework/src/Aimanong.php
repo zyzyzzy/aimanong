@@ -13,7 +13,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 /**
  * 框架主入口。
  *
- * AI-First 约定：方法签名唯一、无重载、无魔法。
+ * Aimanong 约定：方法签名唯一、无重载、无魔法。
  */
 class Aimanong
 {

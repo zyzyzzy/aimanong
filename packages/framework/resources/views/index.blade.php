@@ -43,7 +43,10 @@
 </head>
 <body>
     <div class="header">
-        <h1>AI 码农 · Aimanong</h1>
+        <div style="display:flex;align-items:center;gap:10px;">
+            <img src="{{ \Aimanong\Aimanong::asset()->url('logo.png') }}" alt="Aimanong" style="height:30px;">
+            <h1>Aimanong <span style="font-weight:400;color:#8a948f;font-size:13px;">AI 码农</span></h1>
+        </div>
         <div class="user">
             {{ $user->name ?? $user->username }}
             <form method="POST" action="{{ url(\Aimanong\Aimanong::url('auth/logout')) }}" style="display:inline">
@@ -65,20 +68,23 @@
 
         <div class="card">
             <h2>里程碑</h2>
-            <div class="milestone"><span class="dot done"></span>M0 地基 —— Laravel 12 骨架、admin guard、RBAC、统一响应</div>
-            <div class="milestone"><span class="dot active"></span>M1 Schema 编译层 —— 一份声明编译出全部产物</div>
-            <div class="milestone"><span class="dot"></span>M2 核心 DSL + Vue 端到端</div>
-            <div class="milestone"><span class="dot"></span>M3 AI 能力层 —— 自省 API + MCP Server</div>
-            <div class="milestone"><span class="dot"></span>M4 字段与组件库</div>
-            <div class="milestone"><span class="dot"></span>M5 增强 / M6 生态与文档</div>
+            <div class="milestone"><span class="dot done"></span>M0 地基 —— Laravel 12 骨架、admin guard、统一响应</div>
+            <div class="milestone"><span class="dot done"></span>M1 Schema 编译层 —— 一份声明编译出四份产物</div>
+            <div class="milestone"><span class="dot done"></span>M2 核心 DSL + Vue 端到端</div>
+            <div class="milestone"><span class="dot done"></span>M3 AI 能力层 —— 自省 API + MCP Server</div>
+            <div class="milestone"><span class="dot done"></span>M4 字段与组件库 —— 26 个字段类型 + 6 个展示器</div>
+            <div class="milestone"><span class="dot done"></span>M5 增强 —— 导出 / 树形 / 分步表单 / 插件 / 多应用</div>
+            <div class="milestone"><span class="dot done"></span>M6 生态与文档 —— 文档站 / Playground / 代码生成器</div>
         </div>
 
         <div class="card">
             <h2>下一步</h2>
             <p class="hint">
-                M0 已完成认证与骨架。接下来是 <strong>M1 Schema 编译层</strong>——
-                一份 PHP 声明编译出 JSON Schema / TypeScript / OpenAPI / AI 提示词四份产物。<br><br>
-                AI Agent 请阅读项目根目录的 <code>llms.txt</code> 与 <code>AGENTS.md</code>。
+                框架主体（M0–M6）已完成，正在准备 v1.0 发布。<br><br>
+                <strong>快速上手</strong>：从数据库表一键生成后台 ——
+                <code>php artisan aimanong:make-resource {表名} --label=中文名 --register</code><br><br>
+                AI Agent 请阅读项目根目录的 <code>llms.txt</code> 与 <code>AGENTS.md</code>，
+                或调用 <code>php artisan mcp:start aimanong</code>。
             </p>
         </div>
     </div>

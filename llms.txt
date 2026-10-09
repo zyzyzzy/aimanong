@@ -1,6 +1,6 @@
 # Aimanong（AI 码农）
 
-> AI-First admin framework for Laravel 12. Define Resource in PHP, render in Vue 3.
+> Aimanong — an admin framework for Laravel 12. Define Resource in PHP, render in Vue 3.
 > 你是 AI Agent？读这个文件就够开始工作。人类请读 https://zyzyzzy.github.io/aimanong/
 
 ## 核心心智模型（必读）

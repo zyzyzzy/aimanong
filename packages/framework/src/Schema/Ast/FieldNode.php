@@ -7,7 +7,7 @@ namespace Aimanong\Schema\Ast;
 /**
  * 字段 AST 节点。
  *
- * AI-First 约定：所有配置都是显式的标量或数组，
+ * Aimanong 约定：所有配置都是显式的标量或数组，
  * 不含闭包、不含回调，保证可序列化为 JSON。
  */
 class FieldNode

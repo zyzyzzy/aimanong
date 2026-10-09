@@ -1,15 +1,19 @@
+<div align="center">
+  <img src="docs/public/assets/logo.png" alt="Aimanong" width="160" />
+
 # AI 码农 · Aimanong
 
-> **AI-First 后台开发框架** —— 让任何 AI Agent 在 5 分钟内理解框架、30 分钟内产出可运行的后台系统。
+> **Aimanong（AI 码农）后台开发框架** —— 让任何 AI Agent 在 5 分钟内理解框架、30 分钟内产出可运行的后台系统。
 
 基于 **Laravel 12 + Vue 3**，专为 AI Agent 设计，同时为人类保留完整文档。
 
-```
-        斗笠 = 农   电路 = 码   新芽 = AI
-        一个让代码自己长出来的农夫
-```
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
+[![PHP](https://img.shields.io/badge/PHP-%5E8.2-blue.svg)](https://www.php.net)
+[![Laravel](https://img.shields.io/badge/Laravel-%5E12.0-red.svg)](https://laravel.com)
 
-## 为什么是 AI-First
+</div>
+
+## 为什么叫 Aimanong
 
 传统后台框架（dcat-admin、Filament 等）的使用者是人，追求灵活与优雅。
 AI Agent 的需求完全不同：**低歧义、可自省、可验证、错误可自愈**。
@@ -246,7 +250,7 @@ $form->email('email');
 **第三轮关键约束：明确禁止阅读框架源码。** 结果 AI 写代码阶段 **0 错误**，
 首次校验即通过，且靠框架的错误信息定位了框架自身的缺陷。
 
-**结论：AI-First 假设成立。** 自省接口 + 可自愈错误 + requirements 校验器
+**结论：AI 优先的设计假设成立。** 自省接口 + 可自愈错误 + requirements 校验器
 足以支撑 AI 独立完成开发任务。
 
 三轮共发现并修复 **11 个真实缺陷**（详见 [internal-docs/AI实测记录.md](internal-docs/AI实测记录.md)），
@@ -285,4 +289,14 @@ packages/framework/
 
 ## 许可
 
-MIT License
+**MIT License** —— 允许免费商用，包括闭源商用。
+
+| 你可以 | 你不可以 |
+|---|---|
+| ✅ 商用、修改、分发、闭源 | ❌ 用 "Aimanong" 命名你的 fork 或产品 |
+| ✅ 用于公司内部系统 | ❌ 暗示官方背书 |
+
+见 [LICENSE](./LICENSE)、[商标政策](./TRADEMARK.md)、[商业化说明](./COMMERCIAL.md)。
+
+> **我们的承诺**：框架本体永久免费，不做社区版功能阉割；
+> 收费的是**新增能力**（企业插件、托管服务、支持），不是把免费的东西锁起来。

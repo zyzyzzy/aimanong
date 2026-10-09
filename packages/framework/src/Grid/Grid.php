@@ -10,7 +10,7 @@ use Aimanong\Schema\Ast\ColumnNode;
 /**
  * 列表页定义。
  *
- * AI-First 约定：所有配置走链式调用，禁止嵌套闭包。
+ * Aimanong 约定：所有配置走链式调用，禁止嵌套闭包。
  */
 class Grid
 {

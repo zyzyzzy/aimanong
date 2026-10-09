@@ -24,6 +24,7 @@
             max-width: 380px;
         }
         .brand { text-align: center; margin-bottom: 28px; }
+        .brand img { height: 72px; margin-bottom: 10px; }
         .brand h1 { font-size: 22px; color: #101B16; font-weight: 600; }
         .brand p { font-size: 13px; color: #8a948f; margin-top: 6px; }
         .form-group { margin-bottom: 18px; }
@@ -61,8 +62,9 @@
 <body>
     <div class="login-card">
         <div class="brand">
-            <h1>AI 码农</h1>
-            <p>Aimanong · AI-First 后台框架</p>
+            <img src="{{ \Aimanong\Aimanong::asset()->url('logo.png') }}" alt="Aimanong">
+            <h1>Aimanong</h1>
+            <p>AI 码农 · 后台开发框架</p>
         </div>
 
         @if ($errors->any())

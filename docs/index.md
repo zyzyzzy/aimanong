@@ -3,7 +3,7 @@ layout: home
 
 hero:
   name: AI 码农
-  text: AI-First 后台开发框架
+  text: Aimanong（AI 码农）后台开发框架
   tagline: 让任何 AI Agent 在 5 分钟内理解框架、30 分钟内产出可运行的后台系统
   actions:
     - theme: brand

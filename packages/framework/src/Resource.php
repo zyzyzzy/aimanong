@@ -17,7 +17,7 @@ use Aimanong\Tree\Tree;
  * 框架自动产出：REST API、前端页面、JSON Schema、
  * TypeScript 类型、OpenAPI 文档、AI 提示词。
  *
- * AI-First 约定：三个方法都是静态的、签名唯一。
+ * Aimanong 约定：三个方法都是静态的、签名唯一。
  */
 abstract class Resource implements ResourceContract
 {

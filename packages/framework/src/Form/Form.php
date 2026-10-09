@@ -37,7 +37,7 @@ use Aimanong\Schema\Ast\FieldNode;
 /**
  * 表单定义。
  *
- * AI-First 约定：
+ * Aimanong 约定：
  *   - 每个字段类型一个方法，签名唯一（仅接收字段名）
  *   - 禁止嵌套闭包
  *   - 全部配置链式完成

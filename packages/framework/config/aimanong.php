@@ -33,6 +33,9 @@ return [
         // 登录时按需重新哈希密码（Laravel 11+ 契约要求）
         'rehash_on_login' => false,
 
+        // 是否启用内置 RBAC（角色/权限）。关闭时所有操作放行。
+        'rbac' => env('AIMANONG_RBAC', false),
+
         'except' => [
             'auth/login',
             'auth/logout',

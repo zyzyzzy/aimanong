@@ -2,6 +2,82 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.3.0] - 2026-10-09
+
+> **方向调整**：从「纯开发工具」转向「带地基的平台」第一步 —— **内置 RBAC**。
+>
+> 此前多租户场景暴露：框架对权限零支持，AI 不得不手写四层防线。
+> 有了内置权限与用户地基，AI 就能专注写业务。
+
+### 新增：内置 RBAC（角色 / 权限）
+
+**权限节点由 Resource 自动生成，无需手写。**
+
+每个注册的 Resource 自动生成 6 个节点：
+`{uri}.index` / `.show` / `.create` / `.update` / `.destroy` / `.export`
+
+例：`cms-authors` → `cms-authors.update`（显示名「作者 · 编辑」）
+
+本次 demo 项目自动生成了 **132 个权限节点**（22 个 Resource × 6）。
+
+```php
+// 数据模型
+admin_roles            // 角色（含 is_super 超级管理员）
+admin_permissions      // 权限节点
+admin_permission_role  // 角色 ↔ 权限
+admin_role_user        // 用户 ↔ 角色
+```
+
+**使用**
+
+```php
+// 判定
+PermissionGate::check('cms-authors.update');
+
+// 同步权限节点（Resource → 权限表）
+php artisan aimanong:permission sync
+php artisan aimanong:permission list
+php artisan aimanong:permission super admin   // 设某用户为超级管理员
+```
+
+Controller 已内置拦截：未授权返回 **403** 并提示缺少哪个权限。
+
+**可关闭**：`AIMANONG_RBAC=false`（默认关闭）→ 全部放行，保留灵活性。
+
+### 新增：用框架造自己的权限后台（吃自己的狗粮）
+
+用户/角色/权限管理后台**用 Aimanong 自己生成**：
+
+```bash
+php artisan aimanong:make-resource admin_roles --label=角色 --register
+```
+
+角色分配权限用**框架原生的多对多**：
+
+```php
+$form->multiSelect('permissions')->relation('permissions')->options(...);
+```
+
+> 这同时验证了 v1.1.1 的多对多能力 —— 框架能造自己的后台，
+> 说明它够用。
+
+### 修复（本轮开发中发现）
+
+1. **生成器 uri 不一致**：`Str::kebab('admin_roles')` 保留下划线，
+   与既有 20 个 kebab Resource 不一致 → 页面 404。已统一为 kebab
+2. **生成器指向不存在的模型**：为框架自带表（RBAC）生成 Resource 时
+   指向 `App\Models\AdminRole`（不存在）→ 页面 500。
+   已改为自动识别框架表并指向框架模型
+3. **`Registry::find()` 不支持下划线 uri**：已支持两种写法互通
+4. **`PermissionGate::enabled()` 无容器时崩溃**：已兜住
+
+### 文档
+
+- `cannot_verify` 更新：权限/RBAC 从「框架没有」改为「已内置（操作级），
+  按钮级/字段级仍需自行实现」
+
+---
+
 ## [1.2.0] - 2026-10-09
 
 > 本版本来自 **SaaS 多租户场景验证**（第四轮真实场景）。
@@ -371,6 +447,7 @@ $form->mytype('field', '标签');
 
 ## 版本链接
 
+- [1.3.0](https://github.com/zyzyzzy/aimanong/releases/tag/v1.3.0)
 - [1.2.0](https://github.com/zyzyzzy/aimanong/releases/tag/v1.2.0)
 - [1.1.1](https://github.com/zyzyzzy/aimanong/releases/tag/v1.1.1)
 - [1.1.0](https://github.com/zyzyzzy/aimanong/releases/tag/v1.1.0)

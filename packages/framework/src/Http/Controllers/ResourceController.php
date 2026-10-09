@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\Http\Controllers;
 
 use Aimanong\Aimanong;
+use Aimanong\Auth\PermissionGate;
 use Aimanong\Contracts\Repository;
 use Aimanong\Repository\EloquentRepository;
 use Aimanong\Schema\Ast\ResourceNode;
@@ -18,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 /**
  * Resource 通用 CRUD 控制器。
@@ -37,6 +39,8 @@ class ResourceController extends Controller
      */
     public function index(Request $request, string $uri): JsonResponse
     {
+        $this->authorize_($uri, 'index');
+
         $node = $this->resolve($uri);
 
         $searchable = array_values(array_map(
@@ -128,6 +132,8 @@ class ResourceController extends Controller
      */
     public function show(Request $request, string $uri, int|string $id): JsonResponse
     {
+        $this->authorize_($uri, 'show');
+
         $node = $this->resolve($uri);
 
         $model = $this->repository($node)->find($id);
@@ -199,6 +205,8 @@ class ResourceController extends Controller
      */
     public function store(Request $request, string $uri): JsonResponse
     {
+        $this->authorize_($uri, 'create');
+
         $node = $this->resolve($uri);
 
         $data = $this->validateRequest($request, $node);
@@ -217,6 +225,8 @@ class ResourceController extends Controller
      */
     public function update(Request $request, string $uri, int|string $id): JsonResponse
     {
+        $this->authorize_($uri, 'update');
+
         $node = $this->resolve($uri);
 
         $data = $this->validateRequest($request, $node);
@@ -235,6 +245,8 @@ class ResourceController extends Controller
      */
     public function destroy(Request $request, string $uri, int|string $id): JsonResponse
     {
+        $this->authorize_($uri, 'destroy');
+
         $node = $this->resolve($uri);
 
         $this->repository($node)->delete($id);
@@ -289,6 +301,7 @@ class ResourceController extends Controller
      */
     public function export(Request $request, string $uri): StreamedResponse|JsonResponse
     {
+        $this->authorize_($uri, 'export');
         $node = $this->resolve($uri);
 
         if (! ($node->meta['exportable'] ?? false)) {
@@ -477,6 +490,32 @@ class ResourceController extends Controller
         }
 
         return $this->node = (new Compiler)->compile($class);
+    }
+
+    /**
+     * 权限判定。
+     *
+     * 每个 Resource 自动有 6 个节点（index/show/create/update/destroy/export），
+     * 由 Resource 注册时生成，无需手写。
+     *
+     * 未启用 RBAC 时直接放行（保留灵活性）。
+     *
+     * @throws AccessDeniedHttpException
+     */
+    protected function authorize_(string $uri, string $action): void
+    {
+        if (! PermissionGate::enabled()) {
+            return;
+        }
+
+        $slug = PermissionGate::slug($uri, $action);
+
+        if (! PermissionGate::check($slug)) {
+            throw new AccessDeniedHttpException(
+                "没有权限执行 {$slug}。请让管理员分配「"
+                .PermissionGate::actionLabel($action).'」权限。'
+            );
+        }
     }
 
     /**

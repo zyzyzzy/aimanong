@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\Ai;
 
 use Aimanong\Aimanong;
+use Aimanong\Auth\PermissionGate;
 use Aimanong\Form\Fields\Field;
 use Aimanong\Schema\Compiler;
 use Aimanong\Support\FieldType;
@@ -39,6 +40,7 @@ class Capabilities
             'requirement_keys' => $this->requirementKeys(),
             'cannot_verify' => $this->cannotVerify(),
             'scope_hooks' => ScopeHooks::introspect(),
+            'rbac' => $this->rbacCapabilities(),
             'query_columns' => $this->queryColumnRules(),
             'applications' => $this->applicationCapabilities(),
             'column_options' => $this->columnOptions(),
@@ -191,6 +193,24 @@ class Capabilities
     }
 
     /**
+     * RBAC 能力（v1.3.0 起内置）。
+     *
+     * @return array<string, mixed>
+     */
+    public function rbacCapabilities(): array
+    {
+        return [
+            'enabled' => PermissionGate::enabled(),
+            'actions' => PermissionGate::ACTIONS,
+            'slug_format' => '{uri}.{action}，如 cms-authors.update',
+            'auto_generated' => '权限节点由 Resource 注册时自动生成，无需手写',
+            'super_role' => 'is_super 角色绕过所有判定',
+            'toggle' => "config('aimanong.auth.rbac') 或 AIMANONG_RBAC 环境变量；关闭时全部放行",
+            'command' => 'php artisan aimanong:permission sync|list|super {user}',
+        ];
+    }
+
+    /**
      * **框架无法自动验证的需求** —— 必须人工确认。
      *
      * 多租户场景验证发现的最危险问题：
@@ -209,8 +229,8 @@ class Capabilities
         return [
             '多租户/数据隔离' => '框架**不提供**行级数据隔离（无 tenant 概念、无全局作用域钩子）。'
                 .'必须自己在模型层实现（全局作用域 + creating 盖章），并人工验证越权。',
-            '权限/RBAC' => '框架**没有**权限系统，只有「登录/未登录」一个粒度。'
-                .'角色、菜单、按钮级权限需自行实现。',
+            '权限/RBAC' => 'v1.3.0 起**已内置** RBAC（角色/权限，操作级粒度）。'
+                .'但**按钮级/字段级权限、菜单权限**仍需自行实现。',
             '行级权限' => '「A 只能看自己创建的数据」这类需求框架无法验证，'
                 .'也不提供官方拦截点，必须自己写并测试。',
             '审计日志' => '框架不记录谁改了什么，需自行实现。',

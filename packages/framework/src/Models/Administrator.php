@@ -9,6 +9,7 @@ use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
  * 管理员模型。
@@ -34,6 +35,42 @@ class Administrator extends Model implements AuthenticatableContract
         'avatar',
         'enabled',
     ];
+
+    /**
+     * 用户的角色。
+     *
+     * @return BelongsToMany<Role, $this>
+     */
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class, 'admin_role_user', 'user_id', 'role_id');
+    }
+
+    /**
+     * 是否超级管理员（任一角色 is_super）。
+     */
+    public function isSuper(): bool
+    {
+        return $this->roles()->where('is_super', true)->exists();
+    }
+
+    /**
+     * 是否有某个权限。
+     *
+     * 判定顺序：超级管理员 → 直接放行；否则查角色关联的权限 slug。
+     */
+    public function hasPermission(string $slug): bool
+    {
+        if ($this->isSuper()) {
+            return true;
+        }
+
+        return $this->roles()
+            ->whereHas('permissions', function ($q) use ($slug): void {
+                $q->where('slug', $slug);
+            })
+            ->exists();
+    }
 
     protected $hidden = [
         'password',

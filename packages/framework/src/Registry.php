@@ -83,11 +83,38 @@ class Registry
     }
 
     /**
+     * 规范化 uri：下划线与连字符互通。
+     *
+     * 生成器按表名产出 `admin_roles`（下划线），
+     * 而既有约定是 kebab（连字符）—— 两种写法都应能找到。
+     */
+    protected function normalizeUri(string $uri): string
+    {
+        return str_replace('_', '-', $uri);
+    }
+
+    /**
      * @return class-string<Contracts\Resource>|null
      */
     public function find(string $uri): ?string
     {
-        return $this->resources[$uri] ?? null;
+        $key = $this->normalizeUri($uri);
+
+        if (isset($this->resources[$key])) {
+            return $this->resources[$key];
+        }
+
+        // 再按原始写法找一次（兼容下划线注册的 Resource）
+        foreach ($this->resources as $class) {
+            // class-string<Resource> 必然有 uri()，无需 is_callable 判断
+            if (class_exists($class)) {
+                if ($this->normalizeUri($class::uri()) === $key) {
+                    return $class;
+                }
+            }
+        }
+
+        return null;
     }
 
     public function count(): int

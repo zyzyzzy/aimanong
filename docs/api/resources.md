@@ -588,3 +588,60 @@
 | `amount` | 金额 | `money` | ✓ | `required` |
 | `status` | 状态 | `select` |  |  |
 | `paid_at` | 支付时间 | `datetime` |  |  |
+
+## 角色
+
+- URI：`admin-roles`
+- 模型：`Aimanong\Models\Role`
+- 类：`App\Aimanong\AdminRoleResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID | ✓ |  |  |
+| `slug` | slug |  |  |  |
+| `name` | 名称 |  | ✓ |  |
+| `description` | 描述 |  |  |  |
+| `is_super` | is_super | ✓ |  | `bool` |
+| `sort` | 排序 |  |  |  |
+| `created_at` | 创建时间 | ✓ |  | `datetime` |
+| `updated_at` | 更新时间 | ✓ |  | `datetime` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `slug` | slug | `text` | ✓ | `required`, `max:255` |
+| `name` | 名称 | `text` | ✓ | `required`, `max:255` |
+| `description` | 描述 | `textarea` |  |  |
+| `is_super` | is_super | `switch` |  |  |
+| `sort` | 排序 | `number` | ✓ | `required` |
+| `permissions` | 权限 | `multiselect` |  |  |
+
+## 权限节点
+
+- URI：`admin-permissions`
+- 模型：`Aimanong\Models\Permission`
+- 类：`App\Aimanong\AdminPermissionResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID | ✓ |  |  |
+| `slug` | slug |  |  |  |
+| `name` | 名称 |  | ✓ |  |
+| `group` | group |  |  |  |
+| `description` | 描述 |  |  |  |
+| `created_at` | 创建时间 | ✓ |  | `datetime` |
+| `updated_at` | 更新时间 | ✓ |  | `datetime` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `slug` | slug | `text` | ✓ | `required`, `max:255` |
+| `name` | 名称 | `text` | ✓ | `required`, `max:255` |
+| `group` | group | `text` |  | `max:255` |
+| `description` | 描述 | `textarea` |  |  |

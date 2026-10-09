@@ -12,11 +12,11 @@
 
 | 项 | 值 |
 |---|---|
-| 框架版本 | 1.2.0 |
+| 框架版本 | 1.3.0 |
 | Laravel | 12.69.3 |
 | PHP | 8.2.29 |
 | 字段类型数 | 27 |
-| 已注册 Resource | 20 |
+| 已注册 Resource | 22 |
 
 ## 已注册 Resource
 
@@ -42,6 +42,8 @@
 | 租户 | `tenants` | `App\Models\Tenant` | 6 | 5 |
 | 客户 | `saas-customers` | `App\Models\SaasCustomer` | 7 | 6 |
 | 订单 | `saas-orders` | `App\Models\SaasOrder` | 6 | 5 |
+| 角色 | `admin-roles` | `Aimanong\Models\Role` | 8 | 6 |
+| 权限节点 | `admin-permissions` | `Aimanong\Models\Permission` | 7 | 4 |
 
 ## 其它页面
 

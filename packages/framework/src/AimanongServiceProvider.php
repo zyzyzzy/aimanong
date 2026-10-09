@@ -9,6 +9,7 @@ use Aimanong\Application\ApplicationManager;
 use Aimanong\Auth\AdminGuard;
 use Aimanong\Auth\AdminUserProvider;
 use Aimanong\Console\InstallCommand;
+use Aimanong\Console\PermissionCommand;
 use Aimanong\Extend\ExtensionManager;
 use Aimanong\Support\Asset;
 use Illuminate\Support\Facades\Auth;
@@ -409,6 +410,7 @@ class AimanongServiceProvider extends ServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->commands([
+                PermissionCommand::class,
                 InstallCommand::class,
                 Console\SchemaCommand::class,
                 Console\VerifyCommand::class,

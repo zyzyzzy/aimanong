@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Aimanong\Services;
 
+use Aimanong\Models\Administrator;
+use Aimanong\Models\Permission;
+use Aimanong\Models\Role;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -27,7 +30,17 @@ class ResourceGenerator
         $table = trim($table);
 
         $model = trim((string) $model);
-        $model = $model !== '' ? $model : 'App\\Models\\'.Str::studly(Str::singular($table));
+
+        /*
+         * 模型解析优先级：
+         *   1. 显式传入
+         *   2. **框架自带表** → 框架模型（避免生成指向不存在模型的 Resource）
+         *   3. App\\Models\\{Studly}
+         */
+        if ($model === '') {
+            $model = $this->frameworkModelForTable($table)
+                ?? 'App\\Models\\'.Str::studly(Str::singular($table));
+        }
 
         $columns = Schema::getColumns($table);
 
@@ -39,7 +52,15 @@ class ResourceGenerator
         $label = $label !== '' ? $label : $table;
 
         $className = Str::studly(Str::singular($table)).'Resource';
-        $uri = Str::kebab(Str::plural($table));
+        /*
+         * uri 统一 kebab（连字符）。
+         *
+         * 注意：Str::kebab() 只处理大小写，**不会**把下划线转成连字符。
+         * 所以 `admin_roles` 会原样保留下划线，与既有 kebab 约定不一致
+         * （既有 20 个 Resource 都是连字符），导致页面 404。
+         * 因此这里先把下划线统一成连字符。
+         */
+        $uri = Str::kebab(str_replace('_', '-', Str::plural($table)));
 
         $gridLines = [];
         $formLines = [];
@@ -145,6 +166,22 @@ class ResourceGenerator
             'model' => $model,
             'modelBase' => $modelBase,
         ];
+    }
+
+    /**
+     * 框架自带表对应的模型。
+     *
+     * 为框架自己的表（RBAC、管理员）生成 Resource 时，
+     * 必须指向框架模型 —— 否则会生成指向 App\Models\AdminRole
+     * 这种**不存在**的类，页面直接 500。
+     */
+    protected function frameworkModelForTable(string $table): ?string
+    {
+        return [
+            'admin_users' => Administrator::class,
+            'admin_roles' => Role::class,
+            'admin_permissions' => Permission::class,
+        ][$table] ?? null;
     }
 
     /**

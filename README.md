@@ -7,6 +7,7 @@
 
 基于 **Laravel 12 + Vue 3**，专为 AI Agent 设计，同时为人类保留完整文档。
 
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](./CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 [![PHP](https://img.shields.io/badge/PHP-%5E8.2-blue.svg)](https://www.php.net)
 [![Laravel](https://img.shields.io/badge/Laravel-%5E12.0-red.svg)](https://laravel.com)
@@ -29,8 +30,14 @@ Aimanong 为此明确牺牲部分"灵活性"来换取"确定性"：
 
 ## 快速开始
 
-> 框架主体（M0–M6）已完成，正在准备 v1.0 发布。
-> 现在即可安装使用，参见下方「快速开始」。
+**v1.0.0 已发布** —— 全部里程碑（M0–M6）完成，经过 5 轮 AI 实测、累计修复 20 个真实缺陷。
+
+```bash
+composer require aimanong/framework
+php artisan aimanong:install
+```
+
+详见 [CHANGELOG](./CHANGELOG.md)。
 
 ## 仓库结构
 

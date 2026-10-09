@@ -12,11 +12,11 @@
 
 | 项 | 值 |
 |---|---|
-| 框架版本 | 0.1.0 |
+| 框架版本 | 1.0.0 |
 | Laravel | 12.69.3 |
 | PHP | 8.2.29 |
 | 字段类型数 | 26 |
-| 已注册 Resource | 8 |
+| 已注册 Resource | 9 |
 
 ## 已注册 Resource
 
@@ -30,6 +30,7 @@
 | 课程 | `courses` | `App\Models\Course` | 13 | 10 |
 | 分类 | `categories` | `App\Models\Category` | 5 | 4 |
 | 部门 | `departments` | `App\Models\Department` | 12 | 9 |
+| 供应商 | `suppliers` | `App\Models\Supplier` | 10 | 7 |
 
 ## 其它页面
 

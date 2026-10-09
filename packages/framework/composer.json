@@ -1,8 +1,16 @@
 {
     "name": "aimanong/framework",
-    "description": "AI-First admin framework for Laravel — 让任何 AI Agent 5 分钟理解、30 分钟产出后台系统",
+    "version": "1.0.0",
+    "description": "Aimanong（AI 码农）—— 为 AI Agent 设计的 Laravel 后台开发框架",
     "type": "library",
-    "keywords": ["aimanong", "ai", "admin", "laravel", "mcp", "ai-first"],
+    "keywords": [
+        "aimanong",
+        "ai",
+        "admin",
+        "laravel",
+        "mcp",
+        "ai-first"
+    ],
     "homepage": "https://aimanong.com",
     "license": "MIT",
     "authors": [

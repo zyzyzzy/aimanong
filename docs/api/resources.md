@@ -241,3 +241,36 @@
 | `status` | 状态 | `select` |  |  |
 | `remark` | 备注 | `textarea` |  |  |
 | `enabled` | 是否启用 | `switch` |  |  |
+
+## 供应商
+
+- URI：`suppliers`
+- 模型：`App\Models\Supplier`
+- 类：`App\Aimanong\SupplierResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID | ✓ |  |  |
+| `name` | 名称 |  | ✓ |  |
+| `contact_email` | contact_email |  |  |  |
+| `phone` | 电话 |  |  |  |
+| `credit_limit` | credit_limit |  |  |  |
+| `status` | 状态 | ✓ |  | `badge` |
+| `enabled` | 是否启用 | ✓ |  | `bool` |
+| `address` | 地址 |  |  |  |
+| `created_at` | 创建时间 | ✓ |  | `datetime` |
+| `updated_at` | 更新时间 | ✓ |  | `datetime` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `name` | 名称 | `text` | ✓ | `required`, `max:255` |
+| `contact_email` | contact_email | `email` |  | `email` |
+| `phone` | 电话 | `tel` |  |  |
+| `credit_limit` | credit_limit | `text` | ✓ | `required`, `max:255` |
+| `status` | 状态 | `select` | ✓ | `required` |
+| `enabled` | 是否启用 | `switch` |  |  |
+| `address` | 地址 | `textarea` |  |  |

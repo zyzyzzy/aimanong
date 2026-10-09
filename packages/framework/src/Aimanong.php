@@ -127,10 +127,37 @@ class Aimanong
     }
 
     /**
-     * 版本号。
+     * 版本号 —— **单一来源**。
+     *
+     * 从 composer.json 读取，避免多处硬编码导致版本不一致。
+     * 修改版本请只改 composer.json 的 version 字段。
      */
     public static function version(): string
     {
-        return '0.1.0';
+        static $cached = null;
+
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        try {
+            $path = __DIR__.'/../composer.json';
+
+            if (is_file($path)) {
+                /** @var mixed $decoded */
+                $decoded = json_decode((string) file_get_contents($path), true);
+
+                if (is_array($decoded)
+                    && isset($decoded['version'])
+                    && is_string($decoded['version'])
+                    && $decoded['version'] !== '') {
+                    return $cached = $decoded['version'];
+                }
+            }
+        } catch (\Throwable) {
+            // 读不到时回退
+        }
+
+        return $cached = '1.0.0';
     }
 }

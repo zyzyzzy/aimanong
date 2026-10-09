@@ -25,7 +25,7 @@ class AimanongServer extends Server
 {
     protected string $name = 'Aimanong';
 
-    protected string $version = '0.1.0';
+    protected string $version = '1.0.0';
 
     protected string $instructions = <<<'MARKDOWN'
         Aimanong（AI 码农）是一个「AI 优先」的 Laravel 后台框架。

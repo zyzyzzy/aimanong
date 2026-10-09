@@ -13,6 +13,9 @@ hero:
       text: API 参考
       link: /api/
     - theme: alt
+      text: Playground 试玩
+      link: /playground/
+    - theme: alt
       text: GitHub
       link: https://github.com/zyzyzzy/aimanong
 

@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Playground · AI 码农</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --green: #3FBF6F; --green-dark: #35a75f;
+    --ink: #101B16; --muted: #8a948f; --border: #dde3e0;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa; color: var(--ink); height: 100vh; display: flex; flex-direction: column;
+  }
+  header {
+    background: #fff; border-bottom: 1px solid #e8edea;
+    padding: 0 20px; height: 52px; display: flex; align-items: center; gap: 16px;
+    flex-shrink: 0;
+  }
+  header h1 { font-size: 15px; font-weight: 600; }
+  header .tag {
+    font-size: 11px; background: #e8f5e9; color: #2e7d4f;
+    padding: 2px 8px; border-radius: 10px;
+  }
+  header .spacer { flex: 1; }
+  header a { font-size: 13px; color: var(--muted); text-decoration: none; }
+  header a:hover { color: var(--green); }
+
+  .layout { flex: 1; display: flex; overflow: hidden; }
+
+  /* 左侧编辑器 */
+  .editor-pane {
+    width: 46%; display: flex; flex-direction: column;
+    border-right: 1px solid var(--border); background: #fff;
+  }
+  .pane-head {
+    padding: 10px 14px; border-bottom: 1px solid #eef2f0;
+    font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 10px;
+    flex-shrink: 0;
+  }
+  .pane-head strong { color: var(--ink); font-size: 13px; font-weight: 600; }
+  .samples { margin-left: auto; display: flex; gap: 6px; }
+  .samples button {
+    font-size: 11px; padding: 3px 9px; border: 1px solid var(--border);
+    background: #fff; border-radius: 4px; cursor: pointer; color: #4a544e;
+  }
+  .samples button:hover { border-color: var(--green); color: var(--green); }
+  .samples button.active { background: var(--green); color: #fff; border-color: var(--green); }
+
+  textarea {
+    flex: 1; width: 100%; border: none; outline: none; resize: none;
+    padding: 14px; font-size: 13px; line-height: 1.65;
+    font-family: "SF Mono", Monaco, Menlo, Consolas, monospace;
+    background: #fcfdfc; color: #1a2620; tab-size: 4;
+  }
+
+  /* 右侧预览 */
+  .preview-pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .tabs {
+    display: flex; gap: 2px; padding: 0 14px; background: #fff;
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .tabs button {
+    padding: 11px 14px; font-size: 13px; border: none; background: none;
+    cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .tabs button:hover { color: var(--ink); }
+  .tabs button.active { color: var(--green); border-bottom-color: var(--green); font-weight: 600; }
+
+  .tab-body { flex: 1; overflow: auto; padding: 18px; display: none; }
+  .tab-body.active { display: block; }
+
+  /* 表格预览 */
+  .demo-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(16,27,22,.06); }
+  .demo-table th {
+    background: #fafcfb; text-align: left; padding: 10px 14px; font-size: 12px;
+    font-weight: 600; color: #6b746f; border-bottom: 1px solid #eef2f0; white-space: nowrap;
+  }
+  .demo-table th .sort { color: var(--green); margin-left: 3px; }
+  .demo-table td { padding: 11px 14px; font-size: 13px; border-bottom: 1px solid #f2f5f3; }
+  .demo-table tr:last-child td { border-bottom: none; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; background: #e8f5e9; color: #2e7d4f; }
+  .tag { display: inline-block; padding: 2px 9px; border-radius: 4px; font-size: 12px; background: #eef2f0; color: #4a544e; }
+  .tag-on { background: #e8f5e9; color: #2e7d4f; }
+  .tag-off { background: #f0f2f1; color: #8a948f; }
+  .muted { color: #c3ccc7; }
+  .progress-wrap { display: inline-flex; align-items: center; gap: 8px; }
+  .progress-bar { display: inline-block; width: 70px; height: 6px; background: #eef2f0; border-radius: 3px; overflow: hidden; }
+  .progress-bar i { display: block; height: 100%; background: var(--green); }
+
+  /* 表单预览 */
+  .demo-form { background: #fff; border-radius: 8px; padding: 20px; max-width: 460px; box-shadow: 0 1px 4px rgba(16,27,22,.06); }
+  .fg { margin-bottom: 15px; }
+  .fg label { display: block; font-size: 13px; color: #4a544e; margin-bottom: 6px; }
+  .fg .req { color: #c0392b; }
+  .fg input[type=text], .fg input[type=number], .fg input[type=date], .fg select, .fg textarea {
+    width: 100%; padding: 8px 11px; border: 1px solid var(--border);
+    border-radius: 6px; font-size: 13px; font-family: inherit; background: #fff;
+  }
+  .fg .help { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .fg .radios { display: flex; gap: 16px; flex-wrap: wrap; }
+  .fg .radios label { display: flex; align-items: center; gap: 5px; margin: 0; font-size: 13px; font-weight: 400; }
+  .divider-title {
+    font-size: 12px; color: var(--muted); margin: 20px 0 14px;
+    padding-bottom: 7px; border-bottom: 1px solid #eef2f0; font-weight: 600;
+  }
+
+  /* 代码输出 */
+  pre {
+    background: #fcfdfc; border: 1px solid #eef2f0; border-radius: 8px;
+    padding: 14px; font-size: 12.5px; line-height: 1.6; overflow: auto;
+    font-family: "SF Mono", Monaco, Menlo, Consolas, monospace; color: #1a2620;
+  }
+  .hint { font-size: 12px; color: var(--muted); margin-bottom: 12px; line-height: 1.7; }
+  .stats { display: flex; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+  .stat { background: #fff; border-radius: 8px; padding: 12px 16px; min-width: 100px; box-shadow: 0 1px 4px rgba(16,27,22,.05); }
+  .stat .n { font-size: 20px; font-weight: 600; color: var(--green); }
+  .stat .l { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .err { background: #fdecea; color: #c0392b; padding: 12px; border-radius: 6px; font-size: 13px; }
+
+  @media (max-width: 900px) {
+    .layout { flex-direction: column; }
+    .editor-pane { width: 100%; height: 44%; border-right: none; border-bottom: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>AI 码农 · Playground</h1>
+  <span class="tag">真实解析，非硬编码演示</span>
+  <div class="spacer"></div>
+  <a href="/" target="_blank">文档站 →</a>
+</header>
+
+<div class="layout">
+  <div class="editor-pane">
+    <div class="pane-head">
+      <strong>Resource 声明</strong>
+      <span>改代码，右侧实时变化</span>
+      <div class="samples">
+        <button data-sample="basic" class="active">基础</button>
+        <button data-sample="full">完整</button>
+        <button data-sample="minimal">最小</button>
+      </div>
+    </div>
+    <textarea id="source" spellcheck="false"></textarea>
+  </div>
+
+  <div class="preview-pane">
+    <div class="tabs">
+      <button data-tab="list" class="active">列表页预览</button>
+      <button data-tab="form">表单预览</button>
+      <button data-tab="schema">schema.json</button>
+      <button data-tab="ts">types.ts</button>
+      <button data-tab="openapi">openapi.json</button>
+      <button data-tab="ai">AI 上下文</button>
+    </div>
+
+    <div class="tab-body active" id="tab-list"></div>
+    <div class="tab-body" id="tab-form"></div>
+    <div class="tab-body" id="tab-schema"></div>
+    <div class="tab-body" id="tab-ts"></div>
+    <div class="tab-body" id="tab-openapi"></div>
+    <div class="tab-body" id="tab-ai"></div>
+  </div>
+</div>
+
+<script type="module">
+import { compile } from './compiler.js'
+
+const SAMPLES = {
+  basic: `<?php
+
+namespace App\\Aimanong;
+
+use Aimanong\\Resource;
+use Aimanong\\Grid\\Grid;
+use Aimanong\\Form\\Form;
+
+class ProductResource extends Resource
+{
+    public static function model(): string
+    {
+        return \\App\\Models\\Product::class;
+    }
+
+    public static function label(): string
+    {
+        return '商品';
+    }
+
+    public static function uri(): string
+    {
+        return 'products';
+    }
+
+    public static function grid(Grid $grid): void
+    {
+        $grid->perPage(15);
+
+        $grid->column('id', 'ID')->badge();
+        $grid->column('title', '标题')->searchable();
+        $grid->column('price', '价格')->money()->sortable();
+        $grid->column('stock', '库存')->sortable();
+        $grid->column('status', '状态')->map(['on' => '上架', 'off' => '下架']);
+        $grid->column('published', '是否上架')->bool('已上架', '未上架');
+        $grid->column('created_at', '创建时间')->dateTime();
+    }
+
+    public static function form(Form $form): void
+    {
+        $form->divider('基本信息');
+        $form->text('title', '标题')->required()->max(255);
+        $form->money('price', '价格')->required()->decimals(2);
+        $form->number('stock', '库存')->default(0);
+        $form->select('status', '状态')->options(['on' => '上架', 'off' => '下架']);
+        $form->switch('published', '是否上架');
+        $form->textarea('summary', '简介')->rows(4);
+    }
+}
+`,
+
+  full: `<?php
+
+namespace App\\Aimanong;
+
+use Aimanong\\Resource;
+use Aimanong\\Grid\\Grid;
+use Aimanong\\Form\\Form;
+
+class OrderResource extends Resource
+{
+    public static function model(): string
+    {
+        return \\App\\Models\\Order::class;
+    }
+
+    public static function label(): string
+    {
+        return '订单';
+    }
+
+    public static function uri(): string
+    {
+        return 'orders';
+    }
+
+    public static function grid(Grid $grid): void
+    {
+        $grid->perPage(20);
+
+        $grid->column('id', 'ID')->badge();
+        $grid->column('order_no', '订单号')->searchable();
+        $grid->column('customer_name', '客户')->searchable();
+        $grid->column('amount', '金额')->money('¥')->sortable();
+        $grid->column('progress', '进度')->progress();
+        $grid->column('status', '状态')->map([
+            'pending' => '待付款',
+            'paid' => '已付款',
+            'shipped' => '已发货',
+            'done' => '已完成',
+        ]);
+        $grid->column('paid', '是否付款')->bool('已付', '未付');
+        $grid->column('homepage', '详情页')->link('查看');
+        $grid->column('created_at', '下单时间')->dateTime()->sortable();
+    }
+
+    public static function form(Form $form): void
+    {
+        $form->divider('订单信息');
+        $form->text('order_no', '订单号')->required()->max(64)->help('系统自动生成，可手工修正');
+        $form->text('customer_name', '客户名称')->required()->max(128);
+        $form->money('amount', '订单金额')->required()->symbol('¥')->decimals(2);
+        $form->number('progress', '完成进度')->default(0)->min(0)->max(100);
+        $form->divider('状态与时间');
+
+        $form->radio('status', '订单状态')->options([
+            'pending' => '待付款',
+            'paid' => '已付款',
+            'shipped' => '已发货',
+        ])->default('pending');
+        $form->switch('paid', '是否已付款');
+        $form->date('paid_at', '付款日期');
+        $form->email('contact_email', '联系邮箱')->rules('email');
+        $form->url('homepage', '商品链接')->placeholder('https://');
+        $form->tags('labels', '标签');
+        $form->color('theme_color', '主题色');
+    }
+}
+`,
+
+  minimal: `<?php
+
+namespace App\\Aimanong;
+
+use Aimanong\\Resource;
+use Aimanong\\Grid\\Grid;
+use Aimanong\\Form\\Form;
+
+class ItemResource extends Resource
+{
+    public static function model(): string
+    {
+        return \\App\\Models\\Item::class;
+    }
+
+    public static function label(): string
+    {
+        return '条目';
+    }
+
+    public static function uri(): string
+    {
+        return 'items';
+    }
+
+    public static function grid(Grid $grid): void
+    {
+        $grid->column('id', 'ID');
+        $grid->column('name', '名称')->searchable();
+    }
+
+    public static function form(Form $form): void
+    {
+        $form->text('name', '名称')->required();
+    }
+}
+`
+}
+
+const sourceEl = document.getElementById('source')
+const tabs = document.querySelectorAll('.tabs button')
+const bodies = document.querySelectorAll('.tab-body')
+
+let result = null
+
+function render () {
+  try {
+    result = compile(sourceEl.value)
+    document.querySelectorAll('.err').forEach(e => e.remove())
+  } catch (e) {
+    document.getElementById('tab-list').innerHTML = `<div class="err">解析失败：${e.message}</div>`
+    return
+  }
+
+  renderList()
+  renderForm()
+  document.getElementById('tab-schema').innerHTML =
+    `<div class="hint">由声明编译产出。前端按此渲染，改声明即改页面。</div><pre>${esc(JSON.stringify(result.jsonSchema, null, 2))}</pre>`
+  document.getElementById('tab-ts').innerHTML =
+    `<div class="hint">前端获得的类型定义，实现端到端类型安全。</div><pre>${esc(result.typescript)}</pre>`
+  document.getElementById('tab-openapi').innerHTML =
+    `<div class="hint">REST API 文档，与实际接口行为一致。</div><pre>${esc(result.openapi)}</pre>`
+  document.getElementById('tab-ai').innerHTML =
+    `<div class="hint">这份上下文自动喂给 AI Agent，它不用猜 API。</div><pre>${esc(result.aiContext)}</pre>`
+}
+
+function esc (s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+/** 演示数据，按列名生成合理值 */
+function demoValue (name, type) {
+  const map = {
+    id: 1, order_no: 'ORD-20260001', customer_name: '张伟', title: '示例商品',
+    name: '示例名称', price: 1299.5, amount: 1299.5, stock: 42, progress: 68,
+    status: 'paid', published: true, paid: true, level: 'advanced', lessons: 24,
+    created_at: '2026-10-09 14:23:01', updated_at: '2026-10-09 16:05:44',
+    paid_at: '2026-10-09', homepage: 'https://example.com/p/1',
+    contact_email: 'hi@example.com', summary: '这是简介', labels: 'a,b',
+    theme_color: '#3FBF6F', cover_url: 'https://example.com/c.png', score: 4
+  }
+  if (name in map) return map[name]
+  if (type === 'boolean') return true
+  if (type === 'integer' || type === 'number') return 10
+  return '—'
+}
+
+function renderCell (col) {
+  const v = demoValue(col.name, null)
+
+  if (col.formatter === 'datetime') return `<span>${v}</span>`
+  if (col.formatter === 'money') {
+    const sym = col.props.symbol || '¥'
+    const n = Number(v)
+    const s = isFinite(n) ? n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : v
+    return `<span>${sym}${s}</span>`
+  }
+  if (col.formatter === 'bool') {
+    const on = v === true || v === 1 || v === '1'
+    return `<span class="tag ${on ? 'tag-on' : 'tag-off'}">${on ? (col.props.trueLabel || '是') : (col.props.falseLabel || '否')}</span>`
+  }
+  if (col.formatter === 'map') {
+    const m = col.props.map || {}
+    const label = m[v] !== undefined ? m[v] : v
+    return `<span class="tag">${label}</span>`
+  }
+  if (col.formatter === 'badge') return `<span class="badge">${v}</span>`
+  if (col.formatter === 'progress') {
+    return `<span class="progress-wrap"><span class="progress-bar"><i style="width:${Math.min(100, Number(v) || 0)}%"></i></span><span>${v}</span></span>`
+  }
+  if (col.formatter === 'link') return `<a href="#" style="color:var(--green);">${col.props.text || v}</a>`
+  if (col.formatter === 'image') return `<span class="muted">[图片]</span>`
+  return `<span>${v === null || v === '' ? '<span class="muted">—</span>' : v}</span>`
+}
+
+function renderList () {
+  const { grid, meta } = result
+  const cols = grid.columns
+
+  if (cols.length === 0) {
+    document.getElementById('tab-list').innerHTML =
+      `<div class="hint">尚未定义任何列。在 <code>grid()</code> 中调用 <code>$grid->column('name', '标题')</code> 试试。</div>`
+    return
+  }
+
+  const searchable = cols.filter(c => c.searchable).map(c => c.name)
+  const sortable = cols.filter(c => c.sortable).map(c => c.name)
+
+  let html = `<div class="stats">
+    <div class="stat"><div class="n">${cols.length}</div><div class="l">列</div></div>
+    <div class="stat"><div class="n">${grid.perPage}</div><div class="l">每页条数</div></div>
+    <div class="stat"><div class="n">${searchable.length}</div><div class="l">可搜索</div></div>
+    <div class="stat"><div class="n">${sortable.length}</div><div class="l">可排序</div></div>
+  </div>`
+
+  html += `<div class="hint"><strong>${meta.label}</strong> /admin/${meta.uri}`
+  if (searchable.length) html += ` · 搜索框覆盖：${searchable.join(', ')}`
+  html += `</div>`
+
+  html += '<table class="demo-table"><thead><tr>'
+  for (const c of cols) {
+    html += `<th>${c.label}${c.sortable ? '<span class="sort">↕</span>' : ''}</th>`
+  }
+  html += '<th>操作</th></tr></thead><tbody>'
+
+  for (let r = 0; r < 3; r++) {
+    html += '<tr>'
+    for (const c of cols) html += `<td>${renderCell(c)}</td>`
+    html += '<td style="white-space:nowrap"><button style="font-size:11px;padding:3px 8px;border:1px solid var(--border);background:#fff;border-radius:4px;cursor:pointer">编辑</button></td>'
+    html += '</tr>'
+  }
+
+  html += '</tbody></table>'
+  document.getElementById('tab-list').innerHTML = html
+}
+
+function renderForm () {
+  const { form, meta } = result
+  const fields = form.fields
+
+  if (fields.length === 0) {
+    document.getElementById('tab-form').innerHTML =
+      `<div class="hint">尚未定义任何字段。在 <code>form()</code> 中调用 <code>$form->text('name', '名称')</code> 试试。</div>`
+    return
+  }
+
+  let html = `<div class="hint"><strong>${meta.label}</strong> 新增表单 · 校验规则由声明生成</div><div class="demo-form">`
+
+  for (const f of fields) {
+    if (f.type === 'divider') {
+      html += `<div class="divider-title">${f.label}</div>`
+      continue
+    }
+
+    const req = f.required ? '<span class="req">*</span>' : ''
+    html += `<div class="fg"><label>${f.label}${req}</label>`
+
+    if (f.type === 'textarea') {
+      html += `<textarea rows="${f.props.rows || 3}" placeholder="${f.props.placeholder || ''}"></textarea>`
+    } else if (f.type === 'select') {
+      html += '<select>'
+      for (const o of (f.props.options || [])) html += `<option>${o.label}</option>`
+      html += '</select>'
+    } else if (f.type === 'radio') {
+      html += '<div class="radios">'
+      for (const o of (f.props.options || [])) {
+        html += `<label><input type="radio" name="${f.name}">${o.label}</label>`
+      }
+      html += '</div>'
+    } else if (f.type === 'checkbox' || f.type === 'multiselect') {
+      html += '<div class="radios">'
+      for (const o of (f.props.options || [])) {
+        html += `<label><input type="checkbox">${o.label}</label>`
+      }
+      html += '</div>'
+    } else if (f.type === 'switch') {
+      html += `<input type="checkbox" ${f.default === true ? 'checked' : ''}>`
+    } else if (f.type === 'date') {
+      html += '<input type="date">'
+    } else if (f.type === 'datetime') {
+      html += '<input type="text" placeholder="YYYY-MM-DD HH:mm:ss">'
+    } else if (f.type === 'time') {
+      html += '<input type="text" placeholder="HH:mm">'
+    } else if (f.type === 'color') {
+      html += '<input type="color" style="width:60px;height:34px;padding:2px;">'
+    } else if (f.type === 'number' || f.type === 'decimal' || f.type === 'money' || f.type === 'rate' || f.type === 'slider') {
+      const sym = f.type === 'money' ? (f.props.symbol || '¥') : ''
+      html += `<input type="number" value="${f.default ?? ''}" placeholder="${sym}${f.props.placeholder || ''}">`
+    } else {
+      html += `<input type="text" value="${f.default ?? ''}" placeholder="${f.props.placeholder || ''}">`
+    }
+
+    if (f.props.help) html += `<div class="help">${f.props.help}</div>`
+    if (f.rules.length) html += `<div class="help">校验: <code>${f.rules.join(', ')}</code></div>`
+    html += '</div>'
+  }
+
+  html += '</div>'
+  document.getElementById('tab-form').innerHTML = html
+}
+
+// Tab 切换
+tabs.forEach(btn => {
+  btn.onclick = () => {
+    tabs.forEach(b => b.classList.remove('active'))
+    bodies.forEach(b => b.classList.remove('active'))
+    btn.classList.add('active')
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active')
+  }
+})
+
+// 示例切换
+document.querySelectorAll('.samples button').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.samples button').forEach(b => b.classList.remove('active'))
+    btn.classList.add('active')
+    sourceEl.value = SAMPLES[btn.dataset.sample]
+    render()
+  }
+})
+
+// 实时编译
+let timer = null
+sourceEl.addEventListener('input', () => {
+  clearTimeout(timer)
+  timer = setTimeout(render, 300)
+})
+
+sourceEl.value = SAMPLES.basic
+render()
+</script>
+</body>
+</html>

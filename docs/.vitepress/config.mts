@@ -11,6 +11,8 @@ export default defineConfig({
       { text: '指南', link: '/guide/quickstart' },
       { text: 'API 参考', link: '/api/' },
       { text: 'AI 协作', link: '/guide/ai-collaboration' },
+      { text: 'Playground', link: '/playground/' },
+      { text: '实测报告', link: '/blog/ai-first-in-practice' },
     ],
 
     sidebar: {

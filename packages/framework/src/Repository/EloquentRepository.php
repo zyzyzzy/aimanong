@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Repository;
 
+use Aimanong\Contracts\Repository;
 use Aimanong\Contracts\Repository as RepositoryContract;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -30,6 +31,29 @@ class EloquentRepository implements RepositoryContract
     }
 
     /**
+     * 用契约实现包装一个仓库。
+     *
+     * 场景：用户绑定了自定义的 Repository 实现（如 API 数据源），
+     * 但 Controller 的类型声明是 EloquentRepository。
+     * 这里把契约调用代理过去，不改变用户的实现。
+     *
+     * @param  class-string<Model>  $model
+     */
+    public static function fromContract(Repository $inner, string $model): self
+    {
+        $repo = new self($model);
+
+        $repo->inner = $inner;
+
+        return $repo;
+    }
+
+    /**
+     * 用户提供的契约实现（存在时优先使用）。
+     */
+    protected ?Repository $inner = null;
+
+    /**
      * 分页列表。支持搜索、排序、筛选。
      *
      * @param  array<string, mixed>  $params
@@ -38,6 +62,10 @@ class EloquentRepository implements RepositoryContract
      */
     public function paginate(array $params = [], ?int $defaultPerPage = null): LengthAwarePaginator
     {
+        if ($this->inner !== null) {
+            return $this->inner->paginate($params, $defaultPerPage);
+        }
+
         $query = $this->model::query();
 
         // 关联列需要预加载，否则会 N+1
@@ -59,6 +87,10 @@ class EloquentRepository implements RepositoryContract
      */
     public function create(array $data): Model
     {
+        if ($this->inner !== null) {
+            return $this->inner->create($data);
+        }
+
         return $this->model::query()->create($data);
     }
 
@@ -67,6 +99,10 @@ class EloquentRepository implements RepositoryContract
      */
     public function update(int|string $id, array $data): Model
     {
+        if ($this->inner !== null) {
+            return $this->inner->update($id, $data);
+        }
+
         $model = $this->find($id);
         $model->update($data);
 
@@ -75,11 +111,19 @@ class EloquentRepository implements RepositoryContract
 
     public function delete(int|string $id): bool
     {
+        if ($this->inner !== null) {
+            return $this->inner->delete($id);
+        }
+
         return (bool) $this->find($id)->delete();
     }
 
     public function find(int|string $id): Model
     {
+        if ($this->inner !== null) {
+            return $this->inner->find($id);
+        }
+
         $model = $this->model::query()->find($id);
 
         if ($model === null) {
@@ -148,9 +192,26 @@ class EloquentRepository implements RepositoryContract
 
         $query->where(function (Builder $q) use ($columns, $keyword): void {
             foreach ($columns as $column) {
-                if (is_string($column)) {
-                    $q->orWhere($column, 'like', "%{$keyword}%");
+                if (! is_string($column) || $column === '') {
+                    continue;
                 }
+
+                /*
+                 * 关联列（如 product.name）必须走 whereHas ——
+                 * 直接 orWhere('product.name', ...) 会被 SQL 当成列名，
+                 * 报 "no such column"，且会连带拖垮同一查询里的其它条件。
+                 */
+                if (str_contains($column, '.')) {
+                    [$relation, $field] = explode('.', $column, 2);
+
+                    $q->orWhereHas($relation, function (Builder $sub) use ($field, $keyword): void {
+                        $sub->where($field, 'like', "%{$keyword}%");
+                    });
+
+                    continue;
+                }
+
+                $q->orWhere($column, 'like', "%{$keyword}%");
             }
         });
     }

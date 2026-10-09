@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\Http\Controllers;
 
 use Aimanong\Aimanong;
+use Aimanong\Contracts\Repository;
 use Aimanong\Repository\EloquentRepository;
 use Aimanong\Schema\Ast\ResourceNode;
 use Aimanong\Schema\Compiler;
@@ -419,11 +420,35 @@ class ResourceController extends Controller
         return $this->node = (new Compiler)->compile($class);
     }
 
+    /**
+     * 取数据源。
+     *
+     * **优先从容器解析契约** —— 这样用户可以通过
+     * `$this->app->bind(Repository::class, MyRepository::class)`
+     * 替换数据源（文档承诺的能力）。
+     *
+     * 只有在容器没有绑定时才回退到内置实现。
+     * 此前硬编码 new EloquentRepository()，导致 HTTP 路径下
+     * 绑定完全不生效（真实场景验证发现）。
+     */
     protected function repository(ResourceNode $node): EloquentRepository
     {
         /** @var class-string<Model> $modelClass */
         $modelClass = $node->model;
 
+        // 1) 用户绑定了契约 → 用它（实例或类名都支持）
+        if (app()->bound(Repository::class)) {
+            $resolved = app(Repository::class);
+
+            if ($resolved instanceof EloquentRepository) {
+                return $resolved;
+            }
+
+            // 契约的其它实现：包一层适配器保证返回类型兼容
+            return EloquentRepository::fromContract($resolved, $modelClass);
+        }
+
+        // 2) 回退到内置实现
         return new EloquentRepository($modelClass);
     }
 }

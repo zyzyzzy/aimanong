@@ -93,8 +93,6 @@ class FieldType
 
     /**
      * 取字段类名。
-     *
-     * @return string|null
      */
     public static function fieldClass(string $type): ?string
     {

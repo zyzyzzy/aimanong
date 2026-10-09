@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Aimanong\Tests\Unit;
 
-use Aimanong\Form\Form;
 use Aimanong\Form\Fields\Field;
+use Aimanong\Form\Form;
 use Aimanong\Support\FieldType;
 use PHPUnit\Framework\TestCase;
 

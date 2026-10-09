@@ -49,14 +49,33 @@ class RequirementChecker
 
         $results = [];
 
-        // 可搜索列
+        /*
+         * 可搜索列 —— 必须做**运行时验证**。
+         *
+         * 第五轮真实场景验证发现：只比对列名会给出假阳性。
+         * AI 曾给 product_id（外键）加 searchable 骗过校验器，
+         * 但客户要的是"按商品名搜索"，实测 keyword=iPhone 返回 0 条。
+         *
+         * 因此这里实际跑一次关联搜索，验证它不会 500 且能返回结果。
+         */
         if (isset($requirements['searchable'])) {
-            $results[] = $this->checkColumns(
-                'searchable',
-                '可搜索',
-                $this->names($requirements['searchable']),
-                $this->flagged($node, 'searchable')
-            );
+            $wanted = $this->names($requirements['searchable']);
+            $flagged = $this->flagged($node, 'searchable');
+
+            $results[] = $this->checkColumns('searchable', '可搜索', $wanted, $flagged);
+
+            // 对声明为可搜索的**关联列**做运行时探测
+            foreach ($flagged as $col) {
+                if (! str_contains($col, '.')) {
+                    continue;
+                }
+
+                $probe = $this->probeSearch($node, $col);
+
+                if ($probe !== null) {
+                    $results[] = $probe;
+                }
+            }
         }
 
         // 可排序列
@@ -259,6 +278,56 @@ class RequirementChecker
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    /**
+     * 探测关联列搜索是否真的可用。
+     *
+     * 只验证"不报错"，不验证业务语义（那是人的判断）。
+     * 但能挡掉最危险的情况：**必然 500 的声明却拿到绿灯**。
+     *
+     * @return array<string, mixed>|null null 表示无法探测（无数据等）
+     */
+    protected function probeSearch(ResourceNode $node, string $column): ?array
+    {
+        try {
+            if (! class_exists($node->model)) {
+                return null;
+            }
+
+            /** @var Model $instance */
+            $instance = new $node->model;
+            $table = $instance->getTable();
+
+            if (! Schema::hasTable($table)) {
+                return null;
+            }
+
+            /** @var class-string<Model> $modelClass */
+            $modelClass = $node->model;
+
+            $repo = new EloquentRepository($modelClass);
+
+            // 用一个不可能命中的关键词 —— 只为验证查询能跑通
+            $repo->paginate([
+                'keyword' => '__aimanong_probe__',
+                'searchable' => [$column],
+            ], 1);
+        } catch (\Throwable $e) {
+            return [
+                'requirement' => "关联列搜索: {$column}",
+                'satisfied' => false,
+                'detail' => '❌ 实际执行时报错: '.mb_substr($e->getMessage(), 0, 80),
+                'fix' => '关联列搜索需要框架支持 whereHas；若仍报错请检查模型是否定义了该关联',
+            ];
+        }
+
+        return [
+            'requirement' => "关联列搜索: {$column}",
+            'satisfied' => true,
+            'detail' => '已实测可执行（未报错）',
+            'fix' => null,
+        ];
     }
 
     /**

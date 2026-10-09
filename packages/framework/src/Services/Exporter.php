@@ -40,9 +40,24 @@ class Exporter
             );
         }
 
+        /*
+         * 导出必须套用列的展示规则 ——
+         * 否则界面显示「已付款」而导出是 "paid"，与文档承诺
+         * 「导出内容与界面一致」不符。
+         *
+         * 真实场景验证发现：运营拿导出文件汇报时，看到的是英文状态码。
+         */
+        $formatters = [];
+        $columnProps = [];
+
+        foreach ($node->columns as $c) {
+            $formatters[$c->name] = $c->formatter;
+            $columnProps[$c->name] = $c->props;
+        }
+
         $filename ??= $node->uri.'-'.date('Ymd-His').'.csv';
 
-        return response()->streamDownload(function () use ($repository, $params, $exportColumns, $chunkSize): void {
+        return response()->streamDownload(function () use ($repository, $params, $exportColumns, $chunkSize, $formatters, $columnProps): void {
             $out = fopen('php://output', 'w');
 
             if ($out === false) {
@@ -72,7 +87,14 @@ class Exporter
                     $row = [];
 
                     foreach ($exportColumns as $col) {
-                        $row[] = $this->value($item, $col['name']);
+                        $name = $col['name'];
+
+                        $row[] = $this->value(
+                            $item,
+                            $name,
+                            $formatters[$name] ?? null,
+                            $columnProps[$name] ?? []
+                        );
                     }
 
                     fputcsv($out, $row);
@@ -92,18 +114,47 @@ class Exporter
     }
 
     /**
-     * 取一行的某个字段值。
+     * 取一行的某个字段值，并套用列的展示规则。
      *
      * 兼容 Eloquent 模型与数组 —— 数据源可能不是 ORM。
+     *
+     * @param  array<string, mixed>  $props
      */
-    protected function value(mixed $item, string $name): string
+    protected function value(mixed $item, string $name, ?string $formatter = null, array $props = []): string
     {
-        if (is_array($item)) {
-            $v = $item[$name] ?? null;
-        } elseif (is_object($item)) {
-            $v = $item->{$name} ?? null;
-        } else {
-            return '';
+        $v = $this->rawValue($item, $name);
+
+        // 套用展示规则，保证导出与界面一致
+        if ($formatter === 'map' || $formatter === 'enum') {
+            $map = $props['map'] ?? null;
+
+            if ($map instanceof \stdClass) {
+                $map = (array) $map;
+            }
+
+            if (is_array($map)) {
+                $key = is_bool($v) ? ($v ? '1' : '0') : (string) $v;
+
+                return isset($map[$key]) ? (string) $map[$key] : (string) ($v ?? '');
+            }
+        }
+
+        if ($formatter === 'bool') {
+            $on = $v === true || $v === 1 || $v === '1';
+
+            return $on
+                ? (string) ($props['trueLabel'] ?? '是')
+                : (string) ($props['falseLabel'] ?? '否');
+        }
+
+        if ($formatter === 'money') {
+            return ($props['symbol'] ?? '').number_format((float) $v, 2, '.', '');
+        }
+
+        if ($formatter === 'datetime') {
+            if ($v instanceof \DateTimeInterface) {
+                return $v->format('Y-m-d H:i:s');
+            }
         }
 
         if ($v === null) {
@@ -123,5 +174,26 @@ class Exporter
         }
 
         return (string) $v;
+    }
+
+    /**
+     * 取原始值，支持关联路径（如 product.name）。
+     */
+    protected function rawValue(mixed $item, string $name): mixed
+    {
+        $parts = explode('.', $name);
+        $v = $item;
+
+        foreach ($parts as $part) {
+            if (is_array($v)) {
+                $v = $v[$part] ?? null;
+            } elseif (is_object($v)) {
+                $v = $v->{$part} ?? null;
+            } else {
+                return null;
+            }
+        }
+
+        return $v;
     }
 }

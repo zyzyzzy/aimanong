@@ -124,20 +124,35 @@ class Compiler
 
         $ghosts = [];
 
+        /*
+         * 列：严格检查。列名拼错会导致该列在结果中凭空消失，
+         * 这是 AI 拿不到任何反馈的主要场景。
+         */
         foreach ($columns as $c) {
-            // 允许访问器等非物理列：仅当模型声明了该属性时才跳过
-            if (in_array($c->name, $real, true) || $instance->hasAttribute($c->name)
-                || method_exists($instance, 'getAttribute') && $instance->hasGetMutator($c->name)) {
+            if (in_array($c->name, $real, true) || $this->isVirtualAttribute($instance, $c->name)) {
                 continue;
             }
             $ghosts[] = "column:{$c->name}";
         }
 
+        /*
+         * 表单字段：宽松检查。
+         * 表单字段允许是虚拟字段（如 status、enabled 可能由
+         * 访问器/修改器处理，或写入关联表），严格检查会误报。
+         *
+         * 仅在"疑似拼写错误"时才报告 —— 即与某个真实列名
+         * 编辑距离很近但不相等。
+         */
         foreach ($fields as $f) {
-            if (in_array($f->name, $real, true) || $instance->hasAttribute($f->name)) {
+            if (in_array($f->name, $real, true) || $this->isVirtualAttribute($instance, $f->name)) {
                 continue;
             }
-            $ghosts[] = "field:{$f->name}";
+
+            $typo = $this->closestColumn($f->name, $real);
+
+            if ($typo !== null) {
+                $ghosts[] = "field:{$f->name}";
+            }
         }
 
         if ($ghosts === []) {
@@ -153,5 +168,64 @@ class Compiler
             $ghosts,
             $real
         );
+    }
+
+    /**
+     * 是否为虚拟属性（访问器 / 修改器 / 已声明 casts）。
+     *
+     * 注意：不能依赖 hasAttribute() —— 新建模型实例的属性
+     * 数组为空，对任何字段都返回 false。
+     */
+    protected function isVirtualAttribute(mixed $instance, string $name): bool
+    {
+        if (! $instance instanceof \Illuminate\Database\Eloquent\Model) {
+            return false;
+        }
+
+        // 访问器：getXxxAttribute / xxx() 返回 Attribute
+        if (method_exists($instance, 'hasGetMutator') && $instance->hasGetMutator($name)) {
+            return true;
+        }
+
+        // 已声明 casts
+        if (method_exists($instance, 'hasCast') && $instance->hasCast($name)) {
+            return true;
+        }
+
+        // 已定义的同名关系
+        if (method_exists($instance, $name)) {
+            try {
+                $ref = new \ReflectionMethod($instance, $name);
+
+                return $ref->getNumberOfRequiredParameters() === 0;
+            } catch (\Throwable) {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 找出与给定名称编辑距离很近的真实列名（疑似拼写错误）。
+     *
+     * @param  array<int, string>  $available
+     */
+    protected function closestColumn(string $name, array $available): ?string
+    {
+        $best = null;
+        $shortest = -1;
+
+        foreach ($available as $real) {
+            $lev = levenshtein(strtolower($name), strtolower($real));
+
+            if ($lev < $shortest || $shortest < 0) {
+                $best = $real;
+                $shortest = $lev;
+            }
+        }
+
+        // 距离 <= 2 才算疑似拼写错误，避免把虚拟字段误判
+        return ($shortest >= 0 && $shortest <= 2 && $shortest > 0) ? $best : null;
     }
 }

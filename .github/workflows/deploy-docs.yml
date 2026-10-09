@@ -1,0 +1,71 @@
+name: Deploy Docs
+
+# 构建 VitePress 文档站并部署到 GitHub Pages
+#
+# 触发：push 到 main 且 docs/ 有变更，或手动触发
+# 产物：https://zyzyzzy.github.io/aimanong/
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/deploy-docs.yml'
+  workflow_dispatch:
+
+# Pages 部署所需权限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同时只跑一个部署，避免并发冲突
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: 构建文档站
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+
+      - name: 安装依赖
+        working-directory: docs
+        run: npm ci || npm install
+
+      - name: 构建
+        working-directory: docs
+        env:
+          # GitHub Pages 项目站点部署在 /aimanong/ 子路径下，
+          # base 必须匹配否则资源 404
+          DOCS_BASE: /aimanong/
+        run: npm run build
+
+      - name: 配置 Pages
+        uses: actions/configure-pages@v5
+
+      - name: 上传产物
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/.vitepress/dist
+
+  deploy:
+    name: 部署到 Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 部署
+        id: deployment
+        uses: actions/deploy-pages@v4

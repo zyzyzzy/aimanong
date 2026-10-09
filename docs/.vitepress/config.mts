@@ -4,7 +4,9 @@ export default defineConfig({
   title: 'AI 码农',
   description: 'AI-First 后台开发框架 —— 让任何 AI Agent 5 分钟理解、30 分钟产出后台系统',
   lang: 'zh-CN',
-  base: '/',
+  // 部署到 GitHub Pages 项目站点时路径是 /aimanong/，
+  // 本地开发保持 / —— 用环境变量切换，避免两处硬编码不一致。
+  base: process.env.DOCS_BASE || '/',
 
   themeConfig: {
     nav: [

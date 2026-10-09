@@ -212,6 +212,12 @@ class Verifier
         $suspects = [];
 
         foreach ($node->fields as $f) {
+            // 纯展示字段不参与数据校验：
+            // divider（分组标题）/ display 没有对应数据列，hidden 亦同
+            if (in_array($f->type, ['divider', 'display'], true) || $f->hidden) {
+                continue;
+            }
+
             if (in_array($f->name, $real, true)) {
                 continue;
             }

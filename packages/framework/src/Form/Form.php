@@ -4,18 +4,32 @@ declare(strict_types=1);
 
 namespace Aimanong\Form;
 
+use Aimanong\Form\Fields\Checkbox;
+use Aimanong\Form\Fields\Color;
 use Aimanong\Form\Fields\Date;
+use Aimanong\Form\Fields\DateRange;
 use Aimanong\Form\Fields\Datetime;
 use Aimanong\Form\Fields\Decimal;
 use Aimanong\Form\Fields\Display;
+use Aimanong\Form\Fields\Divider;
 use Aimanong\Form\Fields\Email;
 use Aimanong\Form\Fields\Field;
 use Aimanong\Form\Fields\Hidden;
+use Aimanong\Form\Fields\Icon;
+use Aimanong\Form\Fields\Money;
+use Aimanong\Form\Fields\MultiSelect;
 use Aimanong\Form\Fields\Number;
+use Aimanong\Form\Fields\Password;
+use Aimanong\Form\Fields\Radio;
+use Aimanong\Form\Fields\Rate;
 use Aimanong\Form\Fields\Select;
+use Aimanong\Form\Fields\Slider;
 use Aimanong\Form\Fields\SwitchField;
+use Aimanong\Form\Fields\Tags;
+use Aimanong\Form\Fields\Tel;
 use Aimanong\Form\Fields\Text;
 use Aimanong\Form\Fields\Textarea;
+use Aimanong\Form\Fields\Time;
 use Aimanong\Form\Fields\Url;
 use Aimanong\Schema\Ast\FieldNode;
 
@@ -92,6 +106,79 @@ class Form
     public function display(string $name, ?string $label = null): Display
     {
         return $this->add(new Display($name, $label));
+    }
+
+    public function password(string $name, ?string $label = null): Password
+    {
+        return $this->add(new Password($name, $label));
+    }
+
+    public function tel(string $name, ?string $label = null): Tel
+    {
+        return $this->add(new Tel($name, $label));
+    }
+
+    public function money(string $name, ?string $label = null): Money
+    {
+        return $this->add(new Money($name, $label));
+    }
+
+    public function rate(string $name, ?string $label = null): Rate
+    {
+        return $this->add(new Rate($name, $label));
+    }
+
+    public function slider(string $name, ?string $label = null): Slider
+    {
+        return $this->add(new Slider($name, $label));
+    }
+
+    public function multiSelect(string $name, ?string $label = null): MultiSelect
+    {
+        return $this->add(new MultiSelect($name, $label));
+    }
+
+    public function radio(string $name, ?string $label = null): Radio
+    {
+        return $this->add(new Radio($name, $label));
+    }
+
+    public function checkbox(string $name, ?string $label = null): Checkbox
+    {
+        return $this->add(new Checkbox($name, $label));
+    }
+
+    public function time(string $name, ?string $label = null): Time
+    {
+        return $this->add(new Time($name, $label));
+    }
+
+    public function dateRange(string $name, ?string $label = null): DateRange
+    {
+        return $this->add(new DateRange($name, $label));
+    }
+
+    public function color(string $name, ?string $label = null): Color
+    {
+        return $this->add(new Color($name, $label));
+    }
+
+    public function icon(string $name, ?string $label = null): Icon
+    {
+        return $this->add(new Icon($name, $label));
+    }
+
+    public function tags(string $name, ?string $label = null): Tags
+    {
+        return $this->add(new Tags($name, $label));
+    }
+
+    /**
+     * 分隔线 / 分组标题（纯展示，不产生数据）。
+     */
+    public function divider(string $title = ''): Divider
+    {
+        return $this->add(new Divider($title));
     }
 
     /**

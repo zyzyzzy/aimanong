@@ -109,12 +109,23 @@ class Capabilities
     public function columnOptions(): array
     {
         return [
+            // 行为类
             'sortable' => '允许排序',
             'searchable' => '加入快捷搜索',
             'filter' => '加入筛选器',
-            'dateTime' => '格式化为日期时间',
+
+            // 展示器：决定单元格如何渲染
+            'dateTime' => '日期时间格式化，参数: 格式字符串（默认 Y-m-d H:i:s）',
+            'bool' => '布尔→是否标签，参数: (trueLabel, falseLabel)，默认「是/否」',
+            'badge' => '徽章样式（适合状态类字段）',
+            'money' => '金额千分位，参数: 货币符号（默认 ¥）',
+            'image' => '图片缩略图，参数: 高度像素（默认 32）',
+            'link' => '超链接，参数: 显示文本',
+            'progress' => '进度条（适合百分比/完成度）',
             'using' => '枚举值→标签映射，参数: 枚举类名',
             'map' => '值映射，参数: 关联数组',
+
+            // 外观类
             'width' => '列宽，参数: 像素',
             'label' => '列标题，参数: 字符串',
         ];

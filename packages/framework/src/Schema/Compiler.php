@@ -88,6 +88,8 @@ class Compiler
                 'exportColumns' => $grid->exportColumns(),
                 'exportChunkSize' => $grid->getExportChunkSize(),
                 'tree' => $tree?->toArray(),
+                'stepped' => $form->isStepped(),
+                'steps' => $form->toArray()['steps'],
             ],
         );
     }

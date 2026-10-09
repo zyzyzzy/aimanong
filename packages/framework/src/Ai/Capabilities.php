@@ -35,6 +35,8 @@ class Capabilities
             'resources' => $this->resources(),
             'field_types' => $this->fieldTypes(),
             'tree_options' => $this->treeOptions(),
+            'extension' => $this->extensionCapabilities(),
+            'applications' => $this->applicationCapabilities(),
             'column_options' => $this->columnOptions(),
             'form_options' => $this->formOptions(),
             'rules' => $this->availableRules(),
@@ -159,6 +161,43 @@ class Capabilities
     }
 
     /**
+     * 扩展（插件）能力说明。
+     *
+     * @return array<string, string>
+     */
+    public function extensionCapabilities(): array
+    {
+        return [
+            '继承' => 'App 的扩展类需继承 Aimanong\\Extend\\Extension',
+            'name()' => '扩展唯一标识（必需）',
+            'dependencies()' => '依赖的其他扩展名，缺失会被跳过而非崩溃',
+            'register()' => '注册阶段：绑定容器、登记 Resource（此时勿访问数据库）',
+            'boot()' => '启动阶段：注册路由、视图、菜单',
+            'this->resources()' => '登记本扩展提供的 Resource',
+            'this->routes()' => '注册路由（自动带后台前缀与中间件）',
+            '启用方式' => "config/aimanong.php 的 'extensions' 数组",
+            '生成骨架' => 'php artisan aimanong:make-extension {Name}',
+            '查看状态' => 'php artisan aimanong:extensions',
+        ];
+    }
+
+    /**
+     * 多应用能力说明。
+     *
+     * @return array<string, string>
+     */
+    public function applicationCapabilities(): array
+    {
+        return [
+            '配置' => "config/aimanong.php 的 'applications' 数组",
+            '隔离维度' => '每个应用有独立的路由前缀、auth guard、用户模型',
+            '当前应用' => 'Aimanong::application()->current()',
+            '切换' => "Aimanong::application()->switch('merchant')",
+            '实现' => '用 Laravel 12 的 Context 做请求级隔离（并发安全）',
+        ];
+    }
+
+    /**
      * 表单可用选项。
      *
      * @return array<string, string>
@@ -178,6 +217,7 @@ class Capabilities
             'help' => '帮助文本，参数: string',
             'options' => '下拉选项，参数: array 或 Enum::cases()',
             'rows' => '文本域行数，参数: int',
+            'step' => '声明分步表单的步骤，参数: 字符串（步骤标题）。后续字段归属该步骤',
         ];
     }
 

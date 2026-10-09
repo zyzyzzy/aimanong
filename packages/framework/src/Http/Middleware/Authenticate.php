@@ -17,9 +17,14 @@ class Authenticate
      * 注意：Laravel 11+ 起 AuthenticationException::redirectTo()
      * 必须接收 Request 实例，此处不依赖该行为，直接手工跳转。
      */
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next, ?string $guard = null): Response
     {
-        if (Aimanong::guard()->user() !== null || $this->shouldPassThrough($request)) {
+        // 多应用：支持 admin.auth:merchant 这样指定 guard
+        $guard ??= Aimanong::application()->guard();
+
+        $resolved = auth()->guard($guard);
+
+        if ($resolved->user() !== null || $this->shouldPassThrough($request)) {
             return $next($request);
         }
 

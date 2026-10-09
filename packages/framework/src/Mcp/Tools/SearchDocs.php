@@ -48,6 +48,12 @@ class SearchDocs extends Tool
             '列选项' => $this->columnOptions(),
             '表单选项' => $this->formOptions(),
             '树形结构' => $this->treeOptions(),
+            '分步表单' => [
+                '声明方式：$form->step(\'步骤标题\'); 后续字段自动归属该步骤',
+                '例：$form->step(\'基本信息\'); $form->text(\'name\'); $form->step(\'联系方式\'); $form->email(\'email\');',
+                '字段归属由声明顺序决定 —— 扁平、无嵌套闭包（框架铁律）',
+            ],
+            '扩展与多应用' => $this->extensionAndApplicationOptions(),
             '工作流' => [
                 '1. list_resources 了解项目',
                 '2. describe_resource 看字段',
@@ -122,6 +128,28 @@ class SearchDocs extends Tool
 
         foreach ((new Capabilities)->treeOptions() as $name => $desc) {
             $out[] = "tree()->{$name}() {$desc}";
+        }
+
+        return $out;
+    }
+
+    /**
+     * 扩展与多应用选项 —— 从 Capabilities 取数。
+     *
+     * @return array<int, string>
+     */
+    protected function extensionAndApplicationOptions(): array
+    {
+        $caps = new Capabilities;
+
+        $out = ['【扩展（插件）】'];
+        foreach ($caps->extensionCapabilities() as $k => $v) {
+            $out[] = "{$k}: {$v}";
+        }
+
+        $out[] = '【多应用】';
+        foreach ($caps->applicationCapabilities() as $k => $v) {
+            $out[] = "{$k}: {$v}";
         }
 
         return $out;

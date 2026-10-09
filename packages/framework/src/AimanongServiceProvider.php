@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Aimanong;
 
+use Aimanong\Application\ApplicationManager;
 use Aimanong\Auth\AdminGuard;
 use Aimanong\Auth\AdminUserProvider;
 use Aimanong\Console\InstallCommand;
+use Aimanong\Extend\ExtensionManager;
 use Aimanong\Support\Asset;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -43,7 +45,16 @@ class AimanongServiceProvider extends ServiceProvider
 
     public function register(): void
     {
+        /*
+         * mergeConfigFrom 会做「包内默认值 + 用户已发布配置」的浅合并。
+         * 这样即使用户的 config/aimanong.php 是旧版本、缺少新增的键
+         * （如 applications / extensions），也能拿到默认值 ——
+         * 否则新功能会静默失效。
+         */
         $this->mergeConfigFrom(__DIR__.'/../config/aimanong.php', 'aimanong');
+
+        // 浅合并无法覆盖嵌套键，这里补齐新增的顶层键
+        $this->fillMissingConfigKeys();
 
         $this->registerServices();
         $this->registerAuthGuard();
@@ -61,11 +72,41 @@ class AimanongServiceProvider extends ServiceProvider
     }
 
     /**
+     * 补齐用户已发布配置中缺失的新增键。
+     *
+     * mergeConfigFrom 只做浅合并：用户配置里若存在 'route' 键，
+     * 包内 'route' 的新子键不会被补上。这里对已知的新增顶层键做兜底。
+     */
+    protected function fillMissingConfigKeys(): void
+    {
+        /** @var array<string, mixed> $defaults */
+        $defaults = require __DIR__.'/../config/aimanong.php';
+
+        /** @var array<string, mixed> $current */
+        $current = config('aimanong', []);
+
+        $changed = false;
+
+        foreach ($defaults as $key => $value) {
+            if (! array_key_exists($key, $current)) {
+                $current[$key] = $value;
+                $changed = true;
+            }
+        }
+
+        if ($changed) {
+            config(['aimanong' => $current]);
+        }
+    }
+
+    /**
      * 容器单例绑定。
      */
     protected function registerServices(): void
     {
         $this->app->singleton('aimanong.asset', Asset::class);
+        $this->app->singleton('aimanong.extensions', fn (): ExtensionManager => new ExtensionManager);
+        $this->app->singleton('aimanong.application', fn (): ApplicationManager => new ApplicationManager);
         $this->app->singleton(Registry::class, fn (): Registry => new Registry);
     }
 
@@ -163,13 +204,56 @@ class AimanongServiceProvider extends ServiceProvider
             return;
         }
 
-        Route::middleware('admin')
-            ->prefix($this->routePrefix())
-            ->name('aimanong.')
-            ->group(__DIR__.'/../routes/admin.php');
+        /** @var ApplicationManager $apps */
+        $apps = $this->app->make('aimanong.application');
 
+        if ($apps->enabled()) {
+            // 多应用：为每个应用挂载独立的路由前缀与 guard
+            foreach ($apps->names() as $name) {
+                $this->registerApplicationGuard($name, $apps);
+                $this->registerApplicationRoutes($name, $apps);
+            }
+        } else {
+            // 单后台（默认行为不变）
+            Route::middleware('admin')
+                ->prefix($this->routePrefix())
+                ->name('aimanong.')
+                ->group(__DIR__.'/../routes/admin.php');
+        }
+
+        $this->bootExtensions();
         $this->bootAiRoutes();
         $this->bootMcpServer();
+    }
+
+    /**
+     * 加载并启动扩展。
+     *
+     * 扩展从 config('aimanong.extensions') 读取类名列表。
+     * 单个扩展失败会被隔离，不影响框架本身。
+     */
+    protected function bootExtensions(): void
+    {
+        /** @var ExtensionManager $manager */
+        $manager = $this->app->make('aimanong.extensions');
+
+        /*
+         * 兼容已发布过旧配置的项目：
+         * 用户 config/aimanong.php 可能是旧版本，没有 extensions 键。
+         * 此时回退到包内默认配置，而不是静默失效。
+         */
+        $classes = config('aimanong.extensions');
+
+        if (! is_array($classes) || $classes === []) {
+            $default = require __DIR__.'/../config/aimanong.php';
+            $classes = $default['extensions'] ?? [];
+        }
+
+        if (is_array($classes) && $classes !== []) {
+            $manager->addMany($classes);
+            $manager->register();
+            $manager->boot();
+        }
     }
 
     /**
@@ -216,6 +300,82 @@ class AimanongServiceProvider extends ServiceProvider
             : (bool) $enabled;
     }
 
+    /**
+     * 为单个应用注册 auth guard。
+     *
+     * 每个应用可以有自己的用户模型 —— 商家与运营看到的是不同的人。
+     */
+    protected function registerApplicationGuard(string $name, ApplicationManager $apps): void
+    {
+        $config = $apps->config($name) ?? [];
+        $guard = $apps->guard($name);
+        $auth = $config['auth'] ?? [];
+
+        $model = is_string($auth['model'] ?? null) ? $auth['model'] : Models\Administrator::class;
+        $provider = 'aimanong_'.$name;
+
+        // 已注册则跳过（避免重复 define）
+        $existing = config('auth.guards.'.$guard);
+
+        if (is_array($existing)) {
+            return;
+        }
+
+        $authConfig = config('auth', []);
+        $authConfig['guards'][$guard] = ['driver' => $guard, 'provider' => $provider];
+        $authConfig['providers'][$provider] = ['driver' => 'aimanong-eloquent', 'model' => $model];
+
+        config(['auth' => $authConfig]);
+
+        Auth::extend($guard, function ($app, string $n, array $c) {
+            $userProvider = Auth::createUserProvider($c['provider'] ?? null);
+
+            if ($userProvider === null) {
+                throw new \RuntimeException("Aimanong: 无法为 guard [{$n}] 创建 user provider");
+            }
+
+            return new AdminGuard($n, $userProvider, $app['session.store'], $app['request']);
+        });
+    }
+
+    /**
+     * 为单个应用注册路由。
+     *
+     * 每个应用有独立的前缀与 guard —— 请求进入时切换当前应用，
+     * 使认证与配置指向正确的用户体系。
+     */
+    protected function registerApplicationRoutes(string $name, ApplicationManager $apps): void
+    {
+        $prefix = $apps->prefix($name);
+        $guard = $apps->guard($name);
+        $title = $apps->config($name)['title'] ?? $name;
+
+        // 该应用专属的中间件组，认证走它自己的 guard
+        $group = 'admin.'.$name;
+
+        $this->app->make('router')->middlewareGroup($group, [
+            'web',
+            'admin.session',
+            'admin.bootstrap',
+            'admin.auth:'.$guard,
+        ]);
+
+        Route::middleware($group)
+            ->prefix($prefix)
+            ->name('aimanong.'.$name.'.')
+            ->group(function () use ($name, $apps, $title): void {
+                // 进入该应用路由时切换上下文
+                $apps->switch($name);
+
+                Route::get('__app', fn (): array => [
+                    'application' => $name,
+                    'title' => $title,
+                ])->name('info');
+
+                require __DIR__.'/../routes/admin.php';
+            });
+    }
+
     protected function routePrefix(): string
     {
         $prefix = config('aimanong.route.prefix');
@@ -231,6 +391,8 @@ class AimanongServiceProvider extends ServiceProvider
                 Console\SchemaCommand::class,
                 Console\VerifyCommand::class,
                 Console\DocsCommand::class,
+                Console\MakeExtensionCommand::class,
+                Console\ExtensionsCommand::class,
             ]);
         }
     }

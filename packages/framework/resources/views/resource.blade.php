@@ -76,6 +76,18 @@
         .progress-bar i { display: block; height: 100%; background: #3FBF6F; }
         .progress-num { font-size: 12px; color: #6b746f; }
         .empty { padding: 40px; text-align: center; color: #a5aea9; font-size: 13px; }
+        /* 分步表单 */
+        .steps-bar { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid #eef2f0; padding-bottom: 14px; }
+        .step-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #a5aea9; flex: 1; }
+        .step-item.active { color: #3FBF6F; font-weight: 600; }
+        .step-item.done { color: #6b746f; cursor: pointer; }
+        .step-dot {
+            width: 20px; height: 20px; border-radius: 50%; background: #eef2f0;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 11px; flex-shrink: 0;
+        }
+        .step-item.active .step-dot { background: #3FBF6F; color: #fff; }
+        .step-item.done .step-dot { background: #d6ede0; color: #2e7d4f; }
         .loading { padding: 40px; text-align: center; color: #8a948f; font-size: 13px; }
     </style>
 </head>
@@ -91,7 +103,7 @@
             <input v-model="keyword" @keyup.enter="load(1)" placeholder="搜索…" v-if="hasSearch">
             <button class="btn" @click="load(currentPage)">刷新</button>
             <button class="btn" v-if="exportable" @click="doExport">导出</button>
-            <button class="btn btn-primary" @click="showCreate = true">新增</button>
+            <button class="btn btn-primary" @click="showCreate = true; currentStep = 0;">新增</button>
         </div>
 
         <div class="card">
@@ -187,7 +199,19 @@
     <div v-if="showCreate" style="position:fixed;inset:0;background:rgba(16,27,22,.4);display:flex;align-items:center;justify-content:center;" @click.self="showCreate = false">
         <div style="background:#fff;border-radius:10px;padding:24px;width:420px;max-height:80vh;overflow:auto;">
             <h3 style="margin-bottom:16px;font-size:15px;">@{{ editing ? '编辑' : '新增' }}</h3>
-            <div v-for="f in formFields" :key="f.name" style="margin-bottom:14px;">
+
+            <!-- 分步表单：步骤指示器 -->
+            <div v-if="isStepped" class="steps-bar">
+                <div v-for="(st, i) in steps" :key="i"
+                     class="step-item"
+                     :class="{ active: i === currentStep, done: i < currentStep }"
+                     @click="i <= currentStep && (currentStep = i)">
+                    <span class="step-dot">@{{ i < currentStep ? '✓' : (i + 1) }}</span>
+                    <span class="step-name">@{{ st.title }}</span>
+                </div>
+            </div>
+
+            <div v-for="f in visibleFields" :key="f.name" style="margin-bottom:14px;">
                 <label style="display:block;font-size:13px;color:#4a544e;margin-bottom:6px;">
                     @{{ f.label }}<span v-if="f.required" style="color:#c0392b;">*</span>
                 </label>
@@ -245,7 +269,9 @@
             </div>
             <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">
                 <button class="btn" @click="showCreate = false">取消</button>
-                <button class="btn btn-primary" @click="save">保存</button>
+                <button v-if="isStepped && currentStep > 0" class="btn" @click="currentStep--">上一步</button>
+                <button v-if="isStepped && currentStep < steps.length - 1" class="btn btn-primary" @click="currentStep++">下一步</button>
+                <button v-if="!isStepped || currentStep === steps.length - 1" class="btn btn-primary" @click="save">保存</button>
             </div>
         </div>
     </div>
@@ -278,6 +304,18 @@ createApp({
         const hasSearch = computed(() => columns.value.some(c => c.searchable));
         const exportable = computed(() => schema.grid?.exportable === true);
         const treeTitleColumn = computed(() => treeConfig?.titleColumn || 'name');
+
+        // 分步表单
+        const isStepped = computed(() => schema.form?.stepped === true);
+        const steps = computed(() => schema.form?.steps ?? []);
+        const currentStep = ref(0);
+
+        /** 当前步骤应显示的字段（非分步时显示全部） */
+        const visibleFields = computed(() => {
+            if (!isStepped.value || steps.value.length === 0) return formFields.value;
+            const st = steps.value[currentStep.value];
+            return st ? st.fields.filter(f => !f.hidden) : formFields.value;
+        });
 
         const csrf = document.querySelector('meta[name="csrf-token"]').content;
         const base = `/admin/api/${uri}`;
@@ -407,6 +445,7 @@ createApp({
 
         function edit(row) {
             editing.value = true;
+            currentStep.value = 0;
             form.value = { ...row };
             showCreate.value = true;
         }
@@ -458,6 +497,7 @@ createApp({
             columns, formFields, hasSearch,
             load, toggleSort, formatDate, edit, save, remove,
             exportable, doExport, isTree, treeTitleColumn, loadTree,
+            isStepped, steps, currentStep, visibleFields,
             inputType, mapLabel, tagClass, formatMoney,
         };
     },

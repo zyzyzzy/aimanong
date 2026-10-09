@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Form;
 
+use Aimanong\Form\Concerns\HasSteps;
 use Aimanong\Form\Fields\Checkbox;
 use Aimanong\Form\Fields\Color;
 use Aimanong\Form\Fields\Date;
@@ -43,6 +44,8 @@ use Aimanong\Schema\Ast\FieldNode;
  */
 class Form
 {
+    use HasSteps;
+
     /**
      * @var array<string, Field>
      */
@@ -191,6 +194,9 @@ class Form
     {
         $this->fields[$field->getName()] = $field;
 
+        // 分步模式下，字段归属声明时所在的步骤
+        $this->registerToCurrentStep($field);
+
         return $field;
     }
 
@@ -238,9 +244,13 @@ class Form
      */
     public function toArray(): array
     {
+        $fields = array_map(fn (FieldNode $n): array => $n->toArray(), $this->toNodes());
+
         return [
-            'fields' => array_map(fn (FieldNode $n): array => $n->toArray(), $this->toNodes()),
+            'fields' => $fields,
             'rules' => $this->validationRules(),
+            'stepped' => $this->stepped,
+            'steps' => $this->stepsWithFields($fields),
         ];
     }
 }

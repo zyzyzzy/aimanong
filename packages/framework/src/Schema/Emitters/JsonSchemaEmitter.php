@@ -55,12 +55,40 @@ class JsonSchemaEmitter
      */
     protected function form(ResourceNode $node): array
     {
+        $fields = array_map(
+            fn (FieldNode $f): array => $this->field($f),
+            $node->fields
+        );
+
+        $steps = [];
+
+        // 分步表单：把字段按步骤切分（字段定义已在编译期绑定到步骤）
+        if (($node->meta['stepped'] ?? false) && ! empty($node->meta['steps'])) {
+            $byName = [];
+            foreach ($fields as $f) {
+                $byName[$f['name']] = $f;
+            }
+
+            foreach ($node->meta['steps'] as $step) {
+                $stepFields = [];
+
+                foreach ($step['fields'] ?? [] as $sf) {
+                    $name = is_array($sf) ? ($sf['name'] ?? null) : null;
+
+                    if ($name !== null && isset($byName[$name])) {
+                        $stepFields[] = $byName[$name];
+                    }
+                }
+
+                $steps[] = ['title' => $step['title'] ?? '', 'fields' => $stepFields];
+            }
+        }
+
         return [
-            'fields' => array_map(
-                fn (FieldNode $f): array => $this->field($f),
-                $node->fields
-            ),
+            'fields' => $fields,
             'rules' => $node->meta['rules'] ?? [],
+            'stepped' => $node->meta['stepped'] ?? false,
+            'steps' => $steps,
         ];
     }
 

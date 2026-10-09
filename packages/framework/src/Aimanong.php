@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Aimanong;
 
+use Aimanong\Application\ApplicationManager;
 use Aimanong\Auth\AdminGuard;
+use Aimanong\Extend\ExtensionManager;
 use Aimanong\Support\Asset;
 use Illuminate\Contracts\Auth\Authenticatable;
 
@@ -56,6 +58,28 @@ class Aimanong
         $asset = app('aimanong.asset');
 
         return $asset;
+    }
+
+    /**
+     * 多应用管理器。
+     */
+    public static function application(): ApplicationManager
+    {
+        /** @var ApplicationManager $m */
+        $m = app('aimanong.application');
+
+        return $m;
+    }
+
+    /**
+     * 扩展管理器。
+     */
+    public static function extensions(): ExtensionManager
+    {
+        /** @var ExtensionManager $m */
+        $m = app('aimanong.extensions');
+
+        return $m;
     }
 
     /**

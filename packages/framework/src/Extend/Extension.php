@@ -6,6 +6,7 @@ namespace Aimanong\Extend;
 
 use Aimanong\Aimanong;
 use Aimanong\Contracts\Resource;
+use Aimanong\Support\FieldType;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -99,6 +100,66 @@ abstract class Extension
             ->prefix($prefix.'/extensions/'.$this->name())
             ->name('aimanong.ext.'.$this->name().'.')
             ->group($callback);
+    }
+
+    /**
+     * 注册自定义字段类型。
+     *
+     * 供插件注入字段能力，无需修改框架核心。
+     *
+     * 注意：字段类的 `$type` 属性值必须与这里注册的类型名一致。
+     *
+     * @param  class-string  $fieldClass  字段类（继承 Aimanong\Form\Fields\Field）
+     * @param  string|null  $type  类型名，省略时由字段类推导
+     * @param  string  $jsonType  JSON Schema 类型
+     * @param  string  $phpType  PHP 类型（用于 TS 生成）
+     */
+    protected function field(
+        string $fieldClass,
+        ?string $type = null,
+        string $jsonType = 'string',
+        string $phpType = 'string',
+    ): void {
+        $type ??= $this->deriveTypeFrom($fieldClass);
+
+        if ($type === null || $type === '') {
+            throw new \InvalidArgumentException(
+                "无法从 {$fieldClass} 推导字段类型名，请显式传入 \$type"
+            );
+        }
+
+        FieldType::register($type, $jsonType, $phpType, $fieldClass);
+    }
+
+    /**
+     * 从字段类的 $type 属性推导类型名。
+     *
+     * @param  class-string  $fieldClass
+     */
+    protected function deriveTypeFrom(string $fieldClass): ?string
+    {
+        if (! class_exists($fieldClass)) {
+            return null;
+        }
+
+        try {
+            $ref = new \ReflectionClass($fieldClass);
+
+            if (! $ref->hasProperty('type')) {
+                return null;
+            }
+
+            $prop = $ref->getProperty('type');
+            $prop->setAccessible(true);
+
+            // 无法在不实例化的情况下读实例属性 —— 用默认值读取
+            $defaults = $ref->getDefaultProperties();
+            $value = $defaults['type'] ?? null;
+
+            return is_string($value) && $value !== '' ? $value : null;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**

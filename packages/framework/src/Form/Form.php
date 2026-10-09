@@ -33,6 +33,7 @@ use Aimanong\Form\Fields\Textarea;
 use Aimanong\Form\Fields\Time;
 use Aimanong\Form\Fields\Url;
 use Aimanong\Schema\Ast\FieldNode;
+use Aimanong\Support\FieldType;
 
 /**
  * 表单定义。
@@ -182,6 +183,37 @@ class Form
     public function divider(string $title = ''): Divider
     {
         return $this->add(new Divider($title));
+    }
+
+    /**
+     * 处理插件注入的字段方法。
+     *
+     * 设计约束：框架铁律是「零隐式魔法」。
+     * 因此这里的 __call **不是**任意魔法的入口 ——
+     * 只有**已注册的字段类型**才能被调用，未注册的一律抛异常，
+     * 并且错误信息里给出可用类型列表（AI 可自愈）。
+     *
+     * @param  array<int, mixed>  $arguments
+     */
+    public function __call(string $method, array $arguments): Field
+    {
+        // 插件注册的字段类型（如 region → RegionField）
+        $class = FieldType::fieldClass($method);
+
+        if ($class === null) {
+            $available = implode(', ', FieldType::all());
+
+            throw new \BadMethodCallException(
+                "Form 上不存在方法 {$method}()。\n"
+                ."可用字段类型: {$available}\n"
+                .'提示：插件提供的字段需先在扩展中注册（Extension::field()）。'
+            );
+        }
+
+        /** @var Field $field */
+        $field = new $class(...$arguments);
+
+        return $this->add($field);
     }
 
     /**

@@ -56,18 +56,72 @@ class FieldType
     ];
 
     /**
-     * 全部可用类型名。
+     * 运行期注册的字段类型（供插件注入）。
+     *
+     * @var array<string, array{json: string, php: string}>
+     */
+    protected static array $registered = [];
+
+    /**
+     * 已注册的字段类（供 Form 动态创建实例）。
+     *
+     * @var array<string, string>
+     */
+    protected static array $fieldClasses = [];
+
+    /**
+     * 注册一个字段类型。
+     *
+     * 供插件注入自定义字段 —— 无需修改框架核心。
+     *
+     * @param  string  $name  类型名（如 region）
+     * @param  string  $jsonType  对应的 JSON Schema 类型
+     * @param  string  $phpType  对应的 PHP 类型（用于 TS 生成）
+     */
+    public static function register(
+        string $name,
+        string $jsonType = 'string',
+        string $phpType = 'string',
+        ?string $fieldClass = null,
+    ): void {
+        self::$registered[$name] = ['json' => $jsonType, 'php' => $phpType];
+
+        if ($fieldClass !== null) {
+            self::$fieldClasses[$name] = $fieldClass;
+        }
+    }
+
+    /**
+     * 取字段类名。
+     *
+     * @return string|null
+     */
+    public static function fieldClass(string $type): ?string
+    {
+        return self::$fieldClasses[$type] ?? null;
+    }
+
+    /**
+     * 是否由插件注册（用于区分内置与扩展类型）。
+     */
+    public static function isRegistered(string $type): bool
+    {
+        return isset(self::$registered[$type]);
+    }
+
+    /**
+     * 全部可用类型名（内置 + 插件注册）。
      *
      * @return array<int, string>
      */
     public static function all(): array
     {
-        return array_keys(self::TYPES);
+        return array_merge(array_keys(self::TYPES), array_keys(self::$registered));
     }
 
     public static function exists(string $type): bool
     {
-        return isset(self::TYPES[$type]);
+        return isset(self::TYPES[$type]) || isset(self::$registered[$type]);
     }
 
     /**
@@ -75,7 +129,9 @@ class FieldType
      */
     public static function toJsonType(string $type): string
     {
-        return self::TYPES[$type]['json'] ?? 'string';
+        return self::TYPES[$type]['json']
+            ?? self::$registered[$type]['json']
+            ?? 'string';
     }
 
     /**
@@ -83,7 +139,9 @@ class FieldType
      */
     public static function toPhpType(string $type): string
     {
-        return self::TYPES[$type]['php'] ?? 'string';
+        return self::TYPES[$type]['php']
+            ?? self::$registered[$type]['php']
+            ?? 'string';
     }
 
     /**

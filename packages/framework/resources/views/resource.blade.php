@@ -107,7 +107,7 @@
             <input v-model="keyword" @keyup.enter="load(1)" placeholder="搜索…" v-if="hasSearch">
             <button class="btn" @click="load(currentPage)">刷新</button>
             <button class="btn" v-if="exportable" @click="doExport">导出</button>
-            <button class="btn btn-primary" @click="showCreate = true; currentStep = 0;">新增</button>
+            <button class="btn btn-primary" @click="openCreate">新增</button>
         </div>
 
         <div class="card">
@@ -246,6 +246,26 @@
 
                 <!-- 开关 -->
                 <input v-else-if="f.type === 'switch'" type="checkbox" v-model="form[f.name]">
+
+                <!-- 省市区联动（由 aimanong/region 插件提供） -->
+                <div v-else-if="f.type === 'region'" style="display:flex;gap:8px;">
+                    <select v-model="ensureRegion(f.name).province" @change="onProvinceChange(f.name)"
+                            style="flex:1;padding:9px 12px;border:1px solid #dde3e0;border-radius:6px;font-size:13px;">
+                        <option value="">请选择省</option>
+                        <option v-for="p in (f.props.data || []).length ? f.props.data : regionProvinces"
+                                :key="p.code" :value="p.code">@{{ p.name }}</option>
+                    </select>
+                    <select v-model="ensureRegion(f.name).city" @change="onCityChange(f.name)"
+                            style="flex:1;padding:9px 12px;border:1px solid #dde3e0;border-radius:6px;font-size:13px;">
+                        <option value="">请选择市</option>
+                        <option v-for="c in ensureRegion(f.name).cities" :key="c.code" :value="c.code">@{{ c.name }}</option>
+                    </select>
+                    <select v-if="(f.props.level || 3) === 3" v-model="ensureRegion(f.name).district"
+                            style="flex:1;padding:9px 12px;border:1px solid #dde3e0;border-radius:6px;font-size:13px;">
+                        <option value="">请选择区</option>
+                        <option v-for="d in ensureRegion(f.name).districts" :key="d.code" :value="d.code">@{{ d.name }}</option>
+                    </select>
+                </div>
 
                 <!-- 多行文本 -->
                 <textarea v-else-if="f.type === 'textarea'" v-model="form[f.name]"
@@ -426,6 +446,49 @@ createApp({
             return v ?? '';
         }
 
+        // 省市区插件状态
+        const regionProvinces = @json(\Aimanong\Region\Region::provinces());
+        const regionTree = @json(\Aimanong\Region\Region::tree());
+        const regionForm = ref({});
+
+        /** 确保字段状态存在 */
+        function ensureRegion(name) {
+            if (!regionForm.value[name]) {
+                regionForm.value[name] = { province: '', city: '', district: '', cities: [], districts: [] };
+            }
+            return regionForm.value[name];
+        }
+
+        function onProvinceChange(name) {
+            const st = ensureRegion(name);
+            st.city = '';
+            st.district = '';
+            st.districts = [];
+            const p = (regionTree || []).find(x => x.code === st.province);
+            st.cities = p ? (p.children || []) : [];
+            syncRegionValue(name);
+        }
+
+        function onCityChange(name) {
+            const st = ensureRegion(name);
+            st.district = '';
+            const p = (regionTree || []).find(x => x.code === st.province);
+            const c = p ? (p.children || []).find(x => x.code === st.city) : null;
+            st.districts = c ? (c.children || []) : [];
+            syncRegionValue(name);
+        }
+
+        /** 把三级选择拼成路径写入表单值 */
+        function syncRegionValue(name) {
+            const st = ensureRegion(name);
+            const p = (regionTree || []).find(x => x.code === st.province);
+            const c = p ? (p.children || []).find(x => x.code === st.city) : null;
+            const d = c ? (c.children || []).find(x => x.code === st.district) : null;
+
+            const parts = [p?.name, c?.name, d?.name].filter(Boolean);
+            form.value[name] = parts.join('/');
+        }
+
         /** 条件高亮的 CSS 类 */
         function cellClass(col, row) {
             const hl = col.props?.highlight;
@@ -484,9 +547,27 @@ createApp({
             return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         }
 
+        /** 打开新增弹窗（含插件字段初始化） */
+        function openCreate() {
+            editing.value = false;
+            currentStep.value = 0;
+            form.value = {};
+
+            // 插件字段需要预置状态，否则模板取值会报 undefined
+            for (const f of (schema.form?.fields ?? [])) {
+                if (f.type === 'region') ensureRegion(f.name);
+            }
+
+            showCreate.value = true;
+        }
+
         function edit(row) {
             editing.value = true;
             currentStep.value = 0;
+            // 初始化插件字段状态
+            for (const f of (schema.form?.fields ?? [])) {
+                if (f.type === 'region') ensureRegion(f.name);
+            }
             form.value = { ...row };
             showCreate.value = true;
         }
@@ -540,6 +621,7 @@ createApp({
             exportable, doExport, isTree, treeTitleColumn, loadTree,
             isStepped, steps, currentStep, visibleFields,
             inputType, mapLabel, tagClass, formatMoney, cellValue, cellClass,
+            regionProvinces, regionTree, regionForm, onProvinceChange, onCityChange, ensureRegion, openCreate,
         };
     },
 }).mount('#app');

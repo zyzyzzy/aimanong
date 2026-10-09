@@ -46,6 +46,10 @@ class ResourceController extends Controller
             $perPage = $node->meta['perPage'] ?? 20;
         }
 
+        // 未知查询参数警告：AI 常猜错参数名（如用 order 代替 direction），
+        // 原先静默忽略、返回未排序结果 —— 比报错更危险。
+        $unknown = $this->unknownQueryParams($request);
+
         $params = [
             'keyword' => $request->query('keyword'),
             'sort' => $request->query('sort'),
@@ -60,7 +64,7 @@ class ResourceController extends Controller
             (int) ($node->meta['perPage'] ?? 20)
         );
 
-        return response()->json([
+        $response = [
             'data' => $paginator->items(),
             'meta' => [
                 'total' => $paginator->total(),
@@ -68,7 +72,33 @@ class ResourceController extends Controller
                 'currentPage' => $paginator->currentPage(),
                 'lastPage' => $paginator->lastPage(),
             ],
-        ]);
+        ];
+
+        if ($unknown !== []) {
+            $response['warnings'] = [[
+                'code' => 'UNKNOWN_QUERY_PARAM',
+                'message' => '忽略了未知查询参数: '.implode(', ', $unknown),
+                'supported' => ['keyword', 'sort', 'direction', 'per_page', 'filters', 'page'],
+                'hint' => '排序方向参数是 direction（不是 order / sort_order）',
+            ]];
+        }
+
+        return response()->json($response);
+    }
+
+    /**
+     * 找出不支持的查询参数。
+     *
+     * 背景：AI 常猜错参数名（如用 order= 代替 direction=），
+     * 原先静默忽略并返回未排序结果 —— AI 会以为排序生效了。
+     *
+     * @return array<int, string>
+     */
+    protected function unknownQueryParams(Request $request): array
+    {
+        $supported = ['keyword', 'search', 'sort', 'direction', 'per_page', 'filters', 'page'];
+
+        return array_values(array_diff(array_keys($request->query()), $supported));
     }
 
     /**

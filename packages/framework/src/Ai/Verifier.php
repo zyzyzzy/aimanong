@@ -103,6 +103,17 @@ class Verifier
             ];
         }
 
+        // 幽灵字段警告（不阻断）：表单字段若既非真实列、也非虚拟属性，
+        // 会静默写进四份产物。可能是合法虚拟字段，也可能是漏改的字段。
+        foreach ($this->suspectFields($class) as $name) {
+            $issues[] = [
+                'code' => 'SUSPECT_FIELD',
+                'message' => "表单字段 '{$name}' 既不是数据库列，也未定义为模型属性/关系",
+                'hint' => '若这是有意的虚拟字段，可忽略；否则请检查是否拼写错误或漏建字段',
+                'example' => "// 确认无误则忽略；否则改为真实列名",
+            ];
+        }
+
         return $this->result($class, $issues === [], $issues);
     }
 
@@ -161,5 +172,60 @@ class Verifier
         }
 
         return $best;
+    }
+
+    /**
+     * 找出"既非真实列、也非虚拟属性"的表单字段。
+     *
+     * 这类字段会静默写进 schema.json / types.ts / ai-context.md，
+     * 可能是合法的虚拟字段，也可能是漏改的字段 —— 因此仅警告不阻断。
+     *
+     * @return array<int, string>
+     */
+    protected function suspectFields(string $class): array
+    {
+        try {
+            $model = $class::model();
+
+            if (! class_exists($model)) {
+                return [];
+            }
+
+            /** @var \Illuminate\Database\Eloquent\Model $instance */
+            $instance = new $model();
+            $table = $instance->getTable();
+
+            if (! \Illuminate\Support\Facades\Schema::hasTable($table)) {
+                return [];
+            }
+
+            $real = \Illuminate\Support\Facades\Schema::getColumnListing($table);
+            $node = (new Compiler())->compile($class);
+        } catch (\Throwable) {
+            return [];
+        }
+
+        $suspects = [];
+
+        foreach ($node->fields as $f) {
+            if (in_array($f->name, $real, true)) {
+                continue;
+            }
+
+            // 排除虚拟属性（访问器 / casts / 关系）
+            if (method_exists($instance, 'hasGetMutator') && $instance->hasGetMutator($f->name)) {
+                continue;
+            }
+            if (method_exists($instance, 'hasCast') && $instance->hasCast($f->name)) {
+                continue;
+            }
+            if (method_exists($instance, $f->name)) {
+                continue;
+            }
+
+            $suspects[] = $f->name;
+        }
+
+        return $suspects;
     }
 }

@@ -49,8 +49,24 @@ class OpenApiEmitter
             'summary' => "{$node->label}列表",
             'tags' => [$node->label],
             'parameters' => [
-                ['name' => 'page', 'in' => 'query', 'schema' => ['type' => 'integer']],
-                ['name' => 'per_page', 'in' => 'query', 'schema' => ['type' => 'integer']],
+                [
+                    'name' => 'page',
+                    'in' => 'query',
+                    'schema' => ['type' => 'integer'],
+                    'description' => '页码，从 1 开始',
+                ],
+                [
+                    'name' => 'per_page',
+                    'in' => 'query',
+                    'schema' => ['type' => 'integer'],
+                    'description' => '每页条数。不传则使用 Resource 中声明的 perPage',
+                ],
+                [
+                    'name' => 'keyword',
+                    'in' => 'query',
+                    'schema' => ['type' => 'string'],
+                    'description' => '快捷搜索关键词，在可搜索列上做模糊匹配',
+                ],
                 [
                     'name' => 'sort',
                     'in' => 'query',
@@ -61,6 +77,13 @@ class OpenApiEmitter
                             array_filter($node->columns, fn ($c): bool => $c->sortable)
                         )),
                     ],
+                    'description' => '排序字段，必须是可排序列之一',
+                ],
+                [
+                    'name' => 'direction',
+                    'in' => 'query',
+                    'schema' => ['type' => 'string', 'enum' => ['asc', 'desc'], 'default' => 'asc'],
+                    'description' => '排序方向。注意参数名是 direction，不是 order',
                 ],
             ],
             'responses' => [

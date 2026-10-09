@@ -18,6 +18,21 @@
         .header h1 { font-size: 17px; font-weight: 600; }
         .header .user { font-size: 13px; color: #6b746f; }
         .container { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+        /* 侧边栏（与 resource 页保持一致） */
+        .layout { display: flex; min-height: calc(100vh - 56px); }
+        .sidebar { width: 200px; flex-shrink: 0; background: #fff; border-right: 1px solid #e8edea; padding: 16px 0; overflow-y: auto; }
+        .sidebar-main { flex: 1; min-width: 0; }
+        .menu-group-title { padding: 14px 18px 6px; font-size: 11px; color: #a5aea9; letter-spacing: .5px; }
+        .menu-item { display: flex; align-items: center; gap: 8px; padding: 9px 18px; font-size: 13px; color: #4a5550; text-decoration: none; }
+        .menu-item:hover { background: #f4f7f5; }
+        .menu-item.active { background: #eef4f1; color: #2e7d4f; font-weight: 600; border-right: 3px solid #6b9b7f; }
+        .menu-icon { width: 16px; text-align: center; }
+        /* 工作台卡片 */
+        .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+        .tile { display: block; padding: 16px; background: #f8faf9; border-radius: 8px; text-decoration: none; color: #101B16; border: 1px solid transparent; }
+        .tile:hover { border-color: #6b9b7f; background: #eef4f1; }
+        .tile .t-icon { font-size: 20px; }
+        .tile .t-label { font-size: 13px; margin-top: 6px; }
         .card {
             background: #fff; border-radius: 10px; padding: 24px;
             box-shadow: 0 2px 8px rgba(16, 27, 22, 0.05); margin-bottom: 20px;
@@ -56,36 +71,85 @@
         </div>
     </div>
 
+    <div class="layout">
+        @if(!empty($menu))
+        <aside class="sidebar">
+            @foreach($menu as $item)
+                @if(!empty($item['isGroup']))
+                    <div class="menu-group-title">{{ $item['label'] }}</div>
+                    @foreach($item['children'] as $child)
+                        <a class="menu-item" href="{{ url(\Aimanong\Aimanong::url($child['uri'] ?? '')) }}">
+                            <span class="menu-icon">{{ $child['icon'] ?? '' }}</span>{{ $child['label'] }}
+                        </a>
+                    @endforeach
+                @else
+                    <a class="menu-item" href="{{ url(\Aimanong\Aimanong::url($item['uri'] ?? '')) }}">
+                        <span class="menu-icon">{{ $item['icon'] ?? '' }}</span>{{ $item['label'] }}
+                    </a>
+                @endif
+            @endforeach
+        </aside>
+        @endif
+
+        <div class="sidebar-main">
     <div class="container">
+        {{-- 快捷入口：按当前用户可见的菜单生成 --}}
         <div class="card">
-            <h2>环境</h2>
-            <div class="stats">
-                <div class="stat"><div class="num">{{ app()->version() }}</div><div class="label">Laravel</div></div>
-                <div class="stat"><div class="num">{{ PHP_VERSION }}</div><div class="label">PHP</div></div>
-                <div class="stat"><div class="num">{{ $resourceCount }}</div><div class="label">已注册 Resource</div></div>
+            <h2>快捷入口</h2>
+            <div class="tiles">
+                @forelse($quickLinks as $link)
+                    <a class="tile" href="{{ url(\Aimanong\Aimanong::url($link['uri'])) }}">
+                        <div class="t-icon">{{ $link['icon'] ?: '📄' }}</div>
+                        <div class="t-label">{{ $link['label'] }}</div>
+                    </a>
+                @empty
+                    <div class="hint">你当前没有任何可访问的模块，请联系管理员分配权限。</div>
+                @endforelse
             </div>
         </div>
 
+        {{-- 当前身份：让用户清楚自己是谁、有什么权限 --}}
         <div class="card">
-            <h2>里程碑</h2>
-            <div class="milestone"><span class="dot done"></span>M0 地基 —— Laravel 12 骨架、admin guard、统一响应</div>
-            <div class="milestone"><span class="dot done"></span>M1 Schema 编译层 —— 一份声明编译出四份产物</div>
-            <div class="milestone"><span class="dot done"></span>M2 核心 DSL + Vue 端到端</div>
-            <div class="milestone"><span class="dot done"></span>M3 AI 能力层 —— 自省 API + MCP Server</div>
-            <div class="milestone"><span class="dot done"></span>M4 字段与组件库 —— 26 个字段类型 + 6 个展示器</div>
-            <div class="milestone"><span class="dot done"></span>M5 增强 —— 导出 / 树形 / 分步表单 / 插件 / 多应用</div>
-            <div class="milestone"><span class="dot done"></span>M6 生态与文档 —— 文档站 / Playground / 代码生成器</div>
+            <h2>当前身份</h2>
+            <div class="stats">
+                <div class="stat">
+                    <div class="num" style="font-size:16px;">{{ $user->name ?? $user->username ?? '' }}</div>
+                    <div class="label">{{ $user->username ?? '' }}</div>
+                </div>
+                <div class="stat">
+                    <div class="num" style="font-size:16px;">{{ $roles === [] ? '（无角色）' : implode(' / ', $roles) }}</div>
+                    <div class="label">角色</div>
+                </div>
+                <div class="stat">
+                    <div class="num">{{ $isSuper ? '全部' : $permCount }}</div>
+                    <div class="label">权限数{{ $isSuper ? '（超级管理员）' : '' }}</div>
+                </div>
+            </div>
+            @if(! $isSuper && $permCount === 0)
+                <div class="hint" style="margin-top:14px;color:#c0392b;">
+                    ⚠️ 你还没有被分配任何权限，请联系管理员在「角色」里为你授权。
+                </div>
+            @endif
         </div>
 
+        {{-- 系统信息 --}}
         <div class="card">
-            <h2>下一步</h2>
-            <p class="hint">
-                框架主体（M0–M6）已完成，正在准备 v1.0 发布。<br><br>
-                <strong>快速上手</strong>：从数据库表一键生成后台 ——
-                <code>php artisan aimanong:make-resource {表名} --label=中文名 --register</code><br><br>
-                AI Agent 请阅读项目根目录的 <code>llms.txt</code> 与 <code>AGENTS.md</code>，
-                或调用 <code>php artisan mcp:start aimanong</code>。
-            </p>
+            <h2>系统信息</h2>
+            <div class="stats">
+                <div class="stat"><div class="num">{{ $resourceCount }}</div><div class="label">已注册模块</div></div>
+                <div class="stat"><div class="num">{{ $userCount }}</div><div class="label">后台账号</div></div>
+                <div class="stat"><div class="num">{{ $rbacEnabled ? '已开启' : '已关闭' }}</div><div class="label">权限控制</div></div>
+            </div>
+            <div class="hint" style="margin-top:14px;">
+                框架 <code>Aimanong</code> v{{ \Aimanong\Aimanong::version() }} ·
+                Laravel <code>{{ app()->version() }}</code> · PHP <code>{{ PHP_VERSION }}</code>
+                @if($isSuper)
+                    <br>AI Agent 请阅读项目根目录的 <code>llms.txt</code> 与 <code>AGENTS.md</code>，
+                    或调用 <code>php artisan mcp:start aimanong</code>。
+                @endif
+            </div>
+        </div>
+    </div>
         </div>
     </div>
 </body>

@@ -7,6 +7,8 @@ namespace Aimanong\Http\Controllers;
 use Aimanong\Aimanong;
 use Aimanong\Auth\PermissionGate;
 use Aimanong\Menu\MenuRegistry;
+use Aimanong\Models\Administrator;
+use Aimanong\Models\Permission;
 use Aimanong\Schema\Compiler;
 use Aimanong\Schema\Emitters\JsonSchemaEmitter;
 use Illuminate\Contracts\View\View;
@@ -17,10 +19,51 @@ class HomeController extends Controller
 {
     public function index(): View
     {
+        $user = Aimanong::user();
+        $menuRegistry = new MenuRegistry;
+
+        /*
+         * 工作台数据：
+         *   - 快捷入口：与侧边栏同源的可见菜单（按权限过滤）
+         *   - 当前身份：角色 / 权限数，让用户知道自己能做什么
+         */
+        $quickLinks = [];
+
+        foreach ($menuRegistry->visible() as $item) {
+            $quickLinks[] = [
+                'uri' => $item->uri,
+                'label' => $item->label,
+                'icon' => $item->icon,
+            ];
+        }
+
+        $roles = [];
+        $permCount = 0;
+        $isSuper = false;
+
+        if ($user instanceof Administrator) {
+            $isSuper = $user->isSuper();
+
+            foreach ($user->roles as $role) {
+                $roles[] = $role->name;
+                $permCount += $role->permissions()->count();
+            }
+
+            if ($isSuper) {
+                $permCount = Permission::query()->count();
+            }
+        }
+
         return view('aimanong::index', [
-            'user' => Aimanong::user(),
+            'user' => $user,
             'resourceCount' => Aimanong::registry()->count(),
-            'menu' => (new MenuRegistry)->tree(),
+            'menu' => $menuRegistry->tree(),
+            'quickLinks' => $quickLinks,
+            'roles' => $roles,
+            'permCount' => $permCount,
+            'isSuper' => $isSuper,
+            'userCount' => Administrator::query()->count(),
+            'rbacEnabled' => PermissionGate::enabled(),
         ]);
     }
 

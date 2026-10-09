@@ -1,7 +1,21 @@
 <?php
 /** 完整端到端测试：覆盖 M0-M6 全部功能 */
-require "vendor/autoload.php";
-$app = require "bootstrap/app.php";
+/*
+ * demo 项目路径：
+ *   默认用 DEMO_PATH 环境变量，未设置时用相对路径 ../../
+ *   这样脚本可以在任意目录执行。
+ */
+$demo = getenv('DEMO_PATH') ?: __DIR__.'/../../../demo-app';
+
+if (! is_file($demo.'/vendor/autoload.php')) {
+    fwrite(STDERR, "找不到 demo 项目: {$demo}\n");
+    fwrite(STDERR, "请设置环境变量 DEMO_PATH，例如：\n");
+    fwrite(STDERR, "  DEMO_PATH=/path/to/demo-app php ".basename(__FILE__)."\n");
+    exit(1);
+}
+
+require $demo.'/vendor/autoload.php';
+$app = require $demo.'/bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
 $pass = 0; $fail = 0;
@@ -45,7 +59,8 @@ t("需求核对器", $r['checked'] === true);
 
 echo "\n═══ 5. 字段与展示器（M4）═══\n";
 $types = count(\Aimanong\Support\FieldType::all());
-t("字段类型数量", $types === 26, "{$types} 个");
+// 内置 26 个 + 插件注册的（如 region）—— 断言下限而非精确值
+t("字段类型数量（含插件）", $types >= 26, "{$types} 个");
 // 每个展示器单独一列（链式调用是覆盖语义，不是叠加）
 $grid = new \Aimanong\Grid\Grid();
 $grid->column('a')->bool();

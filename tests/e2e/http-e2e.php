@@ -1,6 +1,16 @@
 <?php
 /** HTTP 层端到端：多应用隔离 + 各功能页面 */
-require "vendor/autoload.php";
+/*
+ * 本脚本只跑 HTTP（不依赖 demo 的 autoload），
+ * 但保留 DEMO_PATH 校验以便提示正确用法。
+ */
+$demo = getenv('DEMO_PATH') ?: __DIR__.'/../../../demo-app';
+
+if (! is_dir($demo)) {
+    fwrite(STDERR, "找不到 demo 项目: {$demo}\n");
+    fwrite(STDERR, "请设置环境变量 DEMO_PATH 指向 demo 项目目录。\n");
+    exit(1);
+}
 
 function http(string $url, string $method = 'GET', array $data = [], array $headers = []): array {
     $ch = curl_init($url);

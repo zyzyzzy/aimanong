@@ -46,6 +46,35 @@ jobs:
       - name: PHPUnit
         run: composer test
 
+  # 发布前检查脚本（版本一致性 / 必需文件 / 命名一致性）
+  release-check:
+    name: 发布前检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, json
+          coverage: none
+
+      - name: 安装依赖
+        working-directory: packages/framework
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 安装文档站依赖
+        working-directory: docs
+        run: npm ci || npm install
+
+      - name: 运行发布前检查
+        run: bash scripts/pre-release.sh
+
   # 低版本 PHP 兼容性：确认不会用到 8.3 独占语法
   php82-compat:
     name: PHP 8.2 兼容性

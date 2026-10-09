@@ -34,6 +34,7 @@ class Capabilities
             ],
             'resources' => $this->resources(),
             'field_types' => $this->fieldTypes(),
+            'tree_options' => $this->treeOptions(),
             'column_options' => $this->columnOptions(),
             'form_options' => $this->formOptions(),
             'rules' => $this->availableRules(),
@@ -133,6 +134,27 @@ class Capabilities
             'perPage' => '每页条数，参数: int。写法: $grid->perPage(15); 不传则用框架默认 20',
             'actions' => '是否显示行操作按钮，参数: bool',
             'batchActions' => '批量操作按钮，参数: 数组',
+
+            // 导出（写在 grid() 中）
+            'export' => '开启 CSV 导出，写法: $grid->export(); 未开启时导出接口返回 403',
+            'exportExcept' => '导出时排除的列，参数: 数组。如 exportExcept([\'cover_url\'])',
+            'exportChunkSize' => '导出分批查询条数，参数: int（默认 1000，大表用）',
+        ];
+    }
+
+    /**
+     * 树形结构选项（在 Resource 的 tree() 方法中使用）。
+     *
+     * @return array<string, string>
+     */
+    public function treeOptions(): array
+    {
+        return [
+            'parentColumn' => '父级字段名，参数: 字符串（默认 parent_id）',
+            'titleColumn' => '节点显示字段，参数: 字符串（默认 name）',
+            'orderColumn' => '排序字段，参数: 字符串（默认 sort）',
+            'draggable' => '是否允许拖拽，参数: bool',
+            'maxDepth' => '最大层级，参数: int（0 = 不限制）',
         ];
     }
 

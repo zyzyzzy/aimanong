@@ -47,6 +47,7 @@ class SearchDocs extends Tool
              */
             '列选项' => $this->columnOptions(),
             '表单选项' => $this->formOptions(),
+            '树形结构' => $this->treeOptions(),
             '工作流' => [
                 '1. list_resources 了解项目',
                 '2. describe_resource 看字段',
@@ -108,6 +109,22 @@ class SearchDocs extends Tool
             'query' => $schema->string()
                 ->description('检索关键词，留空则返回全部文档'),
         ];
+    }
+
+    /**
+     * 树形结构选项 —— 从 Capabilities 取数。
+     *
+     * @return array<int, string>
+     */
+    protected function treeOptions(): array
+    {
+        $out = [];
+
+        foreach ((new Capabilities)->treeOptions() as $name => $desc) {
+            $out[] = "tree()->{$name}() {$desc}";
+        }
+
+        return $out;
     }
 
     /**

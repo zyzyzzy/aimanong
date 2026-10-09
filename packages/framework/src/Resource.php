@@ -8,6 +8,7 @@ use Aimanong\Contracts\Resource as ResourceContract;
 use Aimanong\Form\Form;
 use Aimanong\Grid\Grid;
 use Aimanong\Show\Show;
+use Aimanong\Tree\Tree;
 
 /**
  * Resource 基类。
@@ -42,6 +43,16 @@ abstract class Resource implements ResourceContract
     public static function show(Show $show): void
     {
         // 默认不定义字段，子类覆盖
+    }
+
+    /**
+     * 树形结构定义。子类覆盖以启用树形页面。
+     *
+     * 用法：$tree->parentColumn('parent_id')->titleColumn('name');
+     */
+    public static function tree(Tree $tree): void
+    {
+        // 默认不启用树形，子类覆盖
     }
 
     /**

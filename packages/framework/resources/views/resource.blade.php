@@ -90,6 +90,7 @@
         <div class="toolbar">
             <input v-model="keyword" @keyup.enter="load(1)" placeholder="搜索…" v-if="hasSearch">
             <button class="btn" @click="load(currentPage)">刷新</button>
+            <button class="btn" v-if="exportable" @click="doExport">导出</button>
             <button class="btn btn-primary" @click="showCreate = true">新增</button>
         </div>
 
@@ -159,6 +160,10 @@
                             <!-- 空值占位 -->
                             <span v-else-if="row[col.name] === null || row[col.name] === ''" class="muted">—</span>
 
+                            <span v-else-if="isTree && col.name === treeTitleColumn"
+                                  :style="{ paddingLeft: (row._depth || 0) * 20 + 'px' }">
+                                <span v-if="row._depth > 0" class="muted">└ </span>@{{ row[col.name] }}
+                            </span>
                             <span v-else>@{{ row[col.name] }}</span>
                         </td>
                         <td>
@@ -169,7 +174,7 @@
                 </tbody>
             </table>
 
-            <div class="pagination" v-if="total > 0">
+            <div class="pagination" v-if="total > 0 && !isTree">
                 <button class="btn" :disabled="currentPage <= 1" @click="load(currentPage - 1)">上一页</button>
                 <span>@{{ currentPage }} / @{{ lastPage }}</span>
                 <button class="btn" :disabled="currentPage >= lastPage" @click="load(currentPage + 1)">下一页</button>
@@ -253,6 +258,8 @@ createApp({
     setup() {
         const schema = @json($schema);
         const uri = @json($uri);
+        const treeConfig = schema.grid?.tree ?? null;
+        const isTree = treeConfig !== null;
 
         const rows = ref([]);
         const loading = ref(false);
@@ -269,6 +276,8 @@ createApp({
         const columns = computed(() => schema.grid?.columns ?? []);
         const formFields = computed(() => (schema.form?.fields ?? []).filter(f => !f.hidden));
         const hasSearch = computed(() => columns.value.some(c => c.searchable));
+        const exportable = computed(() => schema.grid?.exportable === true);
+        const treeTitleColumn = computed(() => treeConfig?.titleColumn || 'name');
 
         const csrf = document.querySelector('meta[name="csrf-token"]').content;
         const base = `/admin/api/${uri}`;
@@ -295,6 +304,53 @@ createApp({
             } finally {
                 loading.value = false;
             }
+        }
+
+        /** 把嵌套树拍平成带缩进层级的行 */
+        function flattenTree(nodes, depth = 0) {
+            const out = [];
+            for (const n of nodes) {
+                out.push({ ...n, _depth: depth });
+                if (n.children && n.children.length) {
+                    out.push(...flattenTree(n.children, depth + 1));
+                }
+            }
+            return out;
+        }
+
+        /** 加载树形数据 */
+        async function loadTree() {
+            loading.value = true;
+            try {
+                const res = await fetch(`${base}/tree`, {
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                });
+                const json = await res.json();
+                if (json.error) {
+                    console.error('[aimanong] 树形加载失败:', json.message);
+                    rows.value = [];
+                    return;
+                }
+                rows.value = flattenTree(json.data ?? []);
+                total.value = rows.value.length;
+                lastPage.value = 1;
+                currentPage.value = 1;
+            } catch (e) {
+                console.error(e);
+            } finally {
+                loading.value = false;
+            }
+        }
+
+        /** 导出：带上与当前列表相同的筛选条件 */
+        function doExport() {
+            const params = new URLSearchParams();
+            if (keyword.value) params.set('keyword', keyword.value);
+            if (sortField.value) {
+                params.set('sort', sortField.value);
+                params.set('direction', direction.value);
+            }
+            window.location.href = `${base}/export?${params}`;
         }
 
         function toggleSort(name) {
@@ -392,13 +448,16 @@ createApp({
             load(currentPage.value);
         }
 
-        onMounted(() => load(1));
+        onMounted(() => {
+            if (isTree) { loadTree(); } else { load(1); }
+        });
 
         return {
             rows, loading, total, currentPage, lastPage, keyword,
             sortField, direction, showCreate, editing, form,
             columns, formFields, hasSearch,
             load, toggleSort, formatDate, edit, save, remove,
+            exportable, doExport, isTree, treeTitleColumn, loadTree,
             inputType, mapLabel, tagClass, formatMoney,
         };
     },

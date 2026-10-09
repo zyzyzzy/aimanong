@@ -33,6 +33,12 @@ Route::get('/', [HomeController::class, 'index'])->name('index');
 Route::prefix('api')->name('api.')->group(function (): void {
     Route::get('{uri}', [ResourceController::class, 'index'])->name('index');
     Route::post('{uri}', [ResourceController::class, 'store'])->name('store');
+
+    // 静态子路径必须声明在 {uri}/{id} 之前，否则会被当作 id
+    Route::get('{uri}/export', [ResourceController::class, 'export'])->name('export');
+    Route::get('{uri}/tree', [ResourceController::class, 'tree'])->name('tree');
+    Route::put('{uri}/{id}/move', [ResourceController::class, 'move'])->name('move');
+
     Route::get('{uri}/{id}', [ResourceController::class, 'show'])->name('show');
     Route::put('{uri}/{id}', [ResourceController::class, 'update'])->name('update');
     Route::delete('{uri}/{id}', [ResourceController::class, 'destroy'])->name('destroy');

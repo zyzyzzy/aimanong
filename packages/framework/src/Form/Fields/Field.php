@@ -161,11 +161,20 @@ abstract class Field
     /**
      * 值 → 标签映射（详情页与列表通用）。
      *
-     * @param  array<string, mixed>  $map
+     * 存为 stdClass：PHP 会把数字字符串键转回整数，
+     * 直接存数组会被 json_encode 成 ["否","是"] 而非 {"0":"否","1":"是"}。
+     *
+     * @param  array<int|string, mixed>  $map
      */
     public function map(array $map): static
     {
-        $this->props['map'] = $map;
+        $object = new \stdClass();
+
+        foreach ($map as $key => $label) {
+            $object->{(string) $key} = $label;
+        }
+
+        $this->props['map'] = $object;
         $this->props['display'] = 'map';
 
         return $this;

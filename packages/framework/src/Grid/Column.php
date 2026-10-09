@@ -90,12 +90,25 @@ class Column
     }
 
     /**
-     * @param  array<string, mixed>  $map
+     * 值 → 标签映射。
+     *
+     * 存储为 stdClass 而非数组：PHP 会把数字字符串键（"0"/"1"）
+     * 自动转回整数，导致 json_encode 序列化成数组 ["未解决","已解决"]
+     * 而非对象 {"0":"未解决","1":"已解决"}，前端 map[key] 取值失败。
+     * stdClass 可强制保持 JSON 对象形态。
+     *
+     * @param  array<int|string, mixed>  $map
      */
     public function map(array $map): static
     {
+        $object = new \stdClass();
+
+        foreach ($map as $key => $label) {
+            $object->{(string) $key} = $label;
+        }
+
         $this->formatter = 'map';
-        $this->props['map'] = $map;
+        $this->props['map'] = $object;
 
         return $this;
     }

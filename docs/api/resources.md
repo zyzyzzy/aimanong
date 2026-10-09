@@ -121,3 +121,42 @@
 | `assignee` | 处理人 | `text` |  |  |
 | `closed_at` | 关闭日期 | `date` |  |  |
 | `resolved` | 是否解决 | `switch` |  |  |
+
+## 课程
+
+- URI：`courses`
+- 模型：`App\Models\Course`
+- 类：`App\Aimanong\CourseResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID | ✓ |  |  |
+| `course_no` | 课程编号 |  | ✓ |  |
+| `title` | 课程标题 |  | ✓ |  |
+| `summary` | 课程简介 |  |  |  |
+| `price` | 价格 | ✓ |  | `money` |
+| `lessons` | 课时数 | ✓ |  |  |
+| `level` | 难度级别 |  |  | `map` |
+| `published` | 是否发布 |  |  | `bool` |
+| `cover_url` | 封面链接 |  |  | `link` |
+| `teacher_email` | 讲师邮箱 |  |  |  |
+| `published_at` | 发布时间 | ✓ |  | `datetime` |
+| `created_at` | 创建时间 | ✓ |  | `datetime` |
+| `updated_at` | 更新时间 | ✓ |  | `datetime` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `course_no` | 课程编号 | `text` | ✓ | `required`, `max:255` |
+| `title` | 课程标题 | `text` | ✓ | `required`, `max:255` |
+| `summary` | 课程简介 | `textarea` |  |  |
+| `price` | 价格 | `money` | ✓ | `required` |
+| `lessons` | 课时数 | `number` | ✓ | `required` |
+| `level` | 难度级别 | `select` |  |  |
+| `published` | 是否发布 | `switch` |  |  |
+| `cover_url` | 封面链接 | `url` |  |  |
+| `teacher_email` | 讲师邮箱 | `email` |  | `email` |
+| `published_at` | 发布时间 | `datetime` |  |  |

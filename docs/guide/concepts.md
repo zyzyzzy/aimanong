@@ -108,6 +108,6 @@ $form->text('name')->required()->max(255);
 
 ## 下一步
 
-- [字段类型](/api/fields) —— 27 种字段的完整用法
+- [字段类型](/api/fields) —— 26 种字段的完整用法
 - [列展示器](/api/columns) —— 列表页的渲染选项
 - [AI 协作指南](/guide/ai-collaboration) —— AI 如何发现和使用这些能力

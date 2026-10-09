@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Mcp\Tools;
 
+use Aimanong\Ai\Capabilities;
 use Aimanong\Support\FieldType;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -38,27 +39,14 @@ class SearchDocs extends Tool
                 fn (string $t): string => sprintf('%s → JSON 类型 %s', $t, FieldType::toJsonType($t)),
                 FieldType::all()
             ),
-            '列选项' => [
-                'sortable() 允许排序',
-                'searchable() 加入快捷搜索',
-                'filter() 加入筛选器',
-                'dateTime() 格式化为日期时间',
-                'using(EnumClass::class) 枚举值→标签',
-                'map(array) 值映射',
-                'width(int) 列宽',
-                'label(string) 列标题',
-            ],
-            '表单选项' => [
-                'label(string) 字段标签',
-                'required() 必填，自动生成 required 规则',
-                'default(mixed) 默认值',
-                'readonly() / hidden() 只读 / 隐藏',
-                'rules(string|array) 追加验证规则',
-                'max(int) / min(int) 长度限制',
-                'options(array|Enum::cases()) 下拉选项',
-                'rows(int) 文本域行数（textarea）',
-                'placeholder(string) / help(string) 占位与帮助文本',
-            ],
+            /*
+             * 列选项与表单选项一律从 Capabilities 取数，不在此硬编码。
+             * 教训：M4 新增 bool()/money() 等展示器时只改了 Capabilities，
+             * 此处仍是旧的 8 项 —— 导致 search-docs 与 capabilities.json
+             * 数据分叉，AI 若只信前者就找不到新能力。
+             */
+            '列选项' => $this->columnOptions(),
+            '表单选项' => $this->formOptions(),
             '工作流' => [
                 '1. list_resources 了解项目',
                 '2. describe_resource 看字段',
@@ -120,5 +108,37 @@ class SearchDocs extends Tool
             'query' => $schema->string()
                 ->description('检索关键词，留空则返回全部文档'),
         ];
+    }
+
+    /**
+     * 列选项 —— 从 Capabilities 取数，保证与 /__ai/capabilities.json 同源。
+     *
+     * @return array<int, string>
+     */
+    protected function columnOptions(): array
+    {
+        $out = [];
+
+        foreach ((new Capabilities)->columnOptions() as $name => $desc) {
+            $out[] = "{$name}() {$desc}";
+        }
+
+        return $out;
+    }
+
+    /**
+     * 表单选项 —— 从 Capabilities 取数。
+     *
+     * @return array<int, string>
+     */
+    protected function formOptions(): array
+    {
+        $out = [];
+
+        foreach ((new Capabilities)->formOptions() as $name => $desc) {
+            $out[] = "{$name}() {$desc}";
+        }
+
+        return $out;
     }
 }

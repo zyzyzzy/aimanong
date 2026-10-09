@@ -128,6 +128,6 @@ php artisan serve
 ## 下一步
 
 - [核心概念](/guide/concepts) —— 理解 Schema 编译与数据流
-- [字段类型](/api/fields) —— 全部 27 种字段
+- [字段类型](/api/fields) —— 全部 26 种字段
 - [列展示器](/api/columns) —— 列表页可用选项
 - [AI 协作指南](/guide/ai-collaboration) —— 如何让 AI Agent 使用本框架

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\Ai;
 
 use Aimanong\Aimanong;
+use Aimanong\Exceptions\AiReadableException;
 use Aimanong\Resource;
 use Aimanong\Schema\Compiler;
 use Illuminate\Database\Eloquent\Model;
@@ -86,11 +87,34 @@ class Verifier
                 ];
             }
         } catch (\Throwable $e) {
-            $issues[] = [
+            $issue = [
                 'code' => 'COMPILE_FAILED',
                 'message' => '编译失败: '.$e->getMessage(),
                 'hint' => '检查 grid()/form()/show() 中的语法与类型',
             ];
+
+            /*
+             * 若异常本身携带可自愈上下文（如幽灵列的 did_you_mean），
+             * 必须原样透出 —— 否则 AI 只看到"编译失败"这种笼统提示，
+             * 拿不到"是否想用 teacher_email"这样的关键线索。
+             */
+            if ($e instanceof AiReadableException) {
+                $ctx = $e->context();
+
+                $issue['code'] = $e::errorCode();
+
+                foreach (['did_you_mean', 'available_columns', 'example', 'docs'] as $key) {
+                    if (! empty($ctx[$key])) {
+                        $issue[$key] = $ctx[$key];
+                    }
+                }
+
+                if (! empty($ctx['hint'])) {
+                    $issue['hint'] = $ctx['hint'];
+                }
+            }
+
+            $issues[] = $issue;
         }
 
         // 是否已注册到 Registry

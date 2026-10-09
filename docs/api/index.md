@@ -16,7 +16,7 @@
 | Laravel | 12.69.3 |
 | PHP | 8.2.29 |
 | 字段类型数 | 26 |
-| 已注册 Resource | 4 |
+| 已注册 Resource | 5 |
 
 ## 已注册 Resource
 
@@ -26,6 +26,7 @@
 | 订单 | `orders` | `App\Models\Order` | 8 | 5 |
 | 工单 | `tickets` | `App\Models\Ticket` | 9 | 7 |
 | 字段演示 | `demo-fields` | `App\Models\Ticket` | 5 | 9 |
+| 课程 | `courses` | `App\Models\Course` | 13 | 10 |
 
 ## 其它页面
 

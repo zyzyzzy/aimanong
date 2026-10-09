@@ -128,6 +128,11 @@ class Capabilities
             // 外观类
             'width' => '列宽，参数: 像素',
             'label' => '列标题，参数: 字符串',
+
+            // 列表整体配置（写在 grid() 中，不属于任何单列）
+            'perPage' => '每页条数，参数: int。写法: $grid->perPage(15); 不传则用框架默认 20',
+            'actions' => '是否显示行操作按钮，参数: bool',
+            'batchActions' => '批量操作按钮，参数: 数组',
         ];
     }
 

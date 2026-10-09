@@ -130,9 +130,68 @@ class ResourceController extends Controller
     {
         $node = $this->resolve($uri);
 
-        return response()->json([
-            'data' => $this->repository($node)->find($id),
-        ]);
+        $model = $this->repository($node)->find($id);
+
+        // 回填多对多关联值，供编辑表单预选
+        $this->loadRelations($node, $model);
+
+        return response()->json(['data' => $model]);
+    }
+
+    /**
+     * 分离多对多字段。
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{0: array<string, mixed>, 1: array<string, array<int, mixed>>}
+     */
+    protected function splitRelationFields(ResourceNode $node, array $data): array
+    {
+        /** @var array<string, string> $relationFields */
+        $relationFields = $node->meta['relationFields'] ?? [];
+        $relations = [];
+
+        foreach ($relationFields as $field => $relation) {
+            if (array_key_exists($field, $data)) {
+                $relations[$relation] = array_values(array_filter(
+                    (array) $data[$field],
+                    static fn ($v): bool => $v !== null && $v !== ''
+                ));
+            }
+
+            // 关联字段不是真实列，必须从主表数据里剔除
+            unset($data[$field]);
+        }
+
+        return [$data, $relations];
+    }
+
+    /**
+     * 同步多对多关联。
+     *
+     * @param  array<string, array<int, mixed>>  $relations
+     */
+    protected function syncRelations(Model $model, array $relations): void
+    {
+        foreach ($relations as $relation => $ids) {
+            if (method_exists($model, $relation)) {
+                $model->{$relation}()->sync($ids);
+            }
+        }
+    }
+
+    /**
+     * 预加载关联值（编辑表单回填用）。
+     */
+    protected function loadRelations(ResourceNode $node, Model $model): void
+    {
+        /** @var array<string, string> $relationFields */
+        $relationFields = $node->meta['relationFields'] ?? [];
+
+        if ($relationFields === []) {
+            return;
+        }
+
+        $model->load(array_values($relationFields));
     }
 
     /**

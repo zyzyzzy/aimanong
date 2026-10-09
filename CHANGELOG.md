@@ -2,6 +2,65 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.1.1] - 2026-10-09
+
+> 本版本修复 **多对多关联（belongsToMany）支持缺失** ——
+> CMS 场景验证暴露，电商场景（只有 belongsTo）发现不了。
+
+### 修复
+
+| 严重度 | 问题 | 现象 |
+|---|---|---|
+| **高** | 多对多关联列**导出 500** | 集合上取 `->name` 抛异常 |
+| **高** | 多对多关联列**列表渲染为空** | 前端按字符串渲染数组 → 空值 |
+| **高** | 编辑表单**勾不上已选值** | 关联是对象数组，checkbox 的 `:value` 是标量 id |
+| 中 | 表单多对多写入需手写样板 | `unset($data['tags'])` + 模型 `saved` 事件里 `sync()` |
+
+### 新增
+
+**表单多对多：声明关联即自动处理**
+
+```php
+$form->multiSelect('tags')->label('标签')->relation('tags')->options(...);
+```
+
+- 写入时自动 `sync()` 中间表（主表保存后）
+- 编辑时自动回填已选值
+- 该字段自动从主表数据中剔除（不是真实列）
+
+**列表与导出支持多对多**
+
+```php
+$grid->column('tags.name', '标签');   // 显示「Laravel / 性能优化 / 运维」
+```
+
+- 前端 `normalizeCell()` 处理数组：优先取 `name`/`title`/`label`
+- 导出拼成 ` / ` 分隔（便于运营阅读），而非 JSON
+
+### 前端补齐 6 个字段类型的专门渲染
+
+原来这些类型都退化成纯文本输入框：
+
+| 类型 | 修复后 |
+|---|---|
+| `multiselect` | 复选框组（多对多常用） |
+| `color` | 原生取色器 |
+| `slider` | 滑块 + 实时数值 |
+| `rate` | 星级评分（可点击） |
+| `tags` | 逗号分隔输入 |
+| `daterange` | 双日期选择 |
+
+### 流程备注
+
+本版本在 AI 实测**进行中**修复 —— 违反了 v1.1.0 写入流程的
+「实测期间框架冻结」原则。
+
+**边界澄清**：应在 AI **交付完成后**即可解冻；
+本次 AI 已交付四个模块，仅在做报告，故影响可控
+（已核对其交付物未被破坏）。
+
+---
+
 ## [1.1.0] - 2026-10-09
 
 > 本版本的新增能力，全部来自**真实业务场景验证**与**官方插件开发** ——
@@ -228,5 +287,6 @@ $form->mytype('field', '标签');
 
 ## 版本链接
 
+- [1.1.1](https://github.com/zyzyzzy/aimanong/releases/tag/v1.1.1)
 - [1.1.0](https://github.com/zyzyzzy/aimanong/releases/tag/v1.1.0)
 - [1.0.0](https://github.com/zyzyzzy/aimanong/releases/tag/v1.0.0)

@@ -101,6 +101,8 @@ class Compiler
                 'tree' => $tree?->toArray(),
                 'stepped' => $form->isStepped(),
                 'steps' => $form->toArray()['steps'],
+                // 声明了多对多关联的字段：写入时自动 sync，不写主表
+                'relationFields' => $form->relationFields(),
             ],
         );
     }

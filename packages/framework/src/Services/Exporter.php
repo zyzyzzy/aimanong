@@ -6,6 +6,7 @@ namespace Aimanong\Services;
 
 use Aimanong\Contracts\Repository;
 use Aimanong\Schema\Ast\ResourceNode;
+use Illuminate\Support\Collection;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -170,6 +171,13 @@ class Exporter
         }
 
         if (is_array($v)) {
+            // 多对多关联：拼成「标签A / 标签B」而非 JSON（便于运营阅读）
+            $flat = array_filter($v, fn ($x): bool => ! is_array($x));
+
+            if (count($flat) === count($v)) {
+                return implode(' / ', array_map(static fn ($x): string => (string) $x, $v));
+            }
+
             return json_encode($v, JSON_UNESCAPED_UNICODE) ?: '';
         }
 
@@ -185,15 +193,43 @@ class Exporter
         $v = $item;
 
         foreach ($parts as $part) {
-            if (is_array($v)) {
-                $v = $v[$part] ?? null;
-            } elseif (is_object($v)) {
-                $v = $v->{$part} ?? null;
-            } else {
-                return null;
+            /*
+             * 多对多关联（如 tags.name）会返回集合 ——
+             * 此时不能再深取 name，而应把**每个成员的字段值**收集起来。
+             *
+             * 修复前：集合上取 ->name 抛
+             *   "Property [name] does not exist on this collection instance"
+             * 表现为导出直接 500（CMS 场景验证发现）。
+             */
+            // Eloquent\Collection 继承自 Support\Collection，判断一次即可
+            if ($v instanceof Collection) {
+                $v = $v->map(fn ($row): mixed => $this->extract($row, $part))
+                    ->filter(fn ($x): bool => $x !== null && $x !== '')
+                    ->values()
+                    ->all();
+
+                continue;
             }
+
+            $v = $this->extract($v, $part);
         }
 
         return $v;
+    }
+
+    /**
+     * 从单项（模型/数组）取属性。
+     */
+    protected function extract(mixed $v, string $part): mixed
+    {
+        if (is_array($v)) {
+            return $v[$part] ?? null;
+        }
+
+        if (is_object($v)) {
+            return $v->{$part} ?? null;
+        }
+
+        return null;
     }
 }

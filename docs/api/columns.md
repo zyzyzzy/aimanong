@@ -23,7 +23,7 @@
 | `progress()` | 进度条（适合百分比/完成度） |
 | `using()` | 枚举值→标签映射，参数: 枚举类名 |
 | `map()` | 值映射，参数: 关联数组 |
-| `relation()` | 显式声明关联列，参数: 关联路径（如 category.name） |
+| `relation()` | 显式声明关联列，参数: 关联路径（如 category.name）。支持 belongsTo / hasOne（单值）与 belongsToMany（多值，显示为「A / B / C」，导出同样处理） |
 | `dangerWhen()` | 条件高亮，参数: (运算符, 阈值, 级别)。运算符支持 < <= > >= == != |
 | `dangerBelow()` | 小于阈值时高亮（如库存不足），参数: (阈值, 级别) |
 | `warningAbove()` | 大于阈值时高亮，参数: (阈值, 级别) |

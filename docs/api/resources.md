@@ -393,3 +393,115 @@
 | `status` | 状态 | `select` | ✓ | `required` |
 | `enabled` | 是否启用 | `switch` |  |  |
 | `address` | 地址 | `textarea` |  |  |
+
+## 栏目
+
+- URI：`cms-categories`
+- 模型：`App\Models\CmsCategory`
+- 类：`App\Aimanong\CmsCategoryResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID | ✓ |  |  |
+| `name` | 栏目名称 |  | ✓ |  |
+| `parent.name` | 上级栏目 |  |  |  |
+| `sort` | 排序 | ✓ |  |  |
+| `created_at` | 创建时间 | ✓ |  | `datetime` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `name` | 栏目名称 | `text` | ✓ | `required`, `max:64` |
+| `parent_id` | 上级栏目 | `select` |  |  |
+| `sort` | 排序 | `number` |  |  |
+
+## 作者
+
+- URI：`cms-authors`
+- 模型：`App\Models\CmsAuthor`
+- 类：`App\Aimanong\CmsAuthorResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID | ✓ |  |  |
+| `name` | 姓名 |  | ✓ |  |
+| `email` | 邮箱 |  | ✓ |  |
+| `bio` | 简介 |  |  |  |
+| `active` | 是否在职 |  |  | `bool` |
+| `created_at` | 创建时间 | ✓ |  | `datetime` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `name` | 姓名 | `text` | ✓ | `required`, `max:64` |
+| `email` | 邮箱 | `email` | ✓ | `required`, `email` |
+| `bio` | 简介 | `textarea` |  |  |
+| `active` | 是否在职 | `switch` |  |  |
+
+## 标签
+
+- URI：`cms-tags`
+- 模型：`App\Models\CmsTag`
+- 类：`App\Aimanong\CmsTagResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID | ✓ |  |  |
+| `name` | 标签名称 |  | ✓ |  |
+| `color` | 颜色 |  |  |  |
+| `created_at` | 创建时间 | ✓ |  | `datetime` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `name` | 标签名称 | `text` | ✓ | `required`, `max:32` |
+| `color` | 颜色 | `color` |  |  |
+
+## 文章
+
+- URI：`cms-articles`
+- 模型：`App\Models\CmsArticle`
+- 类：`App\Aimanong\CmsArticleResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID | ✓ |  |  |
+| `slug` | 别名 |  | ✓ |  |
+| `title` | 标题 |  | ✓ |  |
+| `category.name` | 栏目 |  |  |  |
+| `author.name` | 作者 |  |  |  |
+| `tags.name` | 标签 |  |  |  |
+| `status` | 状态 |  |  | `map` |
+| `is_featured` | 是否精选 |  |  | `bool` |
+| `view_count` | 浏览量 | ✓ |  |  |
+| `read_minutes` | 阅读时长 | ✓ |  |  |
+| `published_at` | 发布时间 | ✓ |  | `datetime` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `slug` | 别名 | `text` | ✓ | `required`, `max:128` |
+| `title` | 标题 | `text` | ✓ | `required`, `max:200` |
+| `category_id` | 所属栏目 | `select` | ✓ | `required` |
+| `author_id` | 作者 | `select` | ✓ | `required` |
+| `tags` | 标签 | `multiselect` |  |  |
+| `status` | 状态 | `select` |  |  |
+| `is_featured` | 是否精选 | `switch` |  |  |
+| `body` | 正文 | `textarea` |  |  |
+| `published_at` | 发布时间 | `datetime` |  |  |
+| `view_count` | 浏览量 | `number` |  |  |
+| `read_minutes` | 阅读时长(分钟) | `number` |  |  |
+| `seo_title` | SEO 标题 | `text` |  | `max:200` |
+| `seo_description` | SEO 描述 | `textarea` |  |  |

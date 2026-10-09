@@ -252,6 +252,30 @@ class Form
     }
 
     /**
+     * 取声明了关联的字段：字段名 => 关联名。
+     *
+     * 这些字段不写主表，由 Repository 在保存后 sync 中间表。
+     *
+     * @return array<string, string>
+     */
+    public function relationFields(): array
+    {
+        $out = [];
+
+        foreach ($this->fields as $name => $field) {
+            if ($field instanceof MultiSelect) {
+                $relation = $field->getRelation();
+
+                if ($relation !== null) {
+                    $out[$name] = $relation;
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * 生成 Laravel 验证规则数组。
      *
      * @return array<string, array<int, string>>

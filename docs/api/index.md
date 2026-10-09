@@ -12,11 +12,11 @@
 
 | 项 | 值 |
 |---|---|
-| 框架版本 | 1.1.0 |
+| 框架版本 | 1.1.1 |
 | Laravel | 12.69.3 |
 | PHP | 8.2.29 |
 | 字段类型数 | 27 |
-| 已注册 Resource | 13 |
+| 已注册 Resource | 17 |
 
 ## 已注册 Resource
 
@@ -35,6 +35,10 @@
 | 分类 | `categories` | `App\Models\Category` | 5 | 4 |
 | 部门 | `departments` | `App\Models\Department` | 12 | 9 |
 | 供应商 | `suppliers` | `App\Models\Supplier` | 10 | 7 |
+| 栏目 | `cms-categories` | `App\Models\CmsCategory` | 5 | 3 |
+| 作者 | `cms-authors` | `App\Models\CmsAuthor` | 6 | 4 |
+| 标签 | `cms-tags` | `App\Models\CmsTag` | 4 | 2 |
+| 文章 | `cms-articles` | `App\Models\CmsArticle` | 11 | 13 |
 
 ## 其它页面
 

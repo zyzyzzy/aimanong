@@ -131,7 +131,8 @@ class Capabilities
             'map' => '值映射，参数: 关联数组',
 
             // 关联与条件样式（真实业务场景常用）
-            'relation' => '显式声明关联列，参数: 关联路径（如 category.name）',
+            'relation' => '显式声明关联列，参数: 关联路径（如 category.name）。'
+                .'支持 belongsTo / hasOne（单值）与 belongsToMany（多值，显示为「A / B / C」，导出同样处理）',
             'dangerWhen' => '条件高亮，参数: (运算符, 阈值, 级别)。运算符支持 < <= > >= == !=',
             'dangerBelow' => '小于阈值时高亮（如库存不足），参数: (阈值, 级别)',
             'warningAbove' => '大于阈值时高亮，参数: (阈值, 级别)',
@@ -181,6 +182,8 @@ class Capabilities
             '关联要求' => '模型上必须定义该关联（返回 Eloquent Relation），且目标表有该字段',
             '非法列' => '不存在的列、非法字符会在**编译期**报错，不会等到运行时',
             '排序限制' => '关联排序仅支持 belongsTo / hasOne（有唯一目标行）',
+            '多对多' => '列表显示与导出均支持（自动拼成「A / B / C」）；'
+                .'表单用 multiselect + ->relation() 声明即可自动写入',
             '错误码' => 'GHOST_COLUMN（列不存在）/ INVALID_QUERY_COLUMN（不可用于查询）',
         ];
     }
@@ -265,6 +268,9 @@ class Capabilities
             'options' => '下拉选项，参数: array 或 Enum::cases()',
             'rows' => '文本域行数，参数: int',
             'step' => '声明分步表单的步骤，参数: 字符串（步骤标题）。后续字段归属该步骤',
+            'relation(多对多)' => 'multiselect 上声明多对多关联：'
+                ."\$form->multiSelect('tags')->relation('tags')->options([...]); "
+                .'框架自动 sync 中间表 + 编辑时自动回填，无需手写模型事件',
         ];
     }
 

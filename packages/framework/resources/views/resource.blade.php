@@ -267,6 +267,48 @@
                     </select>
                 </div>
 
+                <!-- 多选（复选框组）—— 多对多关联常用 -->
+                <div v-else-if="f.type === 'multiselect'" style="display:flex;gap:14px;flex-wrap:wrap;">
+                    <label v-for="opt in (f.props.options || [])" :key="opt.value"
+                           style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer;">
+                        <input type="checkbox" :value="opt.value" v-model="form[f.name]">
+                        @{{ opt.label }}
+                    </label>
+                    <span v-if="!(f.props.options || []).length" class="muted" style="font-size:12px;">（无可选项）</span>
+                </div>
+
+                <!-- 颜色选择器 -->
+                <input v-else-if="f.type === 'color'" type="color" v-model="form[f.name]"
+                       style="width:64px;height:36px;padding:2px;border:1px solid #dde3e0;border-radius:6px;">
+
+                <!-- 滑块 -->
+                <div v-else-if="f.type === 'slider'" style="display:flex;align-items:center;gap:10px;">
+                    <input type="range" v-model="form[f.name]"
+                           :min="f.props.min ?? 0" :max="f.props.max ?? 100" :step="f.props.step ?? 1"
+                           style="flex:1;">
+                    <span style="font-size:13px;color:#6b746f;min-width:36px;">@{{ form[f.name] }}</span>
+                </div>
+
+                <!-- 评分 -->
+                <div v-else-if="f.type === 'rate'" style="display:flex;gap:4px;align-items:center;">
+                    <span v-for="n in (f.props.max || 5)" :key="n"
+                          @click="form[f.name] = n"
+                          :style="{cursor:'pointer',fontSize:'20px',color: (form[f.name] >= n) ? '#f5b041' : '#dde3e0'}">★</span>
+                    <span style="font-size:12px;color:#8a948f;margin-left:6px;">@{{ form[f.name] || 0 }} / @{{ f.props.max || 5 }}</span>
+                </div>
+
+                <!-- 标签输入（逗号分隔） -->
+                <input v-else-if="f.type === 'tags'" type="text" v-model="form[f.name]"
+                       :placeholder="f.props.placeholder || '多个用逗号分隔'"
+                       style="width:100%;padding:9px 12px;border:1px solid #dde3e0;border-radius:6px;font-size:13px;">
+
+                <!-- 日期区间 -->
+                <div v-else-if="f.type === 'daterange'" style="display:flex;gap:8px;align-items:center;">
+                    <input type="date" v-model="form[f.name + '_start']" style="flex:1;padding:9px 12px;border:1px solid #dde3e0;border-radius:6px;font-size:13px;">
+                    <span class="muted">至</span>
+                    <input type="date" v-model="form[f.name + '_end']" style="flex:1;padding:9px 12px;border:1px solid #dde3e0;border-radius:6px;font-size:13px;">
+                </div>
+
                 <!-- 多行文本 -->
                 <textarea v-else-if="f.type === 'textarea'" v-model="form[f.name]"
                           :rows="f.props.rows || 3"
@@ -436,14 +478,46 @@ createApp({
          * 关联列在 schema 里以点号命名，后端已预加载，此处直接深取。
          */
         function cellValue(col, row) {
-            if (!col.name.includes('.')) return row[col.name];
+            if (!col.name.includes('.')) return normalizeCell(row[col.name]);
 
             let v = row;
             for (const part of col.name.split('.')) {
                 if (v === null || v === undefined) return '';
+
+                // 多对多：关联值是数组，取每个成员的该字段
+                if (Array.isArray(v)) {
+                    return v.map(item => (item == null ? '' : item[part]))
+                            .filter(x => x !== null && x !== undefined && x !== '')
+                            .join(' / ');
+                }
+
                 v = v[part];
             }
-            return v ?? '';
+
+            return normalizeCell(v);
+        }
+
+        /**
+         * 归一化单元格值。
+         *
+         * 多对多关联返回数组（如 [{name:'Vue'},{name:'Laravel'}]），
+         * 直接插值会渲染成 [object Object] —— 必须拼成可读文本。
+         */
+        function normalizeCell(v) {
+            if (v === null || v === undefined) return '';
+            if (!Array.isArray(v)) return v;
+
+            return v
+                .map(item => {
+                    if (item === null || item === undefined) return '';
+                    if (typeof item === 'object') {
+                        // 优先取常见展示字段
+                        return item.name ?? item.title ?? item.label ?? JSON.stringify(item);
+                    }
+                    return String(item);
+                })
+                .filter(x => x !== '')
+                .join(' / ');
         }
 
         // 省市区插件状态
@@ -620,7 +694,7 @@ createApp({
             load, toggleSort, formatDate, edit, save, remove,
             exportable, doExport, isTree, treeTitleColumn, loadTree,
             isStepped, steps, currentStep, visibleFields,
-            inputType, mapLabel, tagClass, formatMoney, cellValue, cellClass,
+            inputType, mapLabel, tagClass, formatMoney, cellValue, cellClass, normalizeCell,
             regionProvinces, regionTree, regionForm, onProvinceChange, onCityChange, ensureRegion, openCreate,
         };
     },

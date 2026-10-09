@@ -43,7 +43,7 @@ class HomeController extends Controller
          * 数据本身是安全的（API 403），但体验上应直接告知。
          */
         if (! PermissionGate::check(PermissionGate::slug($uri, 'index'))) {
-            abort(403, '没有权限访问「'.($class::label() ?? $uri).'」。'
+            abort(403, '没有权限访问「'.$class::label().'」。'
                 .'请让管理员分配「查看列表」权限。');
         }
 

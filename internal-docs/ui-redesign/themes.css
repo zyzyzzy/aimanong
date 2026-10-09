@@ -1,0 +1,159 @@
+/* ===== 墨玉 Ink Jade ===== */
+[data-theme="ink"] {
+  --bg-canvas: #f4f6f8;
+  --bg-surface: #ffffff;
+  --bg-subtle: #fcfdfe;
+  --bg-sunken: #eaedf0;
+  --bg-hover: #f4f6f8;
+  --bg-active: #eaedf0;
+  --bg-inverse: #0d1721;
+  --text-primary: #0d1721;
+  --text-secondary: #444e59;
+  --text-tertiary: #5a646f;
+  --text-disabled: #979fa8;
+  --text-inverse: #ffffff;
+  --brand-solid: #007643;
+  --brand-solid-hover: #005d33;
+  --brand-solid-active: #004424;
+  --text-on-brand: #ffffff;
+  --brand-text: #007643;
+  --brand-subtle-bg: #f0f9f4;
+  --brand-subtle-border: #c7e7d3;
+  --brand-ring: #3aa470;
+  --border-subtle: #e3e6e9;
+  --border-default: #dce0e5;
+  --border-strong: #cbd0d6;
+  --border-focus: #3aa470;
+}
+[data-theme="ink"][data-mode="dark"] {
+  --bg-canvas: #0b0f14;
+  --bg-surface: #121820;
+  --bg-subtle: #18202a;
+  --bg-sunken: #080b10;
+  --bg-hover: #1c2530;
+  --bg-active: #232e3b;
+  --text-primary: #e4e8ec;
+  --text-secondary: #afb8c2;
+  --text-tertiary: #7b8895;
+  --text-disabled: #647280;
+  --text-inverse: #0b0f14;
+  --brand-solid: #008e58;
+  --brand-solid-hover: #3aa470;
+  --brand-solid-active: #64b88a;
+  --text-on-brand: #0b0f14;
+  --brand-text: #3aa470;
+  --brand-subtle-bg: #032011;
+  --brand-subtle-border: #073d25;
+  --brand-ring: #3aa470;
+  --border-subtle: #232d3a;
+  --border-default: #2f3b4a;
+  --border-strong: #3f4d5e;
+  --border-focus: #3aa470;
+  --bg-inverse: #f9fafb;
+}
+/* ===== 深空 Deep Space ===== */
+[data-theme="deep"] {
+  --bg-canvas: #f4f6f8;
+  --bg-surface: #ffffff;
+  --bg-subtle: #fcfdfe;
+  --bg-sunken: #eaedf0;
+  --bg-hover: #f4f6f8;
+  --bg-active: #eaedf0;
+  --bg-inverse: #0b1721;
+  --text-primary: #0b1721;
+  --text-secondary: #434f59;
+  --text-tertiary: #59656f;
+  --text-disabled: #96a0a8;
+  --text-inverse: #ffffff;
+  --brand-solid: #007a50;
+  --brand-solid-hover: #00603e;
+  --brand-solid-active: #00462c;
+  --text-on-brand: #ffffff;
+  --brand-text: #007a50;
+  --brand-subtle-bg: #eefaf5;
+  --brand-subtle-border: #bfe9d7;
+  --brand-ring: #00a97d;
+  --border-subtle: #e3e6e9;
+  --border-default: #dbe0e5;
+  --border-strong: #cad0d5;
+  --border-focus: #00a97d;
+}
+[data-theme="deep"][data-mode="dark"] {
+  --bg-canvas: #0b0f14;
+  --bg-surface: #121820;
+  --bg-subtle: #18202a;
+  --bg-sunken: #080b10;
+  --bg-hover: #1c2530;
+  --bg-active: #232e3b;
+  --text-primary: #e4e8ec;
+  --text-secondary: #aeb9c2;
+  --text-tertiary: #7a8894;
+  --text-disabled: #62727f;
+  --text-inverse: #0b0f14;
+  --brand-solid: #009365;
+  --brand-solid-hover: #00a97d;
+  --brand-solid-active: #42bc95;
+  --text-on-brand: #0b0f14;
+  --brand-text: #009365;
+  --brand-subtle-bg: #002015;
+  --brand-subtle-border: #003e2c;
+  --brand-ring: #009365;
+  --border-subtle: #232d3a;
+  --border-default: #2f3b4a;
+  --border-strong: #3f4d5e;
+  --border-focus: #009365;
+  --bg-inverse: #f9fafb;
+}
+/* ===== 极光 Aurora ===== */
+[data-theme="aurora"] {
+  --bg-canvas: #f5f5f8;
+  --bg-surface: #ffffff;
+  --bg-subtle: #fcfdfe;
+  --bg-sunken: #ececf0;
+  --bg-hover: #f5f5f8;
+  --bg-active: #ececf0;
+  --bg-inverse: #141522;
+  --text-primary: #141522;
+  --text-secondary: #4a4c5a;
+  --text-tertiary: #61626f;
+  --text-disabled: #9c9ea9;
+  --text-inverse: #ffffff;
+  --brand-solid: #725ce2;
+  --brand-solid-hover: #5d46c3;
+  --brand-solid-active: #49349d;
+  --text-on-brand: #ffffff;
+  --brand-text: #5d46c3;
+  --brand-subtle-bg: #f5f5ff;
+  --brand-subtle-border: #d9d8ff;
+  --brand-ring: #8777f5;
+  --border-subtle: #e5e5e9;
+  --border-default: #dedfe5;
+  --border-strong: #cecfd6;
+  --border-focus: #8777f5;
+}
+[data-theme="aurora"][data-mode="dark"] {
+  --bg-canvas: #0b0f14;
+  --bg-surface: #121820;
+  --bg-subtle: #18202a;
+  --bg-sunken: #080b10;
+  --bg-hover: #1c2530;
+  --bg-active: #232e3b;
+  --text-primary: #e7e7ed;
+  --text-secondary: #b5b6c2;
+  --text-tertiary: #838595;
+  --text-disabled: #6c6f81;
+  --text-inverse: #0b0f14;
+  --brand-solid: #8777f5;
+  --brand-solid-hover: #9c93fe;
+  --brand-solid-active: #b2acff;
+  --text-on-brand: #0b0f14;
+  --brand-text: #8777f5;
+  --brand-subtle-bg: #18162d;
+  --brand-subtle-border: #302c55;
+  --brand-ring: #8777f5;
+  --border-subtle: #232d3a;
+  --border-default: #2f3b4a;
+  --border-strong: #3f4d5e;
+  --border-focus: #8777f5;
+  --bg-inverse: #fafafb;
+}

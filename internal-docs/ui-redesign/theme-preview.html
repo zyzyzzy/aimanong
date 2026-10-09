@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="ink" data-mode="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aimanong 主题预览</title>
+<link rel="stylesheet" href="themes.css">
+<style>
+/* ============ 令牌层（非颜色部分） ============ */
+:root{
+  /* 间距：4px 基准，8px 节奏 */
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px;
+  --sp-8:32px; --sp-10:40px; --sp-12:48px; --sp-16:64px;
+  /* 圆角：3 档，够用 */
+  --r-sm:6px; --r-md:8px; --r-lg:12px; --r-xl:16px; --r-full:999px;
+  /* 字号阶梯（中文行高加大） */
+  --fs-xs:12px; --fs-sm:13px; --fs-base:14px; --fs-md:15px; --fs-lg:17px;
+  --fs-xl:20px; --fs-2xl:24px; --fs-3xl:30px;
+  --lh-tight:1.35; --lh-base:1.6; --lh-loose:1.75;
+  /* 中文字体栈 */
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB",
+    "Microsoft YaHei","Noto Sans SC","Source Han Sans SC","WenQuanYi Micro Hei",sans-serif;
+  --font-mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  /* 动效 */
+  --dur-fast:120ms; --dur:180ms; --dur-slow:280ms;
+  --ease:cubic-bezier(.4,0,.2,1);
+  --z-modal:100;
+}
+[data-mode="dark"]{color-scheme:dark}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:var(--font-sans);font-size:var(--fs-base);line-height:var(--lh-base);
+  background:var(--bg-canvas);color:var(--text-primary);
+  transition:background var(--dur) var(--ease),color var(--dur) var(--ease);
+}
+/* ============ 组件层 ============ */
+.card{
+  background:var(--bg-surface);border:1px solid var(--border-default);
+  border-radius:var(--r-lg);box-shadow:0 1px 2px rgba(16,24,40,.04);
+  transition:box-shadow var(--dur) var(--ease),border-color var(--dur) var(--ease);
+}
+.btn{
+  display:inline-flex;align-items:center;gap:var(--sp-2);
+  height:34px;padding:0 var(--sp-4);border-radius:var(--r-md);
+  font:inherit;font-size:var(--fs-sm);font-weight:500;
+  border:1px solid var(--border-strong);background:var(--bg-surface);color:var(--text-primary);
+  cursor:pointer;transition:all var(--dur) var(--ease);
+}
+.btn:hover{background:var(--bg-hover);border-color:var(--text-disabled)}
+.btn:active{background:var(--bg-active);transform:translateY(.5px)}
+.btn-primary{background:var(--brand-solid);border-color:var(--brand-solid);color:var(--text-on-brand)}
+.btn-primary:hover{background:var(--brand-solid-hover);border-color:var(--brand-solid-hover)}
+.btn-primary:active{background:var(--brand-solid-active)}
+.btn:focus-visible,.input:focus-visible,.nav-item:focus-visible{
+  outline:2px solid var(--border-focus);outline-offset:2px;
+}
+.input{
+  width:100%;height:34px;padding:0 var(--sp-3);border-radius:var(--r-md);
+  border:1px solid var(--border-strong);background:var(--bg-surface);color:var(--text-primary);
+  font:inherit;font-size:var(--fs-sm);transition:border-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease);
+}
+.input::placeholder{color:var(--text-disabled)}
+.input:hover{border-color:var(--text-disabled)}
+.input:focus{outline:none;border-color:var(--border-focus);box-shadow:0 0 0 3px color-mix(in srgb,var(--border-focus) 18%,transparent)}
+/* 表格：行高 44、数字等宽、hover 高亮 */
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:var(--fs-sm)}
+th{
+  text-align:left;padding:var(--sp-3) var(--sp-4);font-weight:600;font-size:var(--fs-xs);
+  color:var(--text-tertiary);background:var(--bg-subtle);
+  border-bottom:1px solid var(--border-default);white-space:nowrap;
+  letter-spacing:.02em;text-transform:none;
+}
+td{padding:var(--sp-3) var(--sp-4);height:44px;border-bottom:1px solid var(--border-subtle);vertical-align:middle}
+tbody tr{transition:background var(--dur-fast) var(--ease)}
+tbody tr:hover{background:var(--bg-hover)}
+tbody tr:last-child td{border-bottom:none}
+.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;text-align:right}
+.badge{
+  display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;
+  border-radius:var(--r-full);font-size:var(--fs-xs);font-weight:500;
+  background:var(--brand-subtle-bg);color:var(--brand-text);
+  border:1px solid var(--brand-subtle-border);
+}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+/* 布局 */
+.shell{display:grid;grid-template-columns:224px 1fr;min-height:100vh}
+.side{border-right:1px solid var(--border-default);background:var(--bg-surface);padding:var(--sp-4) var(--sp-3)}
+.brand{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3) var(--sp-5);font-weight:600}
+.mark{width:26px;height:26px;border-radius:var(--r-sm);background:var(--brand-solid);color:var(--text-on-brand);
+  display:grid;place-items:center;font-size:12px;font-weight:700}
+.nav-group{font-size:var(--fs-xs);color:var(--text-tertiary);padding:var(--sp-4) var(--sp-3) var(--sp-2);font-weight:600}
+.nav-item{display:flex;align-items:center;gap:var(--sp-3);height:36px;padding:0 var(--sp-3);
+  border-radius:var(--r-md);color:var(--text-secondary);text-decoration:none;font-size:var(--fs-sm);
+  transition:all var(--dur-fast) var(--ease);position:relative}
+.nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.nav-item.active{background:var(--brand-subtle-bg);color:var(--brand-text);font-weight:600;
+  border:1px solid var(--brand-subtle-border)}
+.topbar{display:flex;align-items:center;justify-content:space-between;height:56px;
+  padding:0 var(--sp-6);border-bottom:1px solid var(--border-default);background:var(--bg-surface)}
+.main{padding:var(--sp-6);display:flex;flex-direction:column;gap:var(--sp-5);min-width:0}
+.crumb{font-size:var(--fs-sm);color:var(--text-tertiary)}
+.crumb b{color:var(--text-primary);font-weight:600}
+.row{display:flex;align-items:center;gap:var(--sp-2)}
+h2.title{font-size:var(--fs-md);font-weight:600;letter-spacing:-.01em}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-4)}
+.stat{padding:var(--sp-4)}
+.stat .k{font-size:var(--fs-xs);color:var(--text-tertiary)}
+.stat .v{font-size:var(--fs-2xl);font-weight:600;font-family:var(--font-mono);
+  font-variant-numeric:tabular-nums;margin-top:var(--sp-1);letter-spacing:-.02em}
+.bar{height:6px;border-radius:var(--r-full);background:var(--bg-active);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--brand-solid);border-radius:inherit}
+.empty{padding:var(--sp-12);text-align:center;color:var(--text-tertiary);font-size:var(--fs-sm)}
+.ctl{display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:center;
+  padding:var(--sp-3) var(--sp-4);background:var(--bg-surface);border-bottom:1px solid var(--border-default)}
+.sw{display:inline-flex;height:22px;border:1px solid var(--border-default);border-radius:var(--r-full);overflow:hidden;background:var(--bg-surface)}
+.sw button{border:0;background:none;font:inherit;font-size:var(--fs-xs);padding:0 12px;cursor:pointer;color:var(--text-secondary)}
+.sw button[aria-pressed="true"]{background:var(--brand-solid);color:var(--text-on-brand);font-weight:600}
+.swatch{display:flex;gap:6px;flex-wrap:wrap;margin-top:var(--sp-3)}
+.swatch div{width:52px;height:38px;border-radius:var(--r-sm);border:1px solid var(--border-default);
+  display:grid;place-items:end center;font-size:9px;color:var(--text-tertiary);padding-bottom:2px;font-family:var(--font-mono)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <div class="brand"><span class="mark">AI</span> Aimanong</div>
+    <div class="nav-group">概览</div>
+    <a class="nav-item active" href="#">◈ 工作台</a>
+    <a class="nav-item" href="#">▦ 数据列表</a>
+    <div class="nav-group">系统</div>
+    <a class="nav-item" href="#">◍ 用户</a>
+    <a class="nav-item" href="#">◇ 角色</a>
+  </aside>
+  <div>
+    <div class="topbar">
+      <div class="crumb">字段演示 / <b>订单管理</b></div>
+      <div class="row">
+        <span class="sw">
+          <button data-t="ink" aria-pressed="true">墨玉</button>
+          <button data-t="deep" aria-pressed="false">深空</button>
+          <button data-t="aurora" aria-pressed="false">极光</button>
+        </span>
+        <span class="sw">
+          <button data-m="light" aria-pressed="true">浅</button>
+          <button data-m="dark" aria-pressed="false">深</button>
+        </span>
+      </div>
+    </div>
+    <main class="main">
+      <div class="card" style="overflow:hidden">
+        <div class="ctl">
+          <input class="input" style="max-width:240px" placeholder="搜索订单号…">
+          <button class="btn">刷新</button>
+          <button class="btn">导出</button>
+          <button class="btn btn-primary" style="margin-left:auto">+ 新增</button>
+        </div>
+        <table>
+          <thead><tr><th>ID</th><th>订单号</th><th>状态</th><th>进度</th><th style="text-align:right">金额</th><th>操作</th></tr></thead>
+          <tbody>
+            <tr><td class="num">32</td><td>TK-1001</td><td><span class="badge"><i class="dot"></i>已解决</span></td>
+              <td><div class="bar"><i style="width:82%"></i></div></td><td class="num">¥12,480.00</td>
+              <td class="row"><button class="btn" style="height:28px;padding:0 10px">编辑</button></td></tr>
+            <tr><td class="num">33</td><td>TK-1002</td><td><span class="badge">处理中</span></td>
+              <td><div class="bar"><i style="width:45%"></i></div></td><td class="num">¥860.50</td>
+              <td class="row"><button class="btn" style="height:28px;padding:0 10px">编辑</button></td></tr>
+            <tr><td class="num">34</td><td>TK-1003</td><td><span class="badge">待处理</span></td>
+              <td><div class="bar"><i style="width:12%"></i></div></td><td class="num">¥3,200.00</td>
+              <td class="row"><button class="btn" style="height:28px;padding:0 10px">编辑</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="grid3">
+        <div class="card stat"><div class="k">本月订单</div><div class="v">1,284</div></div>
+        <div class="card stat"><div class="k">营收（元）</div><div class="v">86,420</div></div>
+        <div class="card stat"><div class="k">转化率</div><div class="v">4.8%</div></div>
+      </div>
+      <div class="card" style="padding:var(--sp-5)">
+        <h2 class="title" style="margin-bottom:var(--sp-4)">色板</h2>
+        <div class="swatch" id="sw"></div>
+      </div>
+    </main>
+  </div>
+</div>
+<script>
+const root=document.documentElement;
+document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{
+  root.dataset.theme=b.dataset.t;
+  document.querySelectorAll('[data-t]').forEach(x=>x.setAttribute('aria-pressed',x===b));
+  paint();
+});
+document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{
+  root.dataset.mode=b.dataset.m;
+  document.querySelectorAll('[data-m]').forEach(x=>x.setAttribute('aria-pressed',x===b));
+  paint();
+});
+function paint(){
+  const cs=getComputedStyle(root);
+  const keys=['bg-canvas','bg-surface','bg-hover','border-subtle','border-default','border-strong',
+    'text-primary','text-secondary','text-tertiary','text-disabled','brand-solid','brand-text',
+    'brand-subtle-bg','brand-subtle-border'];
+  document.getElementById('sw').innerHTML=keys.map(k=>
+    `<div style="background:var(${'--'+k})">${cs.getPropertyValue('--'+k).trim()}</div>`).join('');
+}
+paint();
+</script>
+</body>
+</html>

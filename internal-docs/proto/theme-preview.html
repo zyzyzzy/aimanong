@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aimanong 视觉方案原型</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   设计 Token 层 —— 三套风格共用同一套变量名
+   切换风格 = 换 :root 上的变量，DOM 完全不变
+   ═══════════════════════════════════════════════════════ */
+
+/* ─── 风格 A：青瓷（浅色·克制专业）─── */
+[data-theme="celadon"] {
+  --brand: #0d9488;
+  --brand-hover: #0f766e;
+  --brand-soft: #ccfbf1;
+  --brand-text: #115e59;
+
+  --bg: #f6f8f8;
+  --surface: #ffffff;
+  --surface-2: #f9fbfb;
+  --sidebar-bg: #ffffff;
+
+  --text: #0f1a1c;
+  --text-2: #4a5c5e;
+  --text-3: #8ba0a1;
+  --text-4: #b8c7c8;
+
+  --border: #e3ebeb;
+  --border-2: #d3dede;
+
+  --ok: #16a34a; --ok-soft: #dcfce7;
+  --warn: #d97706; --warn-soft: #fef3c7;
+  --danger: #dc2626; --danger-soft: #fee2e2;
+  --info: #2563eb; --info-soft: #dbeafe;
+
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --shadow-1: 0 1px 2px rgba(15,26,28,.04), 0 1px 3px rgba(15,26,28,.06);
+  --shadow-2: 0 4px 12px rgba(15,26,28,.07), 0 2px 4px rgba(15,26,28,.04);
+  --shadow-3: 0 12px 32px rgba(15,26,28,.12), 0 4px 8px rgba(15,26,28,.06);
+  --glow: none;
+  --header-bg: rgba(255,255,255,.85);
+  --blur: blur(12px);
+  --row-hover: #f4f9f9;
+}
+
+/* ─── 风格 B：深空（暗色·科技感）─── */
+[data-theme="deepspace"] {
+  --brand: #2dd4bf;
+  --brand-hover: #5eead4;
+  --brand-soft: #134e4a;
+  --brand-text: #5eead4;
+
+  --bg: #0a0f14;
+  --surface: #111a21;
+  --surface-2: #16212a;
+  --sidebar-bg: #0d151b;
+
+  --text: #e8f0f2;
+  --text-2: #9fb3b8;
+  --text-3: #6b8288;
+  --text-4: #47595e;
+
+  --border: #1e2d36;
+  --border-2: #2a3d47;
+
+  --ok: #4ade80; --ok-soft: #14351f;
+  --warn: #fbbf24; --warn-soft: #3a2c0a;
+  --danger: #f87171; --danger-soft: #3d1717;
+  --info: #60a5fa; --info-soft: #12233d;
+
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --shadow-1: 0 1px 2px rgba(0,0,0,.4);
+  --shadow-2: 0 4px 12px rgba(0,0,0,.5);
+  --shadow-3: 0 12px 32px rgba(0,0,0,.6);
+  --glow: 0 0 0 1px rgba(45,212,191,.15), 0 0 24px rgba(45,212,191,.10);
+  --header-bg: rgba(13,21,27,.8);
+  --blur: blur(16px);
+  --row-hover: #16212a;
+}
+
+/* ─── 风格 C：极光（渐变·炫酷）─── */
+[data-theme="aurora"] {
+  --brand: #7c3aed;
+  --brand-hover: #8b5cf6;
+  --brand-soft: #ede9fe;
+  --brand-text: #5b21b6;
+
+  --bg: #faf9ff;
+  --surface: #ffffff;
+  --surface-2: #faf9ff;
+  --sidebar-bg: linear-gradient(180deg, #ffffff 0%, #faf8ff 100%);
+
+  --text: #1a1526;
+  --text-2: #57496e;
+  --text-3: #9186a8;
+  --text-4: #c4bcd4;
+
+  --border: #ebe6f5;
+  --border-2: #ddd5ee;
+
+  --ok: #059669; --ok-soft: #d1fae5;
+  --warn: #d97706; --warn-soft: #fef3c7;
+  --danger: #e11d48; --danger-soft: #ffe4e6;
+  --info: #0891b2; --info-soft: #cffafe;
+
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 18px;
+  --shadow-1: 0 1px 2px rgba(124,58,237,.06);
+  --shadow-2: 0 4px 16px rgba(124,58,237,.10);
+  --shadow-3: 0 16px 40px rgba(124,58,237,.18);
+  --glow: 0 0 0 1px rgba(124,58,237,.10), 0 8px 32px rgba(124,58,237,.12);
+  --header-bg: rgba(255,255,255,.75);
+  --blur: blur(20px);
+  --row-hover: #faf8ff;
+}
+
+/* 极光风格特有：顶部渐变光带 */
+[data-theme="aurora"] .app-header::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+  background: linear-gradient(90deg, #7c3aed, #06b6d4, #ec4899, #7c3aed);
+  background-size: 300% 100%;
+  animation: auroraShift 8s linear infinite;
+}
+@keyframes auroraShift { to { background-position: 300% 0; } }
+
+/* 深空风格特有：网格背景 */
+[data-theme="deepspace"] body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; opacity: .35;
+  background-image:
+    linear-gradient(rgba(45,212,191,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45,212,191,.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   基础层
+   ═══════════════════════════════════════════════════════ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+               "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.7;                /* 中文需要更大行高 */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  transition: background .3s ease, color .3s ease;
+}
+
+/* 数字用等宽，对齐更整齐 */
+.num, td.num, .stat-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: inherit; text-decoration: none; }
+
+/* 焦点可见（无障碍） */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* 尊重减少动效偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   布局
+   ═══════════════════════════════════════════════════════ */
+.app { display: flex; flex-direction: column; min-height: 100vh; }
+
+.app-header {
+  position: sticky; top: 0; z-index: 50;
+  height: 60px; flex-shrink: 0;
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 24px;
+  background: var(--header-bg);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-hover));
+  display: grid; place-items: center;
+  color: #fff; font-size: 13px; font-weight: 700;
+  box-shadow: var(--glow);
+}
+.brand-sub { font-size: 12px; color: var(--text-3); font-weight: 400; margin-left: 2px; }
+
+.header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+
+.app-body { display: flex; flex: 1; min-height: 0; }
+
+.sidebar {
+  width: 216px; flex-shrink: 0;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+  padding: 16px 12px;
+  overflow-y: auto;
+}
+
+.nav-group { margin-bottom: 20px; }
+.nav-group-title {
+  padding: 0 10px 8px;
+  font-size: 11px; font-weight: 600;
+  color: var(--text-4);
+  letter-spacing: .8px;
+  text-transform: uppercase;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  position: relative;
+}
+.nav-item:hover { background: var(--row-hover); color: var(--text); }
+.nav-item.active {
+  background: var(--brand-soft);
+  color: var(--brand-text);
+  font-weight: 600;
+  box-shadow: var(--glow);
+}
+.nav-item svg { width: 16px; height: 16px; flex-shrink: 0; opacity: .85; }
+.nav-item.active svg { opacity: 1; }
+
+.main { flex: 1; min-width: 0; padding: 28px 32px; }
+
+/* ═══════════════════════════════════════════════════════
+   页面头部
+   ═══════════════════════════════════════════════════════ */
+.page-head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 24px; }
+.page-title { font-size: 22px; font-weight: 650; letter-spacing: -.3px; }
+.page-desc { font-size: 13px; color: var(--text-3); margin-top: 2px; }
+.page-actions { margin-left: auto; display: flex; gap: 10px; }
+
+/* ═══════════════════════════════════════════════════════
+   卡片
+   ═══════════════════════════════════════════════════════ */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+  transition: box-shadow .2s, border-color .2s;
+}
+.card + .card { margin-top: 20px; }
+.card-head {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+}
+.card-title { font-size: 15px; font-weight: 600; }
+.card-body { padding: 20px; }
+
+/* ═══════════════════════════════════════════════════════
+   按钮
+   ═══════════════════════════════════════════════════════ */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 36px; padding: 0 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 13.5px; font-weight: 500;
+  cursor: pointer;
+  transition: all .15s ease;
+  white-space: nowrap;
+}
+.btn:hover { border-color: var(--brand); color: var(--brand); background: var(--surface-2); }
+.btn:active { transform: translateY(1px); }
+.btn svg { width: 15px; height: 15px; }
+
+.btn-primary {
+  background: var(--brand); border-color: var(--brand); color: #fff;
+  box-shadow: var(--shadow-1), var(--glow);
+}
+.btn-primary:hover {
+  background: var(--brand-hover); border-color: var(--brand-hover);
+  color: #fff; box-shadow: var(--shadow-2), var(--glow);
+}
+.btn-sm { height: 30px; padding: 0 10px; font-size: 12.5px; }
+.btn-ghost { border-color: transparent; background: transparent; }
+.btn-ghost:hover { background: var(--row-hover); }
+
+/* ═══════════════════════════════════════════════════════
+   表格
+   ═══════════════════════════════════════════════════════ */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: separate; border-spacing: 0; }
+
+thead th {
+  position: sticky; top: 0; z-index: 1;
+  background: var(--surface-2);
+  padding: 11px 16px;
+  text-align: left;
+  font-size: 12px; font-weight: 600;
+  color: var(--text-3);
+  letter-spacing: .3px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+thead th.num { text-align: right; }
+
+tbody td {
+  padding: 13px 16px;
+  font-size: 13.5px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+tbody td.num { text-align: right; }
+tbody tr { transition: background .12s; }
+tbody tr:hover { background: var(--row-hover); }
+tbody tr:last-child td { border-bottom: none; }
+
+/* 标签 */
+.tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px; font-weight: 500;
+  background: var(--surface-2); color: var(--text-2);
+  border: 1px solid var(--border);
+}
+.tag-ok     { background: var(--ok-soft);     color: var(--ok);     border-color: transparent; }
+.tag-warn   { background: var(--warn-soft);   color: var(--warn);   border-color: transparent; }
+.tag-danger { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
+.tag-info   { background: var(--info-soft);   color: var(--info);   border-color: transparent; }
+.tag-brand  { background: var(--brand-soft);  color: var(--brand-text); border-color: transparent; }
+
+.dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* 危险数值高亮（条件样式） */
+.val-danger { color: var(--danger); font-weight: 600; }
+
+/* ═══════════════════════════════════════════════════════
+   表单
+   ═══════════════════════════════════════════════════════ */
+.field { margin-bottom: 18px; }
+.field-label {
+  display: block; margin-bottom: 7px;
+  font-size: 13px; font-weight: 500; color: var(--text-2);
+}
+.field-label .req { color: var(--danger); margin-left: 2px; }
+.field-help { font-size: 12px; color: var(--text-3); margin-top: 5px; }
+
+.input, select.input, textarea.input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 13.5px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.input::placeholder { color: var(--text-4); }
+.input:hover { border-color: var(--text-4); }
+.input:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 15%, transparent);
+}
+
+.btn-row { display: flex; gap: 10px; justify-content: flex-end; padding-top: 4px; }
+
+/* ═══════════════════════════════════════════════════════
+   弹窗
+   ═══════════════════════════════════════════════════════ */
+.modal-mask {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(10,15,20,.45);
+  backdrop-filter: blur(4px);
+  display: grid; place-items: center;
+  padding: 24px;
+  animation: fadeIn .18s ease;
+}
+@keyframes fadeIn { from { opacity: 0 } }
+.modal {
+  width: 100%; max-width: 560px;
+  max-height: 88vh; overflow: hidden;
+  display: flex; flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-3), var(--glow);
+  animation: popIn .22s cubic-bezier(.16,1,.3,1);
+}
+@keyframes popIn { from { opacity:0; transform: translateY(12px) scale(.98) } }
+.modal-head {
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+}
+.modal-title { font-size: 16px; font-weight: 600; }
+.modal-body { padding: 22px; overflow-y: auto; flex: 1; }
+.modal-foot {
+  padding: 14px 22px;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px; justify-content: flex-end;
+  background: var(--surface-2);
+}
+
+/* ═══════════════════════════════════════════════════════
+   统计卡（工作台）
+   ═══════════════════════════════════════════════════════ */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+.stat {
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+  position: relative; overflow: hidden;
+}
+.stat::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--brand); opacity: .8;
+}
+.stat-label { font-size: 12.5px; color: var(--text-3); }
+.stat-num { font-size: 26px; font-weight: 650; letter-spacing: -.5px; margin-top: 4px; }
+
+/* 图标磁贴 */
+.tile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.tile {
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all .18s cubic-bezier(.16,1,.3,1);
+  box-shadow: var(--shadow-1);
+}
+.tile:hover {
+  border-color: var(--brand);
+  box-shadow: var(--shadow-2), var(--glow);
+  transform: translateY(-2px);
+}
+.tile-icon {
+  width: 34px; height: 34px; border-radius: 9px;
+  display: grid; place-items: center;
+  background: var(--brand-soft); color: var(--brand-text);
+  margin-bottom: 10px;
+}
+.tile-icon svg { width: 17px; height: 17px; }
+.tile-label { font-size: 13.5px; font-weight: 500; }
+
+/* ═══════════════════════════════════════════════════════
+   风格切换器（仅在原型里用）
+   ═══════════════════════════════════════════════════════ */
+.switcher {
+  position: fixed; right: 20px; bottom: 20px; z-index: 200;
+  display: flex; gap: 6px; padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: var(--shadow-3);
+}
+.switcher button {
+  padding: 7px 14px; border: none; border-radius: 999px;
+  background: transparent; color: var(--text-2);
+  font-size: 12.5px; font-weight: 500; cursor: pointer;
+  transition: all .15s;
+}
+.switcher button:hover { background: var(--row-hover); }
+.switcher button.on { background: var(--brand); color: #fff; }
+
+.note {
+  padding: 12px 16px; border-radius: var(--radius-sm);
+  background: var(--info-soft); color: var(--info);
+  font-size: 13px; border: 1px solid transparent;
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-mark">AI</div>
+      <span>Aimanong</span>
+      <span class="brand-sub">AI 码农</span>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-sm btn-ghost">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        搜索
+      </button>
+      <span class="tag tag-brand">超级管理员</span>
+    </div>
+  </header>
+
+  <div class="app-body">
+    <aside class="sidebar">
+      <div class="nav-group">
+        <div class="nav-group-title">内容管理</div>
+        <div class="nav-item active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+          文章
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          栏目
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg>
+          作者
+        </div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-title">电商</div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l2-4h14l2 4v12H3z"/><path d="M3 7h18"/></svg>
+          商品
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
+          订单
+        </div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-title">系统</div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+          角色
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="14" r="4"/><path d="M11 11l8-8 2 2-2 2 2 2-2 2-2-2-2 2"/></svg>
+          权限节点
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="page-head">
+        <div>
+          <div class="page-title">文章管理</div>
+          <div class="page-desc">共 12 条记录 · 最后更新于 2 分钟前</div>
+        </div>
+        <div class="page-actions">
+          <button class="btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+            导出
+          </button>
+          <button class="btn btn-primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            新增
+          </button>
+        </div>
+      </div>
+
+      <!-- 统计卡 -->
+      <div class="stat-grid" style="margin-bottom:20px;">
+        <div class="stat">
+          <div class="stat-label">文章总数</div>
+          <div class="stat-num">12</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">已发布</div>
+          <div class="stat-num">8</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">总浏览量</div>
+          <div class="stat-num">96,208</div>
+        </div>
+      </div>
+
+      <!-- 表格 -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">文章列表</span>
+          <span class="tag tag-info" style="margin-left:auto;">数据实时同步</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:56px;">ID</th>
+                <th>标题</th>
+                <th>栏目</th>
+                <th>作者</th>
+                <th>标签</th>
+                <th>状态</th>
+                <th class="num">浏览量</th>
+                <th>发布时间</th>
+                <th style="width:100px;">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="muted">1</td>
+                <td style="font-weight:500;">Laravel 12 队列深度实践</td>
+                <td>后端</td>
+                <td>赵启明</td>
+                <td><span class="tag tag-brand">Laravel</span> <span class="tag">性能优化</span></td>
+                <td><span class="tag tag-ok"><i class="dot"></i>已发布</span></td>
+                <td class="num" style="font-weight:600;">23,000</td>
+                <td class="muted">2026-08-30</td>
+                <td>
+                  <button class="btn btn-sm btn-ghost">编辑</button>
+                </td>
+              </tr>
+              <tr>
+                <td class="muted">2</td>
+                <td style="font-weight:500;">Vue 3 组合式 API 的 7 个模式</td>
+                <td>前端</td>
+                <td>李思远</td>
+                <td><span class="tag tag-brand">Vue</span> <span class="tag">前端工程化</span></td>
+                <td><span class="tag tag-ok"><i class="dot"></i>已发布</span></td>
+                <td class="num" style="font-weight:600;">10,450</td>
+                <td class="muted">2026-09-09</td>
+                <td><button class="btn btn-sm btn-ghost">编辑</button></td>
+              </tr>
+              <tr>
+                <td class="muted">3</td>
+                <td style="font-weight:500;">MySQL 索引失效的 12 种场景</td>
+                <td>后端</td>
+                <td>赵启明</td>
+                <td><span class="tag">数据库</span></td>
+                <td><span class="tag tag-info"><i class="dot"></i>待审</span></td>
+                <td class="num val-danger">8</td>
+                <td class="muted">—</td>
+                <td><button class="btn btn-sm btn-ghost">编辑</button></td>
+              </tr>
+              <tr>
+                <td class="muted">4</td>
+                <td style="font-weight:500;">前端性能预算怎么定</td>
+                <td>前端</td>
+                <td>李思远</td>
+                <td><span class="tag">前端工程化</span></td>
+                <td><span class="tag tag-warn"><i class="dot"></i>草稿</span></td>
+                <td class="num val-danger">0</td>
+                <td class="muted">—</td>
+                <td><button class="btn btn-sm btn-ghost">编辑</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 表单弹窗预览 -->
+      <div class="card" style="margin-top:20px;">
+        <div class="card-head"><span class="card-title">表单与弹窗样式</span></div>
+        <div class="card-body">
+          <div class="note">输入框有 hover/focus 态，focus 显示品牌色光环；弹窗带背景模糊遮罩</div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="modal-mask">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">新增文章</span>
+      <button class="btn btn-sm btn-ghost" style="margin-left:auto;">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label class="field-label">别名<span class="req">*</span></label>
+        <input class="input" placeholder="URL 中使用的唯一标识">
+        <div class="field-help">如 laravel-12-notes，建议用英文与连字符</div>
+      </div>
+      <div class="field">
+        <label class="field-label">标题<span class="req">*</span></label>
+        <input class="input" value="Laravel 12 队列深度实践">
+      </div>
+      <div class="field">
+        <label class="field-label">所属栏目<span class="req">*</span></label>
+        <select class="input">
+          <option>后端</option>
+          <option>前端</option>
+          <option>产品</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn">取消</button>
+      <button class="btn btn-primary">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="switcher">
+  <button class="on" data-set="celadon">青瓷</button>
+  <button data-set="deepspace">深空</button>
+  <button data-set="aurora">极光</button>
+</div>
+
+<script>
+document.documentElement.setAttribute('data-theme', 'celadon');
+document.querySelectorAll('.switcher button').forEach(b => {
+  b.onclick = () => {
+    document.documentElement.setAttribute('data-theme', b.dataset.set);
+    document.querySelectorAll('.switcher button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+  };
+});
+</script>
+</body>
+</html>

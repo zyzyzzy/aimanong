@@ -25,7 +25,7 @@ Aimanong 为此明确牺牲部分"灵活性"来换取"确定性"：
 
 ## 快速开始
 
-> 开发中，尚未发布首个版本。参见 [开发计划](./docs/开发计划.md)。
+> 开发中，尚未发布首个版本。参见 [开发计划](./docs/internal/开发计划.md)。
 
 ## 仓库结构
 
@@ -38,9 +38,20 @@ Aimanong 为此明确牺牲部分"灵活性"来换取"确定性"：
 
 ## 文档
 
+- 📖 **[在线文档站](https://aimanong.com)** —— 人读这个（`cd docs && npm run dev` 本地预览）
 - [llms.txt](./llms.txt) —— **AI 读这个**
 - [AGENTS.md](./AGENTS.md) —— **AI Agent 项目内约定**
-- [开发计划](./docs/开发计划.md) —— 人读这个
+- [API 参考](./docs/api/) —— **由 Schema 自动生成**，永不漂移
+- [开发计划](./docs/internal/开发计划.md) —— 里程碑与排期
+- [AI 实测记录](./docs/internal/AI实测记录.md) —— 三轮实测的完整数据
+
+> 文档站用法：
+> ```bash
+> cd docs && npm install
+> npm run dev              # 本地预览
+> npm run docs:gen         # 从 Schema 重新生成 API 参考
+> npm run build            # 构建静态站点
+> ```
 
 ## 状态
 
@@ -180,7 +191,7 @@ AI 打错类型时会得到可自愈提示：`texte` → 建议 `text`。
 **结论：AI-First 假设成立。** 自省接口 + 可自愈错误 + requirements 校验器
 足以支撑 AI 独立完成开发任务。
 
-三轮共发现并修复 **11 个真实缺陷**（详见 [docs/AI实测记录.md](docs/AI实测记录.md)），
+三轮共发现并修复 **11 个真实缺陷**（详见 [docs/internal/AI实测记录.md](docs/internal/AI实测记录.md)），
 其中最重要的教训：
 
 > **校验器只读元数据 = 假阳性工厂。**

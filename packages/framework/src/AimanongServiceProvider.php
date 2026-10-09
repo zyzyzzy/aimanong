@@ -230,6 +230,7 @@ class AimanongServiceProvider extends ServiceProvider
                 InstallCommand::class,
                 Console\SchemaCommand::class,
                 Console\VerifyCommand::class,
+                Console\DocsCommand::class,
             ]);
         }
     }

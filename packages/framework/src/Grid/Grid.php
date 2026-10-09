@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Grid;
 
+use Aimanong\Grid\Concerns\CanExport;
 use Aimanong\Schema\Ast\ColumnNode;
 
 /**
@@ -13,6 +14,8 @@ use Aimanong\Schema\Ast\ColumnNode;
  */
 class Grid
 {
+    use CanExport;
+
     /**
      * @var array<string, Column>
      */
@@ -96,6 +99,8 @@ class Grid
             'perPage' => $this->perPage,
             'withActions' => $this->withActions,
             'batchActions' => $this->batchActions,
+            'exportable' => $this->exportable,
+            'exportColumns' => $this->exportColumns(),
             'columns' => array_map(fn (ColumnNode $n): array => $n->toArray(), $this->toNodes()),
         ];
     }

@@ -86,6 +86,41 @@ class SingleSourceOfTruthTest extends TestCase
     }
 
     /**
+     * 回归：M5 新增 export()/tree() 时，必须同步到 search-docs，
+     * 否则又是第四轮实测发现过的"数据源分叉"。
+     */
+    public function test_search_docs_includes_export_and_tree_options(): void
+    {
+        $text = (new SearchDocs)->handle(new Request([]))->content()->toArray()['text'] ?? '';
+
+        foreach (['export', 'exportExcept', 'exportChunkSize'] as $k) {
+            $this->assertStringContainsString($k, $text, "search-docs 缺少导出选项 {$k}");
+        }
+
+        $this->assertStringContainsString('树形结构', $text, 'search-docs 缺少树形章节');
+        $this->assertStringContainsString('parentColumn', $text);
+    }
+
+    public function test_capabilities_exposes_tree_options(): void
+    {
+        // 注意：toArray() 依赖容器（读 app()->version()），
+        // 单元测试环境无容器，故直接断言方法本身。
+        $opts = (new Capabilities)->treeOptions();
+
+        $this->assertArrayHasKey('parentColumn', $opts);
+        $this->assertArrayHasKey('titleColumn', $opts);
+        $this->assertArrayHasKey('draggable', $opts);
+    }
+
+    public function test_capabilities_exposes_export_options(): void
+    {
+        $opts = (new Capabilities)->columnOptions();
+
+        $this->assertArrayHasKey('export', $opts);
+        $this->assertArrayHasKey('exportExcept', $opts);
+    }
+
+    /**
      * 字段类型数量必须与文档一致。
      */
     public function test_field_type_count_is_stable(): void

@@ -8,11 +8,14 @@ use Aimanong\Aimanong;
 use Aimanong\Repository\EloquentRepository;
 use Aimanong\Schema\Ast\ResourceNode;
 use Aimanong\Schema\Compiler;
+use Aimanong\Services\Exporter;
+use Aimanong\Services\TreeBuilder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Resource 通用 CRUD 控制器。
@@ -156,6 +159,158 @@ class ResourceController extends Controller
         $this->repository($node)->delete($id);
 
         return response()->json(null, 204);
+    }
+
+    /**
+     * 导出 CSV。
+     *
+     * 复用列表接口的查询参数 —— 导出的内容与用户看到的列表一致。
+     */
+    public function export(Request $request, string $uri): StreamedResponse|JsonResponse
+    {
+        $node = $this->resolve($uri);
+
+        if (! ($node->meta['exportable'] ?? false)) {
+            return response()->json([
+                'error' => 'EXPORT_NOT_ENABLED',
+                'message' => "Resource [{$uri}] 未开启导出",
+                'hint' => '在 grid() 中调用 $grid->export(); 开启',
+            ], 403);
+        }
+
+        $searchable = array_values(array_map(
+            fn ($c): string => $c->name,
+            array_filter($node->columns, fn ($c): bool => $c->searchable)
+        ));
+
+        // 与列表接口完全相同的参数处理
+        $params = [
+            'keyword' => $request->query('keyword'),
+            'sort' => $request->query('sort'),
+            'direction' => $request->query('direction'),
+            'searchable' => $searchable,
+            'filters' => $request->query('filters'),
+        ];
+
+        return (new Exporter)->csv($node, $this->repository($node), $params);
+    }
+
+    /**
+     * 树形数据。
+     *
+     * 返回嵌套结构，供前端渲染树。
+     */
+    public function tree(Request $request, string $uri): JsonResponse
+    {
+        $node = $this->resolve($uri);
+        $config = $node->meta['tree'] ?? null;
+
+        if ($config === null) {
+            return response()->json([
+                'error' => 'NOT_A_TREE',
+                'message' => "Resource [{$uri}] 不是树形结构",
+                'hint' => '在该 Resource 中实现 tree() 方法，例如 $tree->parentColumn(\'parent_id\');',
+            ], 403);
+        }
+
+        $idColumn = $this->idColumn($node);
+
+        $rows = $node->model::query()
+            ->orderBy($config['orderColumn'])
+            ->get()
+            ->toArray();
+
+        $builder = new TreeBuilder;
+
+        // 循环引用会导致无限递归，必须先检测
+        $cycles = $builder->detectCycles($rows, [
+            'parentColumn' => $config['parentColumn'],
+            'idColumn' => $idColumn,
+        ]);
+
+        if ($cycles !== []) {
+            return response()->json([
+                'error' => 'CIRCULAR_REFERENCE',
+                'message' => '数据存在循环引用，无法构建树',
+                'cycles' => $cycles,
+                'hint' => '请修正这些节点的 parent 关系',
+            ], 422);
+        }
+
+        return response()->json([
+            'data' => $builder->build($rows, [
+                'parentColumn' => $config['parentColumn'],
+                'orderColumn' => $config['orderColumn'],
+                'idColumn' => $idColumn,
+            ]),
+        ]);
+    }
+
+    /**
+     * 移动树节点。
+     *
+     * 会校验目标位置合法性 —— 不能把节点移到自己的子孙下。
+     */
+    public function move(Request $request, string $uri, int|string $id): JsonResponse
+    {
+        $node = $this->resolve($uri);
+        $config = $node->meta['tree'] ?? null;
+
+        if ($config === null) {
+            return response()->json([
+                'error' => 'NOT_A_TREE',
+                'message' => "Resource [{$uri}] 不是树形结构",
+            ], 403);
+        }
+
+        $parentInput = $request->input('parent_id');
+        $newParent = ($parentInput === null || $parentInput === '' || $parentInput === '0')
+            ? null
+            : $parentInput;
+
+        $idColumn = $this->idColumn($node);
+
+        $rows = $node->model::query()->get()->toArray();
+
+        $check = (new TreeBuilder)->canMove($rows, [
+            'parentColumn' => $config['parentColumn'],
+            'idColumn' => $idColumn,
+        ], $id, $newParent);
+
+        if (! $check['ok']) {
+            return response()->json([
+                'error' => 'INVALID_MOVE',
+                'message' => $check['reason'] ?? '不允许的移动',
+            ], 422);
+        }
+
+        $model = $node->model::query()->find($id);
+
+        if ($model === null) {
+            return response()->json(['error' => 'NOT_FOUND', 'message' => "记录 {$id} 不存在"], 404);
+        }
+
+        $data = [$config['parentColumn'] => $newParent];
+
+        $orderInput = $request->input('sort');
+        if ($orderInput !== null) {
+            $data[$config['orderColumn']] = $orderInput;
+        }
+
+        $model->update($data);
+
+        return response()->json(['data' => $model->fresh(), 'message' => '移动成功']);
+    }
+
+    /**
+     * 取模型的主键列名。
+     */
+    protected function idColumn(ResourceNode $node): string
+    {
+        /** @var Model $instance */
+        $instance = new $node->model;
+
+        return $instance->getKeyName();
     }
 
     /**

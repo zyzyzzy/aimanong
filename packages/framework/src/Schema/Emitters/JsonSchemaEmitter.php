@@ -40,6 +40,9 @@ class JsonSchemaEmitter
     {
         return [
             'perPage' => $node->meta['perPage'] ?? 20,
+            'exportable' => $node->meta['exportable'] ?? false,
+            // tree 为 null 表示非树形 Resource —— 前端据此切换渲染模式
+            'tree' => $node->meta['tree'] ?? null,
             'columns' => array_map(
                 fn ($c): array => $c->toArray(),
                 $node->columns

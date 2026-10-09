@@ -8,10 +8,12 @@ use Aimanong\Contracts\Resource as ResourceContract;
 use Aimanong\Exceptions\GhostColumnException;
 use Aimanong\Form\Form;
 use Aimanong\Grid\Grid;
+use Aimanong\Resource;
 use Aimanong\Schema\Ast\ColumnNode;
 use Aimanong\Schema\Ast\FieldNode;
 use Aimanong\Schema\Ast\ResourceNode;
 use Aimanong\Show\Show;
+use Aimanong\Tree\Tree;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 
@@ -52,6 +54,18 @@ class Compiler
             $resource::show($show);
         }
 
+        $tree = null;
+        if (method_exists($resource, 'tree')) {
+            $candidate = new Tree;
+            $resource::tree($candidate);
+
+            // 仅当子类真的覆盖了 tree() 时才视为树形 Resource
+            $ref = new \ReflectionMethod($resource, 'tree');
+            if ($ref->getDeclaringClass()->getName() !== \Aimanong\Resource::class) {
+                $tree = $candidate;
+            }
+        }
+
         $columns = $grid->toNodes();
         $fields = $form->toNodes();
 
@@ -69,6 +83,11 @@ class Compiler
             meta: [
                 'perPage' => $grid->toArray()['perPage'],
                 'rules' => $form->validationRules(),
+                // 导出配置随编译产物下发，控制器无需重复声明
+                'exportable' => $grid->isExportable(),
+                'exportColumns' => $grid->exportColumns(),
+                'exportChunkSize' => $grid->getExportChunkSize(),
+                'tree' => $tree?->toArray(),
             ],
         );
     }

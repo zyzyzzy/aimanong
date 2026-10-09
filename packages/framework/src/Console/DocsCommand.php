@@ -243,6 +243,36 @@ class DocsCommand extends Command
         }
 
         $lines[] = '';
+        $lines[] = '## 导出';
+        $lines[] = '';
+        $lines[] = '在 `grid()` 中调用 `$grid->export();` 开启 CSV 导出。';
+        $lines[] = '导出复用列表的搜索/排序/筛选参数 —— 导出的内容与界面看到的一致。';
+        $lines[] = '';
+        $lines[] = '```php';
+        $lines[] = '$grid->export();                        // 开启导出';
+        $lines[] = "\$grid->exportExcept(['cover_url']);     // 排除某些列";
+        $lines[] = '$grid->exportChunkSize(2000);          // 分批查询（大表）';
+        $lines[] = '```';
+        $lines[] = '';
+        $lines[] = '> 未开启导出的 Resource 请求导出接口会返回 403，并提示如何开启。';
+        $lines[] = '';
+        $lines[] = '## 树形结构';
+        $lines[] = '';
+        $lines[] = '在 Resource 中实现 `tree()` 方法即可获得树形页面：';
+        $lines[] = '';
+        $lines[] = '```php';
+        $lines[] = 'public static function tree(Tree \$tree): void';
+        $lines[] = '{';
+        $lines[] = "    \$tree->parentColumn('parent_id')";
+        $lines[] = "        ->titleColumn('name')";
+        $lines[] = "        ->orderColumn('sort')";
+        $lines[] = '        ->draggable();';
+        $lines[] = '}';
+        $lines[] = '```';
+        $lines[] = '';
+        $lines[] = '> **循环引用会被自动检测** —— 数据存在 A→B→A 时返回 422 而非无限递归。';
+        $lines[] = '> 移动节点时会校验目标位置，不允许把节点移到自己的子孙下。';
+        $lines[] = '';
         $lines[] = '## 示例';
         $lines[] = '';
         $lines[] = '```php';

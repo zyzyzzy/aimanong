@@ -6,6 +6,7 @@ namespace Aimanong\Http\Controllers;
 
 use Aimanong\Aimanong;
 use Aimanong\Auth\PermissionGate;
+use Aimanong\Menu\MenuRegistry;
 use Aimanong\Schema\Compiler;
 use Aimanong\Schema\Emitters\JsonSchemaEmitter;
 use Illuminate\Contracts\View\View;
@@ -19,6 +20,7 @@ class HomeController extends Controller
         return view('aimanong::index', [
             'user' => Aimanong::user(),
             'resourceCount' => Aimanong::registry()->count(),
+            'menu' => (new MenuRegistry)->tree(),
         ]);
     }
 
@@ -55,6 +57,8 @@ class HomeController extends Controller
             'label' => $node->label,
             'user' => Aimanong::user(),
             'schema' => $schema,
+            // 菜单（按当前用户权限过滤）
+            'menu' => (new MenuRegistry)->tree(),
         ]);
     }
 }

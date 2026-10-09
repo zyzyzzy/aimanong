@@ -22,6 +22,32 @@ use Aimanong\Tree\Tree;
 abstract class Resource implements ResourceContract
 {
     /**
+     * 菜单声明（**可选**）。子类可覆盖。
+     *
+     * 不覆盖时，菜单默认用 label 作为名称、不分组、sort=100。
+     *
+     * 可声明的键：
+     *   - group   分组名（如「内容管理」），不填则不分组
+     *   - icon    图标（emoji 或字符），可留空
+     *   - sort    排序（小的在前），默认 100
+     *   - label   菜单显示名，默认用 label()
+     *   - visible 是否显示，默认 true（false 则隐藏，适合后台工具页）
+     *
+     * ```php
+     * public static function menu(): array
+     * {
+     *     return ['group' => '内容管理', 'icon' => '📄', 'sort' => 10];
+     * }
+     * ```
+     *
+     * @return array<string, mixed>
+     */
+    public static function menu(): array
+    {
+        return [];
+    }
+
+    /**
      * 列表页定义。子类覆盖。
      */
     public static function grid(Grid $grid): void

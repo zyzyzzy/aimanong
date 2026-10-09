@@ -41,6 +41,13 @@ class Capabilities
             'cannot_verify' => $this->cannotVerify(),
             'scope_hooks' => ScopeHooks::introspect(),
             'rbac' => $this->rbacCapabilities(),
+            'menu' => [
+                'how' => 'Resource 覆盖 menu() 方法声明菜单（可选，不实现也有默认菜单）',
+                'keys' => 'group（分组）| icon（图标）| sort（排序，小的在前）| label（显示名）| visible（是否显示）',
+                'example' => "public static function menu(): array { return ['group' => '内容管理', 'icon' => '📄', 'sort' => 10]; }",
+                'permission_filter' => 'RBAC 开启时自动按「index」权限过滤，未授权的菜单不显示',
+                'introspect' => 'GET /__ai/menu 返回当前用户可见的菜单树',
+            ],
             'query_columns' => $this->queryColumnRules(),
             'applications' => $this->applicationCapabilities(),
             'column_options' => $this->columnOptions(),

@@ -2,6 +2,49 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.4.0] - 2026-10-09
+
+> 「带地基的平台」第三步完成：**菜单系统**。
+> 至此开箱即用的地基齐了：登录 + 用户 + RBAC 权限 + 菜单。
+
+### 新增：菜单系统（声明式）
+
+Resource 覆盖 `menu()` 即可声明菜单（**可选**，不覆盖也有默认菜单）：
+
+```php
+public static function menu(): array
+{
+    return ['group' => '内容管理', 'icon' => '📄', 'sort' => 10];
+}
+```
+
+| 键 | 说明 |
+|---|---|
+| `group` | 分组名（如「内容管理」），不填则不分组 |
+| `icon` | 图标（emoji） |
+| `sort` | 排序，小的在前，默认 100 |
+| `label` | 显示名，默认用 label() |
+| `visible` | 是否显示（后台工具页可设 false） |
+
+**行为**
+
+- 侧边栏自动渲染：分组 + 图标 + 当前页高亮
+- **按权限过滤**：RBAC 开启时只显示当前用户有 `index` 权限的菜单
+  （实测：超级管理员 22 项 / 只读用户 1 项）
+- 可自省：`GET /__ai/menu` 返回菜单树；capabilities 含 menu 说明
+
+### 新增：页面路由权限判定（上轮实测发现的缺陷）
+
+RBAC 原本只拦 API，页面路由未拦 —— 未授权用户看到「暂无数据」的空表格
+而非「无权限」提示。已修：页面也返回 403 + 明确提示。
+
+### 修复
+
+- 生成器 uri 统一 kebab（下划线自动转换）
+- 生成器为框架自带表（RBAC）生成 Resource 时指向框架模型
+
+---
+
 ## [1.3.0] - 2026-10-09
 
 > **方向调整**：从「纯开发工具」转向「带地基的平台」第一步 —— **内置 RBAC**。
@@ -447,6 +490,7 @@ $form->mytype('field', '标签');
 
 ## 版本链接
 
+- [1.4.0](https://github.com/zyzyzzy/aimanong/releases/tag/v1.4.0)
 - [1.3.0](https://github.com/zyzyzzy/aimanong/releases/tag/v1.3.0)
 - [1.2.0](https://github.com/zyzyzzy/aimanong/releases/tag/v1.2.0)
 - [1.1.1](https://github.com/zyzyzzy/aimanong/releases/tag/v1.1.1)

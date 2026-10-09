@@ -20,6 +20,15 @@
         .header h1 { font-size: 17px; font-weight: 600; }
         .header .user { font-size: 13px; color: #6b746f; }
         .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+        /* 侧边栏 */
+        .layout { display: flex; min-height: calc(100vh - 58px); }
+        .sidebar { width: 200px; flex-shrink: 0; background: #fff; border-right: 1px solid #e8edea; padding: 16px 0; overflow-y: auto; }
+        .sidebar-main { flex: 1; min-width: 0; }
+        .menu-group-title { padding: 14px 18px 6px; font-size: 11px; color: #a5aea9; letter-spacing: .5px; }
+        .menu-item { display: flex; align-items: center; gap: 8px; padding: 9px 18px; font-size: 13px; color: #4a5550; text-decoration: none; }
+        .menu-item:hover { background: #f4f7f5; }
+        .menu-item.active { background: #eef4f1; color: #2e7d4f; font-weight: 600; border-right: 3px solid #6b9b7f; }
+        .menu-icon { width: 16px; text-align: center; }
         .toolbar {
             display: flex; gap: 10px; align-items: center;
             margin-bottom: 16px;
@@ -102,6 +111,31 @@
         <div class="user">{{ $user->name ?? $user->username ?? '' }}</div>
     </div>
 
+    <div class="layout">
+        @if(!empty($menu))
+        <aside class="sidebar">
+            @foreach($menu as $item)
+                @if(!empty($item['isGroup']))
+                    <div class="menu-group-title">{{ $item['label'] }}</div>
+                    @foreach($item['children'] as $child)
+                        <a class="menu-item {{ ($child['uri'] ?? '') === $uri ? 'active' : '' }}"
+                           href="{{ url(\Aimanong\Aimanong::url($child['uri'] ?? '')) }}">
+                            <span class="menu-icon">{{ $child['icon'] ?? '' }}</span>
+                            {{ $child['label'] }}
+                        </a>
+                    @endforeach
+                @else
+                    <a class="menu-item {{ ($item['uri'] ?? '') === $uri ? 'active' : '' }}"
+                       href="{{ url(\Aimanong\Aimanong::url($item['uri'] ?? '')) }}">
+                        <span class="menu-icon">{{ $item['icon'] ?? '' }}</span>
+                        {{ $item['label'] }}
+                    </a>
+                @endif
+            @endforeach
+        </aside>
+        @endif
+
+        <div class="sidebar-main">
     <div class="container">
         <div class="toolbar">
             <input v-model="keyword" @keyup.enter="load(1)" placeholder="搜索…" v-if="hasSearch">

@@ -68,7 +68,7 @@ Aimanong 为此明确牺牲部分"灵活性"来换取"确定性"：
 | M4 字段与组件库 | ⬜ 下一个 | 字段类型与展示器扩充 |
 | M4 组件库 | ⬜ | 字段与展示器 |
 | M5 增强 | ⬜ | Tree / 分步表单 / 多应用 |
-| M6 生态与文档 | 🚧 部分完成 | 文档站✅ / Playground✅ / 代码生成器⬜ / 首批扩展⬜ |
+| M6 生态与文档 | ✅ **完成** | 文档站 / Playground / 代码生成器 / 实测报告 |
 
 ### M0 已交付
 
@@ -121,6 +121,24 @@ php artisan aimanong:schema --check   # 漂移检测（漂移 exit=1 阻断 CI�
 
 AI 打错类型时会得到可自愈提示：`texte` → 建议 `text`。
 
+
+### M6 已交付
+
+| 交付物 | 说明 |
+|---|---|
+| **在线文档站** | [zyzyzzy.github.io/aimanong](https://zyzyzzy.github.io/aimanong/) —— API 参考由 Schema 自动生成，永不漂移 |
+| **Playground** | [在线试玩](https://zyzyzzy.github.io/aimanong/playground/) —— 浏览器里改 Resource 声明，实时看四份产物 |
+| **代码生成器** | `php artisan aimanong:make-resource {table} --label=中文 --register` |
+| **五轮 AI 实测报告** | [对外发布版](https://zyzyzzy.github.io/aimanong/blog/ai-first-in-practice) —— 20 个缺陷 + 4 条教训 |
+
+**代码生成器**一条命令从表到可用后台：
+
+```bash
+php artisan aimanong:make-resource suppliers --label=供应商 --register
+```
+
+> 与 MCP 工具 `scaffold-resource` **共用同一个生成器服务** ——
+> 两条路径产出逐字节一致（实测 2138 bytes 相同），避免逻辑分叉。
 
 ### M5 已交付
 

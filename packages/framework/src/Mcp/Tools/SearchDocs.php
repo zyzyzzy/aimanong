@@ -54,6 +54,7 @@ class SearchDocs extends Tool
                 '字段归属由声明顺序决定 —— 扁平、无嵌套闭包（框架铁律）',
             ],
             '扩展与多应用' => $this->extensionAndApplicationOptions(),
+            '需求核对' => $this->requirementKeys(),
             '工作流' => [
                 '1. list_resources 了解项目',
                 '2. describe_resource 看字段',
@@ -129,6 +130,24 @@ class SearchDocs extends Tool
         foreach ((new Capabilities)->treeOptions() as $name => $desc) {
             $out[] = "tree()->{$name}() {$desc}";
         }
+
+        return $out;
+    }
+
+    /**
+     * validate_declaration 支持的 requirements 键 —— 从 Capabilities 取数。
+     *
+     * @return array<int, string>
+     */
+    protected function requirementKeys(): array
+    {
+        $out = ['传给 validate_declaration 的 requirements 参数，支持以下键：'];
+
+        foreach ((new Capabilities)->requirementKeys() as $k => $v) {
+            $out[] = "{$k}: {$v}";
+        }
+
+        $out[] = '注意：不认识的键会被报错，不会静默忽略';
 
         return $out;
     }

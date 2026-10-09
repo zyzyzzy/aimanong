@@ -55,6 +55,12 @@ class Tree
 
     /**
      * 是否允许拖拽排序。
+     *
+     * ⚠️ 尚未实现：该声明会被编译进 schema（draggable: true），
+     * 但前端目前**没有拖拽交互**。调整层级请通过编辑表单的
+     * 父级字段，或调用 PUT /admin/api/{uri}/{id}/move 接口。
+     *
+     * 保留该方法是为了不破坏已有声明；实际拖拽 UI 待后续版本实现。
      */
     public function draggable(bool $value = true): static
     {
@@ -108,6 +114,8 @@ class Tree
             'orderColumn' => $this->orderColumn,
             'titleColumn' => $this->titleColumn,
             'draggable' => $this->draggable,
+            // 明确告知调用方：拖拽 UI 尚未实现，避免"声明了却以为能用"
+            'draggable_supported' => false,
             'maxDepth' => $this->maxDepth,
         ];
     }

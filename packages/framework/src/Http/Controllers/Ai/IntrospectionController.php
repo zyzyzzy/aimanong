@@ -55,13 +55,54 @@ class IntrospectionController extends Controller
 
         $node = (new Compiler)->compile($class);
 
+        /*
+         * 结构与 schema.json 保持一致。
+         *
+         * 第五轮 AI 实测发现：此前 grid 返回扁平列数组，丢掉了
+         * perPage / exportable / tree；form 丢掉了 stepped / steps。
+         * 导致 AI 无法通过自省接口自查这些能力 —— 修好这一点。
+         */
+        $fields = array_map(fn ($f): array => $f->toArray(), $node->fields);
+
+        $steps = [];
+        foreach ($node->meta['steps'] ?? [] as $step) {
+            $names = [];
+
+            foreach ($step['fields'] ?? [] as $sf) {
+                $names[] = is_array($sf) ? ($sf['name'] ?? null) : $sf;
+            }
+
+            $steps[] = [
+                'title' => $step['title'] ?? '',
+                'fields' => array_values(array_filter($names)),
+            ];
+        }
+
         return response()->json([
             'uri' => $node->uri,
             'label' => $node->label,
             'model' => $node->model,
-            'grid' => array_map(fn ($c): array => $c->toArray(), $node->columns),
-            'form' => array_map(fn ($f): array => $f->toArray(), $node->fields),
+            'grid' => [
+                'perPage' => $node->meta['perPage'] ?? 20,
+                'exportable' => $node->meta['exportable'] ?? false,
+                'exportColumns' => array_column($node->meta['exportColumns'] ?? [], 'name'),
+                'tree' => $node->meta['tree'] ?? null,
+                'columns' => array_map(fn ($c): array => $c->toArray(), $node->columns),
+            ],
+            'form' => [
+                'fields' => $fields,
+                'stepped' => $node->meta['stepped'] ?? false,
+                'steps' => $steps,
+            ],
+            'show' => [
+                'fields' => array_map(fn ($f): array => $f->toArray(), $node->detailFields),
+            ],
             'rules' => $node->meta['rules'] ?? [],
+            'capabilities' => [
+                'is_tree' => is_array($node->meta['tree'] ?? null),
+                'is_exportable' => ($node->meta['exportable'] ?? false) === true,
+                'is_stepped' => ($node->meta['stepped'] ?? false) === true,
+            ],
         ]);
     }
 

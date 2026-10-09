@@ -11,6 +11,7 @@ use Aimanong\Schema\Compiler;
 use Aimanong\Services\Exporter;
 use Aimanong\Services\TreeBuilder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -130,7 +131,11 @@ class ResourceController extends Controller
 
         $data = $this->validateRequest($request, $node);
 
-        $model = $this->repository($node)->create($data);
+        try {
+            $model = $this->repository($node)->create($data);
+        } catch (QueryException $e) {
+            return $this->handleConstraintViolation($e);
+        }
 
         return response()->json(['data' => $model], 201);
     }
@@ -144,7 +149,11 @@ class ResourceController extends Controller
 
         $data = $this->validateRequest($request, $node);
 
-        $model = $this->repository($node)->update($id, $data);
+        try {
+            $model = $this->repository($node)->update($id, $data);
+        } catch (QueryException $e) {
+            return $this->handleConstraintViolation($e);
+        }
 
         return response()->json(['data' => $model]);
     }
@@ -159,6 +168,46 @@ class ResourceController extends Controller
         $this->repository($node)->delete($id);
 
         return response()->json(null, 204);
+    }
+
+    /**
+     * 把数据库约束冲突转成友好的 422。
+     *
+     * 第五轮 AI 实测发现：重复的唯一值会返回 500（服务器错误），
+     * 而用户看到 500 不会知道"是编码重复了"。
+     * 这里识别唯一索引冲突，返回 422 + 明确提示。
+     */
+    protected function handleConstraintViolation(QueryException $e): JsonResponse
+    {
+        $message = $e->getMessage();
+
+        $isUnique = str_contains($message, 'UNIQUE constraint failed')
+            || str_contains($message, 'Duplicate entry')
+            || str_contains($message, 'unique constraint')
+            || str_contains($message, '1062');
+
+        if (! $isUnique) {
+            throw $e; // 不是唯一约束问题，交给框架的异常处理
+        }
+
+        // 尽量从错误信息里提取冲突的字段
+        $field = null;
+        if (preg_match('/UNIQUE constraint failed: [\w.]+\.(\w+)/', $message, $m)) {
+            $field = $m[1];
+        } elseif (preg_match("/Duplicate entry '.*' for key '([^']+)'/", $message, $m)) {
+            $field = $m[1];
+        }
+
+        return response()->json([
+            'message' => $field !== null
+                ? "{$field} 的值已存在，请换一个"
+                : '数据违反唯一约束，请检查是否有重复值',
+            'error' => 'UNIQUE_CONSTRAINT_VIOLATION',
+            'field' => $field,
+            'hint' => $field !== null
+                ? "在 form() 中声明 ->rules('unique:表名,{$field}') 可在提交前校验"
+                : '在 form() 中声明 unique 规则可在提交前校验',
+        ], 422);
     }
 
     /**

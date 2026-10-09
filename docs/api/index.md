@@ -16,17 +16,20 @@
 | Laravel | 12.69.3 |
 | PHP | 8.2.29 |
 | 字段类型数 | 26 |
-| 已注册 Resource | 5 |
+| 已注册 Resource | 8 |
 
 ## 已注册 Resource
 
 | 名称 | URI | 模型 | 列数 | 字段数 |
 |---|---|---|---|---|
+| SEO 元数据 | `seo-meta` | `App\Models\Course` | 3 | 0 |
 | 用户 | `users` | `App\Models\User` | 4 | 4 |
 | 订单 | `orders` | `App\Models\Order` | 8 | 5 |
 | 工单 | `tickets` | `App\Models\Ticket` | 9 | 7 |
 | 字段演示 | `demo-fields` | `App\Models\Ticket` | 5 | 9 |
 | 课程 | `courses` | `App\Models\Course` | 13 | 10 |
+| 分类 | `categories` | `App\Models\Category` | 5 | 4 |
+| 部门 | `departments` | `App\Models\Department` | 12 | 9 |
 
 ## 其它页面
 

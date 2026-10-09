@@ -7,6 +7,25 @@
 
 > 由 `php artisan aimanong:docs` 自动生成。
 
+## SEO 元数据
+
+- URI：`seo-meta`
+- 模型：`App\Models\Course`
+- 类：`App\Aimanong\Extensions\Seo\SeoMetaResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID |  |  | `badge` |
+| `title` | 页面标题 |  | ✓ |  |
+| `course_no` | 关联编号 |  |  |  |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+
 ## 用户
 
 - URI：`users`
@@ -153,10 +172,72 @@
 | `course_no` | 课程编号 | `text` | ✓ | `required`, `max:255` |
 | `title` | 课程标题 | `text` | ✓ | `required`, `max:255` |
 | `summary` | 课程简介 | `textarea` |  |  |
+| `level` | 难度级别 | `select` |  |  |
 | `price` | 价格 | `money` | ✓ | `required` |
 | `lessons` | 课时数 | `number` | ✓ | `required` |
-| `level` | 难度级别 | `select` |  |  |
 | `published` | 是否发布 | `switch` |  |  |
 | `cover_url` | 封面链接 | `url` |  |  |
 | `teacher_email` | 讲师邮箱 | `email` |  | `email` |
 | `published_at` | 发布时间 | `datetime` |  |  |
+
+## 分类
+
+- URI：`categories`
+- 模型：`App\Models\Category`
+- 类：`App\Aimanong\CategoryResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID |  |  | `badge` |
+| `name` | 名称 |  | ✓ |  |
+| `parent_id` | 父级ID | ✓ |  |  |
+| `sort` | 排序 | ✓ |  |  |
+| `enabled` | 是否启用 |  |  | `bool` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `name` | 名称 | `text` | ✓ | `required`, `max:64` |
+| `parent_id` | 父级ID | `number` |  |  |
+| `sort` | 排序 | `number` |  |  |
+| `enabled` | 是否启用 | `switch` |  |  |
+
+## 部门
+
+- URI：`departments`
+- 模型：`App\Models\Department`
+- 类：`App\Aimanong\DepartmentResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID | ✓ |  |  |
+| `code` | 部门编码 |  | ✓ |  |
+| `name` | 部门名称 |  | ✓ |  |
+| `parent_id` | 上级部门 |  |  |  |
+| `sort` | 排序 | ✓ |  |  |
+| `manager_email` | 负责人邮箱 |  |  |  |
+| `headcount` | 编制人数 | ✓ |  |  |
+| `status` | 状态 |  |  | `badge` |
+| `remark` | 备注 |  |  |  |
+| `enabled` | 是否启用 |  |  | `bool` |
+| `created_at` | 创建时间 | ✓ |  | `datetime` |
+| `updated_at` | 更新时间 | ✓ |  | `datetime` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `code` | 部门编码 | `text` | ✓ | `required`, `max:64` |
+| `name` | 部门名称 | `text` | ✓ | `required`, `max:128` |
+| `parent_id` | 上级部门ID | `number` |  |  |
+| `sort` | 排序 | `number` |  |  |
+| `manager_email` | 负责人邮箱 | `email` |  | `email` |
+| `headcount` | 编制人数 | `number` |  |  |
+| `status` | 状态 | `select` |  |  |
+| `remark` | 备注 | `textarea` |  |  |
+| `enabled` | 是否启用 | `switch` |  |  |

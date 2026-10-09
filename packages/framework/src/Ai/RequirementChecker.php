@@ -151,6 +151,61 @@ class RequirementChecker
             }
         }
 
+        /*
+         * M5 新增能力也必须可核对。
+         *
+         * 第五轮 AI 实测发现：喂入 {"tree":"zzz","export":"zzz"} 时
+         * 校验器静默返回「✅ 全部需求已满足」—— 未知键被忽略，
+         * 与「需求达标度校验」的定位严重冲突。
+         */
+        if (isset($requirements['tree'])) {
+            $has = is_array($node->meta['tree'] ?? null);
+            $results[] = [
+                'requirement' => '树形结构',
+                'satisfied' => $has,
+                'detail' => $has ? '已声明' : '未声明 —— Resource 未实现 tree() 方法',
+                'fix' => $has ? null : "public static function tree(Tree \$tree): void { \$tree->parentColumn('parent_id'); }",
+            ];
+        }
+
+        if (isset($requirements['export'])) {
+            $has = ($node->meta['exportable'] ?? false) === true;
+            $results[] = [
+                'requirement' => '导出',
+                'satisfied' => $has,
+                'detail' => $has ? '已开启' : '未开启 —— 导出接口会返回 403',
+                'fix' => $has ? null : '\$grid->export();',
+            ];
+        }
+
+        if (isset($requirements['step'])) {
+            $steps = $node->meta['steps'] ?? [];
+            $has = ($node->meta['stepped'] ?? false) === true && count($steps) >= 2;
+            $detail = $has
+                ? '已声明 '.count($steps).' 个步骤: '.implode(' / ', array_column($steps, 'title'))
+                : '未声明或不足 2 步';
+
+            $results[] = [
+                'requirement' => '分步表单',
+                'satisfied' => $has,
+                'detail' => $detail,
+                'fix' => $has ? null : "\$form->step('第一步'); \$form->text('name'); \$form->step('第二步');",
+            ];
+        }
+
+        // 未知键必须报错，而不是静默忽略
+        $known = ['searchable', 'sortable', 'required', 'columns', 'fields', 'per_page', 'tree', 'export', 'step'];
+        $unknown = array_values(array_diff(array_keys($requirements), $known));
+
+        foreach ($unknown as $key) {
+            $results[] = [
+                'requirement' => "未知需求键: {$key}",
+                'satisfied' => false,
+                'detail' => '校验器不认识这个键，它不会被核对 —— 请改用受支持的键',
+                'fix' => '受支持的键: '.implode(', ', $known),
+            ];
+        }
+
         $failed = array_values(array_filter($results, fn (array $r): bool => ! $r['satisfied']));
 
         return [

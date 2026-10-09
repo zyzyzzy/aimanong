@@ -120,7 +120,10 @@ class ValidateDeclaration extends Tool
                 'columns' => $schema->string()->description('要求列表必须包含的列，逗号分隔'),
                 'fields' => $schema->string()->description('要求表单必须包含的字段，逗号分隔'),
                 'per_page' => $schema->integer()->description('要求的每页条数'),
-            ])->description('任务需求清单。强烈建议传入 —— 否则本工具只查语法，不查需求是否达标'),
+                'tree' => $schema->boolean()->description('是否要求树形结构（true 表示必须实现 tree()）'),
+                'export' => $schema->boolean()->description('是否要求开启导出'),
+                'step' => $schema->boolean()->description('是否要求分步表单（至少 2 步）'),
+            ])->description('任务需求清单。强烈建议传入 —— 否则本工具只查语法，不查需求是否达标。不认识的键会被报错，不会静默忽略'),
         ];
     }
 }

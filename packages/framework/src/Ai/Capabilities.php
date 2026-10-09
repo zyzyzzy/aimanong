@@ -36,6 +36,7 @@ class Capabilities
             'field_types' => $this->fieldTypes(),
             'tree_options' => $this->treeOptions(),
             'extension' => $this->extensionCapabilities(),
+            'requirement_keys' => $this->requirementKeys(),
             'applications' => $this->applicationCapabilities(),
             'column_options' => $this->columnOptions(),
             'form_options' => $this->formOptions(),
@@ -155,8 +156,30 @@ class Capabilities
             'parentColumn' => '父级字段名，参数: 字符串（默认 parent_id）',
             'titleColumn' => '节点显示字段，参数: 字符串（默认 name）',
             'orderColumn' => '排序字段，参数: 字符串（默认 sort）',
-            'draggable' => '是否允许拖拽，参数: bool',
+            'draggable' => '（尚未实现）声明允许拖拽。当前前端无拖拽 UI，调整层级请用编辑表单或 PUT /{uri}/{id}/move',
             'maxDepth' => '最大层级，参数: int（0 = 不限制）',
+        ];
+    }
+
+    /**
+     * validate_declaration 支持的 requirements 键。
+     *
+     * 明确列出，避免 AI 猜测或使用不会被核对的键。
+     *
+     * @return array<string, string>
+     */
+    public function requirementKeys(): array
+    {
+        return [
+            'searchable' => '要求可搜索的列，逗号分隔',
+            'sortable' => '要求可排序的列，逗号分隔',
+            'required' => '要求必填的表单字段，逗号分隔',
+            'columns' => '要求列表包含的列，逗号分隔',
+            'fields' => '要求表单包含的字段，逗号分隔',
+            'per_page' => '要求的每页条数（会运行时实测）',
+            'tree' => '是否要求树形结构，传 true',
+            'export' => '是否要求开启导出，传 true',
+            'step' => '是否要求分步表单（至少 2 步），传 true',
         ];
     }
 

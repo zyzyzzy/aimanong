@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Aimanong\Tests\Unit;
 
 use Aimanong\Ai\Capabilities;
+use Aimanong\Ai\RequirementChecker;
 use Aimanong\Exceptions\GhostColumnException;
 use Aimanong\Mcp\Tools\SearchDocs;
 use Aimanong\Support\FieldType;
+use Aimanong\Tree\Tree;
 use Laravel\Mcp\Request;
 use PHPUnit\Framework\TestCase;
 
@@ -118,6 +120,58 @@ class SingleSourceOfTruthTest extends TestCase
 
         $this->assertArrayHasKey('export', $opts);
         $this->assertArrayHasKey('exportExcept', $opts);
+    }
+
+    /**
+     * 回归（第五轮 AI 实测）：需求校验器必须支持 M5 新增能力。
+     *
+     * 此前喂入 {"tree":"zzz","export":"zzz"} 会静默返回
+     * 「✅ 全部需求已满足」—— 未知键被忽略，与"需求达标度校验"定位冲突。
+     */
+    public function test_requirement_checker_supports_new_capabilities(): void
+    {
+        $checker = new RequirementChecker;
+        $result = $checker->check(Fixtures\ArticleResource::class, [
+            'tree' => true,
+            'export' => true,
+            'step' => true,
+        ]);
+
+        $this->assertTrue($result['checked']);
+        $this->assertSame(3, $result['total'], 'tree/export/step 三个键都应被核对');
+        // ArticleResource 没有这些能力，应全部不满足
+        $this->assertFalse($result['all_satisfied']);
+    }
+
+    public function test_requirement_checker_rejects_unknown_key(): void
+    {
+        $checker = new RequirementChecker;
+        $result = $checker->check(Fixtures\ArticleResource::class, [
+            'bogus_key' => 'x',
+        ]);
+
+        $this->assertFalse(
+            $result['all_satisfied'],
+            '未知需求键必须报错，不能静默通过'
+        );
+        $this->assertStringContainsString('未知需求键', $result['results'][0]['requirement']);
+    }
+
+    /**
+     * 回归（第五轮）：draggable 是幽灵能力，必须在编译产物中标明。
+     */
+    public function test_draggable_is_marked_unsupported(): void
+    {
+        $tree = new Tree;
+        $tree->draggable();
+
+        $arr = $tree->toArray();
+
+        $this->assertTrue($arr['draggable']);
+        $this->assertFalse(
+            $arr['draggable_supported'],
+            '拖拽 UI 尚未实现，必须明确标注，避免"声明了却以为能用"'
+        );
     }
 
     /**

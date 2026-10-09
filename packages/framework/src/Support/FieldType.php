@@ -18,18 +18,41 @@ class FieldType
      * @var array<string, array{json: string, php: string}>
      */
     protected const TYPES = [
+        // 文本类
         'text' => ['json' => 'string', 'php' => 'string'],
         'textarea' => ['json' => 'string', 'php' => 'string'],
-        'number' => ['json' => 'integer', 'php' => 'int'],
-        'decimal' => ['json' => 'number', 'php' => 'float'],
-        'select' => ['json' => 'string', 'php' => 'string'],
-        'switch' => ['json' => 'boolean', 'php' => 'bool'],
-        'date' => ['json' => 'string', 'php' => 'string'],
-        'datetime' => ['json' => 'string', 'php' => 'string'],
         'email' => ['json' => 'string', 'php' => 'string'],
         'url' => ['json' => 'string', 'php' => 'string'],
+        'password' => ['json' => 'string', 'php' => 'string'],
+        'tel' => ['json' => 'string', 'php' => 'string'],
+
+        // 数值类
+        'number' => ['json' => 'integer', 'php' => 'int'],
+        'decimal' => ['json' => 'number', 'php' => 'float'],
+        'money' => ['json' => 'number', 'php' => 'float'],
+        'rate' => ['json' => 'integer', 'php' => 'int'],
+        'slider' => ['json' => 'integer', 'php' => 'int'],
+
+        // 选择类
+        'select' => ['json' => 'string', 'php' => 'string'],
+        'multiselect' => ['json' => 'array', 'php' => 'array'],
+        'radio' => ['json' => 'string', 'php' => 'string'],
+        'checkbox' => ['json' => 'array', 'php' => 'array'],
+        'switch' => ['json' => 'boolean', 'php' => 'bool'],
+
+        // 日期类
+        'date' => ['json' => 'string', 'php' => 'string'],
+        'datetime' => ['json' => 'string', 'php' => 'string'],
+        'time' => ['json' => 'string', 'php' => 'string'],
+        'daterange' => ['json' => 'array', 'php' => 'array'],
+
+        // 其它
+        'color' => ['json' => 'string', 'php' => 'string'],
+        'icon' => ['json' => 'string', 'php' => 'string'],
+        'tags' => ['json' => 'array', 'php' => 'array'],
         'hidden' => ['json' => 'string', 'php' => 'string'],
         'display' => ['json' => 'string', 'php' => 'mixed'],
+        'divider' => ['json' => 'null', 'php' => 'mixed'],
     ];
 
     /**

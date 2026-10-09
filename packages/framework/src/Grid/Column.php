@@ -120,6 +120,76 @@ class Column
         return $this;
     }
 
+    /**
+     * 布尔列：渲染为「是 / 否」标签，而非 true / false。
+     *
+     * AI 实测反馈：数据库布尔列默认显示原始 true/false 不直观。
+     */
+    public function bool(string $trueLabel = '是', string $falseLabel = '否'): static
+    {
+        $this->formatter = 'bool';
+        $this->props['trueLabel'] = $trueLabel;
+        $this->props['falseLabel'] = $falseLabel;
+
+        return $this;
+    }
+
+    /**
+     * 徽章样式展示。
+     */
+    public function badge(): static
+    {
+        $this->formatter = 'badge';
+
+        return $this;
+    }
+
+    /**
+     * 图片展示。
+     */
+    public function image(int $height = 32): static
+    {
+        $this->formatter = 'image';
+        $this->props['height'] = $height;
+
+        return $this;
+    }
+
+    /**
+     * 超链接展示。
+     */
+    public function link(?string $text = null): static
+    {
+        $this->formatter = 'link';
+
+        if ($text !== null) {
+            $this->props['text'] = $text;
+        }
+
+        return $this;
+    }
+
+    /**
+     * 进度条展示（用于百分比 / 完成度）。
+     */
+    public function progress(): static
+    {
+        $this->formatter = 'progress';
+
+        return $this;
+    }
+
+    /**
+     * 金额展示：自动千分位与两位小数。
+     */
+    public function money(string $symbol = '¥'): static
+    {
+        $this->formatter = 'money';
+        $this->props['symbol'] = $symbol;
+
+        return $this;
+    }
+
     public function toNode(): ColumnNode
     {
         return new ColumnNode(

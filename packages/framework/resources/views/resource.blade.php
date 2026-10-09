@@ -59,6 +59,22 @@
             display: inline-block; padding: 2px 8px; border-radius: 10px;
             font-size: 11px; background: #e8f5e9; color: #2e7d4f;
         }
+        /* 标签：值映射 / 布尔 */
+        .tag {
+            display: inline-block; padding: 2px 9px; border-radius: 4px;
+            font-size: 12px; background: #eef2f0; color: #4a544e;
+        }
+        .tag-on  { background: #e8f5e9; color: #2e7d4f; }
+        .tag-off { background: #f0f2f1; color: #8a948f; }
+        .muted   { color: #c3ccc7; }
+        /* 进度条 */
+        .progress-wrap { display: inline-flex; align-items: center; gap: 8px; }
+        .progress-bar {
+            display: inline-block; width: 70px; height: 6px;
+            background: #eef2f0; border-radius: 3px; overflow: hidden;
+        }
+        .progress-bar i { display: block; height: 100%; background: #3FBF6F; }
+        .progress-num { font-size: 12px; color: #6b746f; }
         .empty { padding: 40px; text-align: center; color: #a5aea9; font-size: 13px; }
         .loading { padding: 40px; text-align: center; color: #8a948f; font-size: 13px; }
     </style>
@@ -98,9 +114,51 @@
                 <tbody>
                     <tr v-for="row in rows" :key="row.id">
                         <td v-for="col in columns" :key="col.name">
+                            <!-- 日期时间 -->
                             <span v-if="col.formatter === 'datetime'">@{{ formatDate(row[col.name]) }}</span>
-                            <span v-else-if="col.formatter === 'map'">@{{ col.props.map[row[col.name]] ?? row[col.name] }}</span>
+
+                            <!-- 值 → 标签映射 -->
+                            <span v-else-if="col.formatter === 'map'"
+                                  class="tag" :class="tagClass(row[col.name])">
+                                @{{ mapLabel(col, row[col.name]) }}
+                            </span>
+
+                            <!-- 布尔：渲染为是/否标签，而非 true/false -->
+                            <span v-else-if="col.formatter === 'bool'"
+                                  class="tag" :class="row[col.name] ? 'tag-on' : 'tag-off'">
+                                @{{ row[col.name] ? (col.props.trueLabel || '是') : (col.props.falseLabel || '否') }}
+                            </span>
+
+                            <!-- 徽章 -->
+                            <span v-else-if="col.formatter === 'badge'" class="badge">
+                                @{{ row[col.name] }}
+                            </span>
+
+                            <!-- 图片 -->
+                            <img v-else-if="col.formatter === 'image'" :src="row[col.name]"
+                                 style="height:32px;border-radius:4px;" />
+
+                            <!-- 链接 -->
+                            <a v-else-if="col.formatter === 'link'" :href="row[col.name]" target="_blank"
+                               style="color:#3FBF6F;">@{{ col.props.text || row[col.name] }}</a>
+
+                            <!-- 进度条 -->
+                            <span v-else-if="col.formatter === 'progress'" class="progress-wrap">
+                                <span class="progress-bar"><i :style="{width: Math.min(100, Number(row[col.name]) || 0) + '%'}"></i></span>
+                                <span class="progress-num">@{{ row[col.name] }}</span>
+                            </span>
+
+                            <!-- 金额 -->
+                            <span v-else-if="col.formatter === 'money'">
+                                @{{ col.props.symbol || '¥' }}@{{ formatMoney(row[col.name]) }}
+                            </span>
+
+                            <!-- ID 默认徽章 -->
                             <span v-else-if="col.name === 'id'" class="badge">@{{ row[col.name] }}</span>
+
+                            <!-- 空值占位 -->
+                            <span v-else-if="row[col.name] === null || row[col.name] === ''" class="muted">—</span>
+
                             <span v-else>@{{ row[col.name] }}</span>
                         </td>
                         <td>
@@ -128,17 +186,57 @@
                 <label style="display:block;font-size:13px;color:#4a544e;margin-bottom:6px;">
                     @{{ f.label }}<span v-if="f.required" style="color:#c0392b;">*</span>
                 </label>
+                <!-- 下拉选择 -->
                 <select v-if="f.type === 'select'" v-model="form[f.name]"
                         style="width:100%;padding:9px 12px;border:1px solid #dde3e0;border-radius:6px;font-size:13px;">
+                    <option :value="null">请选择…</option>
                     <option v-for="opt in f.props.options" :key="opt.value" :value="opt.value">@{{ opt.label }}</option>
                 </select>
+
+                <!-- 单选组 -->
+                <div v-else-if="f.type === 'radio'" style="display:flex;gap:16px;flex-wrap:wrap;">
+                    <label v-for="opt in f.props.options" :key="opt.value"
+                           style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer;">
+                        <input type="radio" :name="f.name" :value="opt.value" v-model="form[f.name]">
+                        @{{ opt.label }}
+                    </label>
+                </div>
+
+                <!-- 多选组 -->
+                <div v-else-if="f.type === 'checkbox'" style="display:flex;gap:16px;flex-wrap:wrap;">
+                    <label v-for="opt in f.props.options" :key="opt.value"
+                           style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer;">
+                        <input type="checkbox" :value="opt.value" v-model="form[f.name]">
+                        @{{ opt.label }}
+                    </label>
+                </div>
+
+                <!-- 开关 -->
                 <input v-else-if="f.type === 'switch'" type="checkbox" v-model="form[f.name]">
+
+                <!-- 多行文本 -->
                 <textarea v-else-if="f.type === 'textarea'" v-model="form[f.name]"
                           :rows="f.props.rows || 3"
+                          :placeholder="f.props.placeholder || ''"
                           style="width:100%;padding:9px 12px;border:1px solid #dde3e0;border-radius:6px;font-size:13px;"></textarea>
-                <input v-else :type="f.type === 'number' ? 'number' : (f.type === 'email' ? 'email' : 'text')"
-                       v-model="form[f.name]"
+
+                <!-- 日期 -->
+                <input v-else-if="f.type === 'date'" type="date" v-model="form[f.name]"
                        style="width:100%;padding:9px 12px;border:1px solid #dde3e0;border-radius:6px;font-size:13px;">
+
+                <!-- 日期时间 -->
+                <input v-else-if="f.type === 'datetime'" type="datetime-local" v-model="form[f.name]"
+                       style="width:100%;padding:9px 12px;border:1px solid #dde3e0;border-radius:6px;font-size:13px;">
+
+                <!-- 普通输入框 -->
+                <input v-else :type="inputType(f)" v-model="form[f.name]"
+                       :step="f.type === 'decimal' ? (f.props.decimals ? Math.pow(10, -f.props.decimals) : '0.01') : null"
+                       :placeholder="f.props.placeholder || ''"
+                       :readonly="f.readonly"
+                       style="width:100%;padding:9px 12px;border:1px solid #dde3e0;border-radius:6px;font-size:13px;">
+
+                <!-- 帮助文本 -->
+                <div v-if="f.props.help" style="font-size:12px;color:#8a948f;margin-top:4px;">@{{ f.props.help }}</div>
             </div>
             <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">
                 <button class="btn" @click="showCreate = false">取消</button>
@@ -214,6 +312,43 @@ createApp({
             return String(v).replace('T', ' ').slice(0, 19);
         }
 
+        /** 表单输入框的 HTML input type */
+        function inputType(f) {
+            const map = {
+                number: 'number',
+                decimal: 'number',
+                email: 'email',
+                url: 'url',
+                hidden: 'hidden',
+                password: 'password',
+            };
+            return map[f.type] || 'text';
+        }
+
+        /** 值映射标签：优先 props.map，回退原值 */
+        function mapLabel(col, value) {
+            const map = col.props?.map;
+            if (map && map[value] !== undefined) return map[value];
+            return value ?? '';
+        }
+
+        /** 根据值给出标签配色（状态类字段的语义色） */
+        function tagClass(value) {
+            const v = String(value ?? '').toLowerCase();
+            const positive = ['1', 'true', 'yes', 'active', 'enabled', 'success', 'paid', 'on_sale', 'published', 'resolved'];
+            const negative = ['0', 'false', 'no', 'disabled', 'failed', 'closed', 'sold_out', 'draft', 'pending'];
+            if (positive.includes(v)) return 'tag-on';
+            if (negative.includes(v)) return 'tag-off';
+            return '';
+        }
+
+        /** 金额格式化：保留两位小数，千分位分隔 */
+        function formatMoney(v) {
+            const n = Number(v);
+            if (!isFinite(n)) return v ?? '';
+            return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        }
+
         function edit(row) {
             editing.value = true;
             form.value = { ...row };
@@ -264,6 +399,7 @@ createApp({
             sortField, direction, showCreate, editing, form,
             columns, formFields, hasSearch,
             load, toggleSort, formatDate, edit, save, remove,
+            inputType, mapLabel, tagClass, formatMoney,
         };
     },
 }).mount('#app');

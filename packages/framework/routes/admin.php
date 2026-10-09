@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Aimanong\Http\Controllers\AuthController;
 use Aimanong\Http\Controllers\HomeController;
 use Aimanong\Http\Controllers\ResourceController;
+use Aimanong\Http\Controllers\UiController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -39,13 +40,39 @@ Route::get('assets/{path}', function (string $path) {
         abort(404);
     }
 
-    return response()->file($full);
+    /*
+     * 必须显式指定 Content-Type。
+     *
+     * response()->file() 在这台环境上把 .css 猜成了 text/html ——
+     * 浏览器在严格 MIME 模式下会拒绝解析（stylesheets 的 cssRules 为 0，
+     * 表现为「CSS 加载了但样式完全不生效」，极难排查）。
+     */
+    $mime = match (strtolower(pathinfo($full, PATHINFO_EXTENSION))) {
+        'css' => 'text/css; charset=utf-8',
+        'js' => 'application/javascript; charset=utf-8',
+        'json' => 'application/json; charset=utf-8',
+        'svg' => 'image/svg+xml',
+        'png' => 'image/png',
+        'jpg', 'jpeg' => 'image/jpeg',
+        'webp' => 'image/webp',
+        'gif' => 'image/gif',
+        'ico' => 'image/x-icon',
+        'woff2' => 'font/woff2',
+        'woff' => 'font/woff',
+        default => 'application/octet-stream',
+    };
+
+    return response()->file($full, ['Content-Type' => $mime]);
 })->where('path', '.*')->name('asset');
 
 /*
 | 数据 API
 */
 Route::prefix('api')->name('api.')->group(function (): void {
+    // 界面偏好（主题/密度/圆角）—— 必须在 {uri} 之前
+    Route::get('api/ui/preferences', [UiController::class, 'show'])->name('ui.preferences');
+    Route::post('api/ui/preferences', [UiController::class, 'store'])->name('ui.preferences.save');
+
     Route::get('{uri}', [ResourceController::class, 'index'])->name('index');
     Route::post('{uri}', [ResourceController::class, 'store'])->name('store');
 

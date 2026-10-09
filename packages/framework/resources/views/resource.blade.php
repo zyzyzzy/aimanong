@@ -1,382 +1,219 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $label }} · AI 码农</title>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
-            background: #f5f7fa; color: #101B16;
-        }
-        .header {
-            background: #fff; border-bottom: 1px solid #e8edea;
-            padding: 0 24px; height: 56px;
-            display: flex; align-items: center; justify-content: space-between;
-        }
-        .header h1 { font-size: 17px; font-weight: 600; }
-        .header .user { font-size: 13px; color: #6b746f; }
-        .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
-        /* 侧边栏 */
-        .layout { display: flex; min-height: calc(100vh - 58px); }
-        .sidebar { width: 200px; flex-shrink: 0; background: #fff; border-right: 1px solid #e8edea; padding: 16px 0; overflow-y: auto; }
-        .sidebar-main { flex: 1; min-width: 0; }
-        .menu-group-title { padding: 14px 18px 6px; font-size: 11px; color: #a5aea9; letter-spacing: .5px; }
-        .menu-item { display: flex; align-items: center; gap: 8px; padding: 9px 18px; font-size: 13px; color: #4a5550; text-decoration: none; }
-        .menu-item:hover { background: #f4f7f5; }
-        .menu-item.active { background: #eef4f1; color: #2e7d4f; font-weight: 600; border-right: 3px solid #6b9b7f; }
-        .menu-icon { width: 16px; text-align: center; }
-        .toolbar {
-            display: flex; gap: 10px; align-items: center;
-            margin-bottom: 16px;
-        }
-        .toolbar input {
-            padding: 8px 12px; border: 1px solid #dde3e0;
-            border-radius: 6px; font-size: 13px; width: 240px;
-        }
-        .toolbar input:focus { outline: none; border-color: #3FBF6F; }
-        .btn {
-            padding: 8px 14px; border-radius: 6px; font-size: 13px;
-            border: 1px solid #dde3e0; background: #fff; cursor: pointer;
-        }
-        .btn:hover { border-color: #3FBF6F; color: #3FBF6F; }
-        .btn-primary { background: #3FBF6F; color: #fff; border-color: #3FBF6F; }
-        .btn-primary:hover { background: #35a75f; color: #fff; }
-        .card {
-            background: #fff; border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(16,27,22,.05); overflow: hidden;
-        }
-        table { width: 100%; border-collapse: collapse; }
-        th {
-            background: #fafcfb; text-align: left; padding: 12px 16px;
-            font-size: 12px; font-weight: 600; color: #6b746f;
-            border-bottom: 1px solid #eef2f0; white-space: nowrap;
-        }
-        th.sortable { cursor: pointer; user-select: none; }
-        th.sortable:hover { color: #3FBF6F; }
-        td { padding: 12px 16px; font-size: 13px; border-bottom: 1px solid #f2f5f3; }
-        tr:last-child td { border-bottom: none; }
-        .pagination {
-            display: flex; gap: 8px; align-items: center;
-            padding: 14px 16px; border-top: 1px solid #f2f5f3; font-size: 13px;
-        }
-        .pagination .info { color: #8a948f; margin-left: auto; }
-        .badge {
-            display: inline-block; padding: 2px 8px; border-radius: 10px;
-            font-size: 11px; background: #e8f5e9; color: #2e7d4f;
-        }
-        /* 标签：值映射 / 布尔 */
-        .tag {
-            display: inline-block; padding: 2px 9px; border-radius: 4px;
-            font-size: 12px; background: #eef2f0; color: #4a544e;
-        }
-        .tag-on  { background: #e8f5e9; color: #2e7d4f; }
-        .tag-off { background: #f0f2f1; color: #8a948f; }
-        .muted   { color: #c3ccc7; }
-        /* 条件高亮（如库存不足） */
-        .hl-danger  { color: #c0392b; font-weight: 600; }
-        .hl-warning { color: #d68910; font-weight: 600; }
-        .hl-success { color: #2e7d4f; font-weight: 600; }
-        /* 进度条 */
-        .progress-wrap { display: inline-flex; align-items: center; gap: 8px; }
-        .progress-bar {
-            display: inline-block; width: 70px; height: 6px;
-            background: #eef2f0; border-radius: 3px; overflow: hidden;
-        }
-        .progress-bar i { display: block; height: 100%; background: #3FBF6F; }
-        .progress-num { font-size: 12px; color: #6b746f; }
-        .empty { padding: 40px; text-align: center; color: #a5aea9; font-size: 13px; }
-        /* 分步表单 */
-        .steps-bar { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid #eef2f0; padding-bottom: 14px; }
-        .step-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #a5aea9; flex: 1; }
-        .step-item.active { color: #3FBF6F; font-weight: 600; }
-        .step-item.done { color: #6b746f; cursor: pointer; }
-        .step-dot {
-            width: 20px; height: 20px; border-radius: 50%; background: #eef2f0;
-            display: inline-flex; align-items: center; justify-content: center;
-            font-size: 11px; flex-shrink: 0;
-        }
-        .step-item.active .step-dot { background: #3FBF6F; color: #fff; }
-        .step-item.done .step-dot { background: #d6ede0; color: #2e7d4f; }
-        .loading { padding: 40px; text-align: center; color: #8a948f; font-size: 13px; }
-    </style>
-</head>
-<body>
-<div id="app">
-    <div class="header">
-        <h1>{{ $label }} <span style="font-weight:400;color:#a5aea9;font-size:13px;">/ {{ $uri }}</span></h1>
-        <div class="user">{{ $user->name ?? $user->username ?? '' }}</div>
+@extends('aimanong::partials.layout')
+
+@section('content')
+<div id="app" v-cloak>
+  <div class="am-page-head">
+    <div>
+      <h1 class="am-page-head__title">{{ $label }}</h1>
+      <div class="am-page-head__desc">
+        <span v-if="!loading">共 @{{ total }} 条记录</span>
+        <span v-else>加载中…</span>
+      </div>
+    </div>
+    <div class="am-page-head__actions">
+      <input v-if="hasSearch" v-model="keyword" @keyup.enter="load(1)"
+             class="am-input am-input--search" style="width:220px" placeholder="搜索…">
+      <button class="am-btn" @click="load(currentPage)">
+        @include('aimanong::partials.icon', ['name' => 'refresh', 'size' => 15]) 刷新
+      </button>
+      <button class="am-btn" v-if="exportable" @click="doExport">
+        @include('aimanong::partials.icon', ['name' => 'download', 'size' => 15]) 导出
+      </button>
+      <button class="am-btn am-btn--primary" @click="openCreate">
+        @include('aimanong::partials.icon', ['name' => 'plus', 'size' => 15]) 新增
+      </button>
+    </div>
+  </div>
+
+  <div class="am-card">
+    {{-- 加载态：骨架屏（改造前是整个表格消失变一行字，高度剧烈跳动） --}}
+    <div v-if="loading" class="am-card__body">
+      <div class="am-skeleton am-skeleton--title" style="width:32%"></div>
+      <div class="am-skeleton am-skeleton--text" v-for="i in 5" :key="i" style="margin-top:12px"></div>
     </div>
 
-    <div class="layout">
-        @if(!empty($menu))
-        <aside class="sidebar">
-            @foreach($menu as $item)
-                @if(!empty($item['isGroup']))
-                    <div class="menu-group-title">{{ $item['label'] }}</div>
-                    @foreach($item['children'] as $child)
-                        <a class="menu-item {{ ($child['uri'] ?? '') === $uri ? 'active' : '' }}"
-                           href="{{ url(\Aimanong\Aimanong::url($child['uri'] ?? '')) }}">
-                            <span class="menu-icon">{{ $child['icon'] ?? '' }}</span>
-                            {{ $child['label'] }}
-                        </a>
-                    @endforeach
-                @else
-                    <a class="menu-item {{ ($item['uri'] ?? '') === $uri ? 'active' : '' }}"
-                       href="{{ url(\Aimanong\Aimanong::url($item['uri'] ?? '')) }}">
-                        <span class="menu-icon">{{ $item['icon'] ?? '' }}</span>
-                        {{ $item['label'] }}
-                    </a>
-                @endif
-            @endforeach
-        </aside>
-        @endif
-
-        <div class="sidebar-main">
-    <div class="container">
-        <div class="toolbar">
-            <input v-model="keyword" @keyup.enter="load(1)" placeholder="搜索…" v-if="hasSearch">
-            <button class="btn" @click="load(currentPage)">刷新</button>
-            <button class="btn" v-if="exportable" @click="doExport">导出</button>
-            <button class="btn btn-primary" @click="openCreate">新增</button>
-        </div>
-
-        <div class="card">
-            <div v-if="loading" class="loading">加载中…</div>
-            <div v-else-if="rows.length === 0" class="empty">暂无数据</div>
-            <table v-else>
-                <thead>
-                    <tr>
-                        <th
-                            v-for="col in columns"
-                            :key="col.name"
-                            :class="{ sortable: col.sortable }"
-                            @click="col.sortable && toggleSort(col.name)"
-                        >
-                            @{{ col.label }}
-                            <span v-if="sortField === col.name">@{{ direction === 'asc' ? '↑' : '↓' }}</span>
-                        </th>
-                        <th style="width:120px;">操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="row in rows" :key="row.id">
-                        <td v-for="col in columns" :key="col.name" :class="cellClass(col, row)">
-                            <!-- 日期时间 -->
-                            <span v-if="col.formatter === 'datetime'">@{{ formatDate(cellValue(col, row)) }}</span>
-
-                            <!-- 值 → 标签映射 -->
-                            <span v-else-if="col.formatter === 'map'"
-                                  class="tag" :class="tagClass(row[col.name])">
-                                @{{ mapLabel(col, cellValue(col, row)) }}
-                            </span>
-
-                            <!-- 布尔：渲染为是/否标签，而非 true/false -->
-                            <span v-else-if="col.formatter === 'bool'"
-                                  class="tag" :class="row[col.name] ? 'tag-on' : 'tag-off'">
-                                @{{ cellValue(col, row) ? (col.props.trueLabel || '是') : (col.props.falseLabel || '否') }}
-                            </span>
-
-                            <!-- 徽章 -->
-                            <span v-else-if="col.formatter === 'badge'" class="badge">
-                                @{{ cellValue(col, row) }}
-                            </span>
-
-                            <!-- 图片 -->
-                            <img v-else-if="col.formatter === 'image'" :src="row[col.name]"
-                                 style="height:32px;border-radius:4px;" />
-
-                            <!-- 链接 -->
-                            <a v-else-if="col.formatter === 'link'" :href="row[col.name]" target="_blank"
-                               style="color:#3FBF6F;">@{{ col.props.text || row[col.name] }}</a>
-
-                            <!-- 进度条 -->
-                            <span v-else-if="col.formatter === 'progress'" class="progress-wrap">
-                                <span class="progress-bar"><i :style="{width: Math.min(100, Number(row[col.name]) || 0) + '%'}"></i></span>
-                                <span class="progress-num">@{{ row[col.name] }}</span>
-                            </span>
-
-                            <!-- 金额 -->
-                            <span v-else-if="col.formatter === 'money'">
-                                @{{ col.props.symbol || '¥' }}@{{ formatMoney(row[col.name]) }}
-                            </span>
-
-                            <!-- ID 默认徽章 -->
-                            <span v-else-if="col.name === 'id'" class="badge">@{{ row[col.name] }}</span>
-
-                            <!-- 空值占位 -->
-                            <span v-else-if="row[col.name] === null || row[col.name] === ''" class="muted">—</span>
-
-                            <span v-else-if="isTree && col.name === treeTitleColumn"
-                                  :style="{ paddingLeft: (row._depth || 0) * 20 + 'px' }">
-                                <span v-if="row._depth > 0" class="muted">└ </span>@{{ row[col.name] }}
-                            </span>
-                            <span v-else>@{{ cellValue(col, row) }}</span>
-                        </td>
-                        <td>
-                            <button class="btn" style="padding:4px 8px;font-size:12px;" @click="edit(row)">编辑</button>
-                            <button class="btn" style="padding:4px 8px;font-size:12px;" @click="remove(row)">删除</button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <div class="pagination" v-if="total > 0 && !isTree">
-                <button class="btn" :disabled="currentPage <= 1" @click="load(currentPage - 1)">上一页</button>
-                <span>@{{ currentPage }} / @{{ lastPage }}</span>
-                <button class="btn" :disabled="currentPage >= lastPage" @click="load(currentPage + 1)">下一页</button>
-                <span class="info">共 @{{ total }} 条</span>
-            </div>
-        </div>
+    {{-- 空状态：有图标 + 说明 + 引导动作（改造前只有一行灰字） --}}
+    <div v-else-if="rows.length === 0" class="am-empty">
+      <div class="am-empty__icon">@include('aimanong::partials.icon', ['name' => 'inbox', 'size' => 22])</div>
+      <div class="am-empty__title">暂无数据</div>
+      <div class="am-empty__desc">还没有任何{{ $label }}记录，点击下方按钮创建第一条</div>
+      <div class="am-empty__actions">
+        <button class="am-btn am-btn--primary" @click="openCreate">
+          @include('aimanong::partials.icon', ['name' => 'plus', 'size' => 15]) 新增{{ $label }}
+        </button>
+      </div>
     </div>
 
-    <!-- 新增/编辑弹窗 -->
-    <div v-if="showCreate" style="position:fixed;inset:0;background:rgba(16,27,22,.4);display:flex;align-items:center;justify-content:center;" @click.self="showCreate = false">
-        <div style="background:#fff;border-radius:10px;padding:24px;width:420px;max-height:80vh;overflow:auto;">
-            <h3 style="margin-bottom:16px;font-size:15px;">@{{ editing ? '编辑' : '新增' }}</h3>
-
-            <!-- 分步表单：步骤指示器 -->
-            <div v-if="isStepped" class="steps-bar">
-                <div v-for="(st, i) in steps" :key="i"
-                     class="step-item"
-                     :class="{ active: i === currentStep, done: i < currentStep }"
-                     @click="goStep(i)">
-                    <span class="step-dot">@{{ i < currentStep ? '✓' : (i + 1) }}</span>
-                    <span class="step-name">@{{ st.title }}</span>
-                </div>
-            </div>
-
-            <div v-for="f in visibleFields" :key="f.name" style="margin-bottom:14px;">
-                <label style="display:block;font-size:13px;color:#4a544e;margin-bottom:6px;">
-                    @{{ f.label }}<span v-if="f.required" style="color:#c0392b;">*</span>
-                </label>
-                <!-- 下拉选择 -->
-                <select v-if="f.type === 'select'" v-model="form[f.name]"
-                        style="width:100%;padding:9px 12px;border:1px solid #dde3e0;border-radius:6px;font-size:13px;">
-                    <option :value="null">请选择…</option>
-                    <option v-for="opt in f.props.options" :key="opt.value" :value="opt.value">@{{ opt.label }}</option>
-                </select>
-
-                <!-- 单选组 -->
-                <div v-else-if="f.type === 'radio'" style="display:flex;gap:16px;flex-wrap:wrap;">
-                    <label v-for="opt in f.props.options" :key="opt.value"
-                           style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer;">
-                        <input type="radio" :name="f.name" :value="opt.value" v-model="form[f.name]">
-                        @{{ opt.label }}
-                    </label>
-                </div>
-
-                <!-- 多选组 -->
-                <div v-else-if="f.type === 'checkbox'" style="display:flex;gap:16px;flex-wrap:wrap;">
-                    <label v-for="opt in f.props.options" :key="opt.value"
-                           style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer;">
-                        <input type="checkbox" :value="opt.value" v-model="form[f.name]">
-                        @{{ opt.label }}
-                    </label>
-                </div>
-
-                <!-- 开关 -->
-                <input v-else-if="f.type === 'switch'" type="checkbox" v-model="form[f.name]">
-
-                <!-- 省市区联动（由 aimanong/region 插件提供） -->
-                <div v-else-if="f.type === 'region'" style="display:flex;gap:8px;">
-                    <select v-model="ensureRegion(f.name).province" @change="onProvinceChange(f.name)"
-                            style="flex:1;padding:9px 12px;border:1px solid #dde3e0;border-radius:6px;font-size:13px;">
-                        <option value="">请选择省</option>
-                        <option v-for="p in (f.props.data || []).length ? f.props.data : regionProvinces"
-                                :key="p.code" :value="p.code">@{{ p.name }}</option>
-                    </select>
-                    <select v-model="ensureRegion(f.name).city" @change="onCityChange(f.name)"
-                            style="flex:1;padding:9px 12px;border:1px solid #dde3e0;border-radius:6px;font-size:13px;">
-                        <option value="">请选择市</option>
-                        <option v-for="c in ensureRegion(f.name).cities" :key="c.code" :value="c.code">@{{ c.name }}</option>
-                    </select>
-                    <select v-if="(f.props.level || 3) === 3" v-model="ensureRegion(f.name).district"
-                            style="flex:1;padding:9px 12px;border:1px solid #dde3e0;border-radius:6px;font-size:13px;">
-                        <option value="">请选择区</option>
-                        <option v-for="d in ensureRegion(f.name).districts" :key="d.code" :value="d.code">@{{ d.name }}</option>
-                    </select>
-                </div>
-
-                <!-- 多选（复选框组）—— 多对多关联常用 -->
-                <div v-else-if="f.type === 'multiselect'" style="display:flex;gap:14px;flex-wrap:wrap;">
-                    <label v-for="opt in (f.props.options || [])" :key="opt.value"
-                           style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer;">
-                        <input type="checkbox" :value="opt.value" v-model="form[f.name]">
-                        @{{ opt.label }}
-                    </label>
-                    <span v-if="!(f.props.options || []).length" class="muted" style="font-size:12px;">（无可选项）</span>
-                </div>
-
-                <!-- 颜色选择器 -->
-                <input v-else-if="f.type === 'color'" type="color" v-model="form[f.name]"
-                       style="width:64px;height:36px;padding:2px;border:1px solid #dde3e0;border-radius:6px;">
-
-                <!-- 滑块 -->
-                <div v-else-if="f.type === 'slider'" style="display:flex;align-items:center;gap:10px;">
-                    <input type="range" v-model="form[f.name]"
-                           :min="f.props.min ?? 0" :max="f.props.max ?? 100" :step="f.props.step ?? 1"
-                           style="flex:1;">
-                    <span style="font-size:13px;color:#6b746f;min-width:36px;">@{{ form[f.name] }}</span>
-                </div>
-
-                <!-- 评分 -->
-                <div v-else-if="f.type === 'rate'" style="display:flex;gap:4px;align-items:center;">
-                    <span v-for="n in (f.props.max || 5)" :key="n"
-                          @click="form[f.name] = n"
-                          :style="{cursor:'pointer',fontSize:'20px',color: (form[f.name] >= n) ? '#f5b041' : '#dde3e0'}">★</span>
-                    <span style="font-size:12px;color:#8a948f;margin-left:6px;">@{{ form[f.name] || 0 }} / @{{ f.props.max || 5 }}</span>
-                </div>
-
-                <!-- 标签输入（逗号分隔） -->
-                <input v-else-if="f.type === 'tags'" type="text" v-model="form[f.name]"
-                       :placeholder="f.props.placeholder || '多个用逗号分隔'"
-                       style="width:100%;padding:9px 12px;border:1px solid #dde3e0;border-radius:6px;font-size:13px;">
-
-                <!-- 日期区间 -->
-                <div v-else-if="f.type === 'daterange'" style="display:flex;gap:8px;align-items:center;">
-                    <input type="date" v-model="form[f.name + '_start']" style="flex:1;padding:9px 12px;border:1px solid #dde3e0;border-radius:6px;font-size:13px;">
-                    <span class="muted">至</span>
-                    <input type="date" v-model="form[f.name + '_end']" style="flex:1;padding:9px 12px;border:1px solid #dde3e0;border-radius:6px;font-size:13px;">
-                </div>
-
-                <!-- 多行文本 -->
-                <textarea v-else-if="f.type === 'textarea'" v-model="form[f.name]"
-                          :rows="f.props.rows || 3"
-                          :placeholder="f.props.placeholder || ''"
-                          style="width:100%;padding:9px 12px;border:1px solid #dde3e0;border-radius:6px;font-size:13px;"></textarea>
-
-                <!-- 日期 -->
-                <input v-else-if="f.type === 'date'" type="date" v-model="form[f.name]"
-                       style="width:100%;padding:9px 12px;border:1px solid #dde3e0;border-radius:6px;font-size:13px;">
-
-                <!-- 日期时间 -->
-                <input v-else-if="f.type === 'datetime'" type="datetime-local" v-model="form[f.name]"
-                       style="width:100%;padding:9px 12px;border:1px solid #dde3e0;border-radius:6px;font-size:13px;">
-
-                <!-- 普通输入框 -->
-                <input v-else :type="inputType(f)" v-model="form[f.name]"
-                       :step="f.type === 'decimal' ? (f.props.decimals ? Math.pow(10, -f.props.decimals) : '0.01') : null"
-                       :placeholder="f.props.placeholder || ''"
-                       :readonly="f.readonly"
-                       style="width:100%;padding:9px 12px;border:1px solid #dde3e0;border-radius:6px;font-size:13px;">
-
-                <!-- 帮助文本 -->
-                <div v-if="f.props.help" style="font-size:12px;color:#8a948f;margin-top:4px;">@{{ f.props.help }}</div>
-            </div>
-            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">
-                <button class="btn" @click="showCreate = false">取消</button>
-                <button v-if="isStepped && currentStep > 0" class="btn" @click="currentStep--">上一步</button>
-                <button v-if="isStepped && currentStep < steps.length - 1" class="btn btn-primary" @click="currentStep++">下一步</button>
-                <button v-if="!isStepped || currentStep === steps.length - 1" class="btn btn-primary" @click="save">保存</button>
-            </div>
-        </div>
+    <div v-else class="am-table-wrap am-table-wrap--plain">
+      <table class="am-table">
+        <thead>
+          <tr>
+            {{-- 表头：排序状态用 .is-sortable / .is-sorted（设计系统的 API） --}}
+            <th v-for="col in columns" :key="col.name"
+                :class="{'is-sortable': col.sortable, 'is-sorted': sortField === col.name, 'am-num': isNumeric(col)}"
+                :data-dir="sortField === col.name ? direction : null"
+                @click="col.sortable && toggleSort(col.name)"
+                :tabindex="col.sortable ? 0 : null"
+                @keydown.enter="col.sortable && toggleSort(col.name)">
+              <span class="am-th-sort">
+                @{{ col.label }}
+                <svg v-if="col.sortable" class="am-th-sort__icon" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  <path d="m7 10 5-5 5 5M7 14l5 5 5-5"/>
+                </svg>
+              </span>
+            </th>
+            <th class="am-table__actions">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in rows" :key="row.id">
+            <td v-for="col in columns" :key="col.name" :class="[cellClass(col, row), {'am-num': isNumeric(col)}]">
+              <template v-if="col.formatter === 'datetime'">
+                <span class="am-nowrap">@{{ formatDate(cellValue(col, row)) }}</span>
+              </template>
+              <template v-else-if="col.formatter === 'money'">@{{ formatMoney(cellValue(col, row), col) }}</template>
+              <template v-else-if="col.formatter === 'bool'">
+                <span class="am-badge" :class="cellValue(col, row) ? 'am-badge--success' : 'am-badge--muted'">
+                  <i style="width:5px;height:5px;border-radius:50%;background:currentColor;display:inline-block"></i>@{{ cellValue(col, row) ? (col.props.trueLabel || '是') : (col.props.falseLabel || '否') }}
+                </span>
+              </template>
+              <template v-else-if="col.formatter === 'badge' || col.formatter === 'map' || col.formatter === 'enum'">
+                <span class="am-badge" :class="tagClass(col, row)">@{{ mapLabel(col, cellValue(col, row)) }}</span>
+              </template>
+              <template v-else-if="col.formatter === 'image'">
+                <img v-if="cellValue(col, row)" :src="cellValue(col, row)" class="am-avatar am-avatar--sm" style="border-radius:6px">
+                <span v-else class="am-text-muted">—</span>
+              </template>
+              <template v-else-if="col.formatter === 'link'">
+                <a v-if="cellValue(col, row)" :href="cellValue(col, row)" target="_blank" class="am-text-brand">打开 ↗</a>
+                <span v-else class="am-text-muted">—</span>
+              </template>
+              <template v-else-if="col.formatter === 'progress'">
+                <span class="am-progress"><i :style="{width: Math.min(100, Number(cellValue(col,row)) || 0) + '%'}"></i></span>
+              </template>
+              <template v-else>
+                <span :class="{'am-text-muted': cellValue(col, row) === '' || cellValue(col, row) === null}">
+                  @{{ cellValue(col, row) === '' || cellValue(col, row) === null ? '—' : cellValue(col, row) }}
+                </span>
+              </template>
+            </td>
+            <td class="am-table__actions">
+              <div class="am-flex am-gap-1 am-nowrap">
+                <button class="am-btn am-btn--sm am-btn--ghost" @click="edit(row)">编辑</button>
+                <button class="am-btn am-btn--sm am-btn--ghost" @click="remove(row)">删除</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
+
+    <div class="am-pagination" v-if="!loading && rows.length > 0">
+      <button class="am-btn am-btn--sm" :disabled="currentPage <= 1" @click="load(currentPage - 1)">上一页</button>
+      <span class="am-pagination__page">@{{ currentPage }} / @{{ lastPage }}</span>
+      <button class="am-btn am-btn--sm" :disabled="currentPage >= lastPage" @click="load(currentPage + 1)">下一页</button>
+      <span class="am-pagination__spacer"></span>
+      <span class="am-text-sm am-text-muted">共 @{{ total }} 条</span>
+    </div>
+  </div>
+
+  {{-- 表单弹窗 --}}
+  <div class="am-overlay" v-if="showCreate" @click.self="showCreate = false">
+    <div class="am-modal">
+      <div class="am-modal__head">
+        <span class="am-modal__title">@{{ editing ? '编辑' : '新增' }}{{ $label }}</span>
+        <button class="am-modal__close" @click="showCreate = false" aria-label="关闭">
+          @include('aimanong::partials.icon', ['name' => 'x', 'size' => 16])
+        </button>
+      </div>
+
+      <div class="am-modal__body">
+        {{-- 分步表单 --}}
+        <div class="am-steps" v-if="isStepped">
+          <div v-for="(s, i) in steps" :key="i" class="am-step"
+               :class="{'is-active': i === currentStep, 'is-done': i < currentStep}"
+               @click="goStep(i)">
+            <span class="am-step__dot">@{{ i < currentStep ? '✓' : i + 1 }}</span>
+            <span>@{{ s }}</span>
+            <span class="am-steps__line" v-if="i < steps.length - 1"></span>
+          </div>
+        </div>
+
+        <div v-for="f in visibleFields" :key="f.name" class="am-field" v-show="!f.hidden">
+          <label class="am-field__label">
+            @{{ f.label }}<span v-if="f.required" class="am-field__required">*</span>
+          </label>
+
+          <select v-if="f.type === 'select'" v-model="form[f.name]" class="am-select">
+            <option value="">请选择…</option>
+            <option v-for="(text, val) in (f.props.options || {})" :key="val" :value="val">@{{ text }}</option>
+          </select>
+
+          <div v-else-if="f.type === 'radio'" class="am-check-group">
+            <label v-for="(text, val) in (f.props.options || {})" :key="val" class="am-check">
+              <input type="radio" :value="val" v-model="form[f.name]"><span>@{{ text }}</span>
+            </label>
+          </div>
+
+          <div v-else-if="f.type === 'checkbox' || f.type === 'multiselect'" class="am-check-group">
+            <label v-for="(text, val) in (f.props.options || {})" :key="val" class="am-check">
+              <input type="checkbox" :value="val" v-model="form[f.name]"><span>@{{ text }}</span>
+            </label>
+          </div>
+
+          <label v-else-if="f.type === 'switch'" class="am-switch">
+            <input type="checkbox" v-model="form[f.name]"><span></span>
+          </label>
+
+          <div v-else-if="f.type === 'region'" class="am-flex am-gap-2">
+            <select v-model="ensureRegion(f.name).province" @change="onProvinceChange(f.name)" class="am-select">
+              <option value="">请选择省</option>
+              <option v-for="p in (f.props.data || []).length ? f.props.data : regionProvinces" :key="p.code" :value="p.code">@{{ p.name }}</option>
+            </select>
+            <select v-model="ensureRegion(f.name).city" @change="onCityChange(f.name)" class="am-select">
+              <option value="">请选择市</option>
+              <option v-for="c in ensureRegion(f.name).cities" :key="c.code" :value="c.code">@{{ c.name }}</option>
+            </select>
+            <select v-if="(f.props.level || 3) === 3" v-model="ensureRegion(f.name).district" class="am-select">
+              <option value="">请选择区</option>
+              <option v-for="d in ensureRegion(f.name).districts" :key="d.code" :value="d.code">@{{ d.name }}</option>
+            </select>
+          </div>
+
+          <input v-else-if="f.type === 'color'" type="color" v-model="form[f.name]" class="am-input" style="width:56px;padding:2px">
+          <input v-else-if="f.type === 'slider'" type="range" v-model="form[f.name]" class="am-input" style="padding:0">
+          <div v-else-if="f.type === 'rate'" class="am-flex am-gap-1">
+            <span v-for="n in (f.props.max || 5)" :key="n" @click="form[f.name] = n"
+                  :style="{cursor:'pointer',fontSize:'18px',color:(form[f.name] >= n) ? 'var(--warning-solid)' : 'var(--border-strong)'}">★</span>
+          </div>
+          <div v-else-if="f.type === 'daterange'" class="am-flex am-gap-2">
+            <input type="date" v-model="form[f.name + '_start']" class="am-input">
+            <input type="date" v-model="form[f.name + '_end']" class="am-input">
+          </div>
+
+          <textarea v-else-if="f.type === 'textarea'" v-model="form[f.name]" class="am-textarea" :rows="f.props.rows || 4"></textarea>
+          <input v-else-if="f.type === 'date'" type="date" v-model="form[f.name]" class="am-input">
+          <input v-else-if="f.type === 'datetime'" type="datetime-local" v-model="form[f.name]" class="am-input">
+          <input v-else :type="inputType(f)" v-model="form[f.name]" class="am-input">
+
+          <div v-if="f.props.help" class="am-field__help">@{{ f.props.help }}</div>
+        </div>
+      </div>
+
+      <div class="am-modal__foot">
+        <button class="am-btn" @click="showCreate = false">取消</button>
+        <button v-if="isStepped && currentStep < steps.length - 1" class="am-btn am-btn--primary"
+                @click="currentStep++">下一步</button>
+        <button v-else class="am-btn am-btn--primary" @click="save">保存</button>
+      </div>
+    </div>
+  </div>
 </div>
+@endsection
 
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
 <script>
 const { createApp, ref, computed, onMounted } = Vue;
 
@@ -619,6 +456,12 @@ createApp({
         }
 
         /** 表单输入框的 HTML input type */
+        /** 判断列是否应该右对齐（数字/金额用等宽数字并右对齐） */
+        function isNumeric(col) {
+            const t = col.jsonType || col.props?.jsonType;
+            return t === 'number' || t === 'integer' || col.formatter === 'money';
+        }
+
         function inputType(f) {
             const map = {
                 number: 'number',
@@ -783,9 +626,9 @@ createApp({
             isStepped, steps, currentStep, visibleFields,
             inputType, mapLabel, tagClass, formatMoney, cellValue, cellClass, normalizeCell,
             regionProvinces, regionTree, regionForm, onProvinceChange, onCityChange, ensureRegion, openCreate, goStep,
+            isNumeric,
         };
     },
 }).mount('#app');
 </script>
-</body>
-</html>
+@endpush

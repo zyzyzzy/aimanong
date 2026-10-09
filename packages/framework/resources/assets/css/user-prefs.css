@@ -1,0 +1,81 @@
+/* ============================================================================
+   用户偏好覆盖层 —— 密度 / 圆角 / 自定义主色
+   ============================================================================
+
+   为什么单独一个文件，而不是改 design-system.css：
+     那份设计系统是「调研产出 / 已通过 84 项对比度校验」的成品，
+     保持原样便于将来升级。用户偏好属于**运行时覆盖**，单独一层更清晰。
+
+   用法：<html data-density="compact" data-radius="sharp" style="--brand-solid:#xxx">
+   ============================================================================ */
+
+/* ---------- 密度：紧凑 ---------- */
+[data-density="compact"] {
+  --h-topbar: 48px;
+  --h-control: 30px;
+  --h-control-sm: 26px;
+  --h-table-row: 36px;
+}
+[data-density="compact"] .am-content { padding: var(--sp-4) var(--sp-5); }
+[data-density="compact"] .am-nav__item { height: 32px; }
+[data-density="compact"] .am-table td { height: 36px; padding-top: 6px; padding-bottom: 6px; }
+[data-density="compact"] .am-card__body { padding: var(--sp-4); }
+[data-density="compact"] .am-stat { padding: var(--sp-3); }
+
+/* ---------- 圆角：直角 / 圆润 ---------- */
+[data-radius="sharp"] {
+  --r-sm: 2px;
+  --r-md: 3px;
+  --r-lg: 4px;
+  --r-xl: 6px;
+}
+[data-radius="round"] {
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 26px;
+}
+
+/* ---------- 自定义主色派生 ---------- *
+ * 用户只给一个主色，hover/active/subtle 需要自动派生。
+ * 用 color-mix() 在支持它的浏览器里生成；不支持的浏览器
+ * 回退到设计系统自带的那套（不会报错，只是 hover 不变色）。 */
+@supports (color: color-mix(in srgb, red, blue)) {
+  :root {
+    --brand-solid-hover: color-mix(in srgb, var(--brand-solid) 82%, #000);
+    --brand-solid-active: color-mix(in srgb, var(--brand-solid) 68%, #000);
+    --brand-text: color-mix(in srgb, var(--brand-solid) 92%, #000);
+    --brand-subtle-bg: color-mix(in srgb, var(--brand-solid) 8%, #fff);
+    --brand-subtle-border: color-mix(in srgb, var(--brand-solid) 22%, #fff);
+    --brand-ring: color-mix(in srgb, var(--brand-solid) 45%, transparent);
+  }
+  [data-mode="dark"] {
+    --brand-solid-hover: color-mix(in srgb, var(--brand-solid) 82%, #fff);
+    --brand-solid-active: color-mix(in srgb, var(--brand-solid) 68%, #fff);
+    --brand-text: color-mix(in srgb, var(--brand-solid) 88%, #fff);
+    --brand-subtle-bg: color-mix(in srgb, var(--brand-solid) 18%, #121820);
+    --brand-subtle-border: color-mix(in srgb, var(--brand-solid) 34%, #121820);
+  }
+}
+
+/* ---------- 表格：列表页修正 ---------- *
+ * 设计系统的 th 是 sticky 的，适合「卡片内滚动」的表格。
+ * 但 Aimanong 的列表页是**整页滚动**，sticky 会让表头叠在内容上、
+ * 与新加载的行错位。这里关掉，需要内滚动的场景再加回来。 */
+.am-table-wrap--plain .am-table th { position: static; }
+.am-table__actions { width: 130px; white-space: nowrap; }
+.am-table td.am-table__actions { padding-top: 8px; padding-bottom: 8px; }
+
+/* 数据密度：让长表格更紧凑一点，一屏能看更多行 */
+.am-table td { padding-top: 10px; padding-bottom: 10px; }
+
+/* ---------- 表格：列宽节奏 ---------- *
+ * 默认 table-layout:auto 会让「发布时间」这类长文本列抢走过多宽度，
+ * 而「标题」这种最需要空间的列反而被压窄。
+ * 这里给长文本列一个最小宽度，让空间分配更合理。 */
+.am-table { table-layout: auto; }
+.am-table thead th { max-width: 320px; }
+/* ID 这类短列收窄；其余交给 auto 布局，避免总宽超出卡片 */
+.am-table thead th:first-child { width: 56px; }
+/* 卡片内的表格横向滚动要能滚到底，不被裁切 */
+.am-card .am-table-wrap { overflow-x: auto; }

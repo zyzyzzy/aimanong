@@ -89,6 +89,14 @@ return [
     | 列出要启用的扩展类名。扩展会自动注册其 Resource、路由与视图。
     |
     */
+    /*
+     * 界面配置。
+     */
+    'ui' => [
+        // 控制台标题与页脚显示的品牌名（换成你自己的系统名）
+        'brand' => env('AIMANONG_BRAND', 'Aimanong'),
+    ],
+
     'extensions' => [
         // App\Aimanong\Extensions\DemoExtension::class,
     ],

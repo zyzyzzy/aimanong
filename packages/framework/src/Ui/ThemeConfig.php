@@ -35,13 +35,14 @@ class ThemeConfig
             'style' => [
                 'label' => '界面风格',
                 'type' => 'style-picker',
-                'default' => 'celadon',
+                'default' => 'ink',
                 'choices' => [
-                    'celadon' => ['label' => '青瓷', 'desc' => '克制专业', 'swatch' => ['#0d9488', '#f6f8f8']],
-                    'deepspace' => ['label' => '深空', 'desc' => '科技炫酷', 'swatch' => ['#2dd4bf', '#0a0f14']],
-                    'aurora' => ['label' => '极光', 'desc' => '现代活力', 'swatch' => ['#7c3aed', '#faf9ff']],
+                    // 名称与 themes.css 的 data-theme 值一一对应
+                    'ink' => ['label' => '墨玉', 'desc' => '克制专业', 'swatch' => ['#007643', '#f4f6f8']],
+                    'deep' => ['label' => '深空', 'desc' => '科技炫酷', 'swatch' => ['#007a50', '#f1f7fb']],
+                    'aurora' => ['label' => '极光', 'desc' => '现代活力', 'swatch' => ['#6c56e0', '#f4f5fb']],
                 ],
-                'help' => '风格决定配色与质感；主题色可在此基础上覆盖',
+                'help' => '风格决定配色与质感；默认「墨玉」最耐看',
             ],
 
             'primary' => [

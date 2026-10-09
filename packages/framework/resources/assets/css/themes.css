@@ -1,0 +1,456 @@
+@charset "UTF-8";
+/* ============================================================================
+ * Aimanong 主题令牌  v1.0
+ * 三套风格 × 浅色/深色。仅覆盖颜色 token，不含任何结构与组件规则 ——
+ * 因此切换主题不会触碰 DOM，这是"一个 data-theme 换全套皮肤"的前提。
+ *
+ * 用法：
+ *   <html data-theme="ink" data-mode="light">
+ *
+ * 所有色值由 OKLCH 色阶程序化生成，并经 WCAG 2.1 对比度校验：
+ *   3 主题 × 2 模式 × 14 项 = 84 项，全部通过（正文/次级/三级 ≥4.5，
+ *   按钮文字 ≥4.5，焦点环 ≥3.0，边框分层 ≥1.2）。
+ *
+ * 想改品牌色？只改生成脚本里每套主题的 --hue 与彩度上限，
+ * 全套色阶会重新计算并通过同样的校验。
+ * ========================================================================= */
+
+/* ---------------------------------------------------------------------------
+ * 墨玉 Ink Jade  ·  色相 158.0°
+ * ------------------------------------------------------------------------- */
+[data-theme="ink"] {
+  --bg-canvas: #f4f6f8;
+  --bg-surface: #ffffff;
+  --bg-subtle: #fcfdfe;
+  --bg-sunken: #eaedf0;
+  --bg-hover: #f4f6f8;
+  --bg-active: #eaedf0;
+  --bg-inverse: #0d1721;
+  --text-primary: #0d1721;
+  --text-secondary: #444e59;
+  --text-tertiary: #5a646f;
+  --text-disabled: #979fa8;
+  --text-inverse: #ffffff;
+  --brand-solid: #007643;
+  --brand-solid-hover: #005d33;
+  --brand-solid-active: #004424;
+  --text-on-brand: #ffffff;
+  --brand-text: #007643;
+  --brand-subtle-bg: #f0f9f4;
+  --brand-subtle-border: #c7e7d3;
+  --brand-ring: #3aa470;
+  --border-subtle: #e3e6e9;
+  --border-default: #dce0e5;
+  --border-strong: #cbd0d6;
+  --border-focus: #3aa470;
+    --success-bg: #f1f9f4;
+    --success-text: #007545;
+    --success-border: #c7e6d3;
+    --success-solid: #007545;
+    --success-on-solid: #ffffff;
+    --warning-bg: #fcf6ed;
+    --warning-text: #8e5100;
+    --warning-border: #f1dabb;
+    --warning-solid: #a96600;
+    --warning-on-solid: #ffffff;
+    --danger-bg: #fff3f1;
+    --danger-text: #ad2724;
+    --danger-border: #ffd0c9;
+    --danger-solid: #cc3e38;
+    --danger-on-solid: #ffffff;
+    --info-bg: #f0f7ff;
+    --info-text: #155cbd;
+    --info-border: #c7dfff;
+    --info-solid: #2a74dc;
+    --info-on-solid: #ffffff;
+}
+
+[data-theme="ink"][data-mode="dark"] {
+  --bg-canvas: #0b0f14;
+  --bg-surface: #121820;
+  --bg-subtle: #18202a;
+  --bg-sunken: #080b10;
+  --bg-hover: #1c2530;
+  --bg-active: #232e3b;
+  --text-primary: #e4e8ec;
+  --text-secondary: #afb8c2;
+  --text-tertiary: #7b8895;
+  --text-disabled: #647280;
+  --text-inverse: #0b0f14;
+  --brand-solid: #008e58;
+  --brand-solid-hover: #3aa470;
+  --brand-solid-active: #64b88a;
+  --text-on-brand: #0b0f14;
+  --brand-text: #3aa470;
+  --brand-subtle-bg: #032011;
+  --brand-subtle-border: #073d25;
+  --brand-ring: #3aa470;
+  --border-subtle: #232d3a;
+  --border-default: #2f3b4a;
+  --border-strong: #3f4d5e;
+  --border-focus: #3aa470;
+  --bg-inverse: #f9fafb;
+    --success-bg: #032011;
+    --success-text: #40a471;
+    --success-border: #073d25;
+    --success-solid: #40a471;
+    --success-on-solid: #0b0f14;
+    --warning-bg: #251600;
+    --warning-text: #be7f00;
+    --warning-border: #472d00;
+    --warning-solid: #be7f00;
+    --warning-on-solid: #0b0f14;
+    --danger-bg: #2b100e;
+    --danger-text: #e15d53;
+    --danger-border: #51231f;
+    --danger-solid: #e15d53;
+    --danger-on-solid: #0b0f14;
+    --info-bg: #0c192e;
+    --info-text: #498cef;
+    --info-border: #1b3356;
+    --info-solid: #498cef;
+    --info-on-solid: #0b0f14;
+}
+
+/* ---------------------------------------------------------------------------
+ * 深空 Deep Space  ·  色相 168.0°
+ * ------------------------------------------------------------------------- */
+[data-theme="deep"] {
+  --bg-canvas: #f4f6f8;
+  --bg-surface: #ffffff;
+  --bg-subtle: #fcfdfe;
+  --bg-sunken: #eaedf0;
+  --bg-hover: #f4f6f8;
+  --bg-active: #eaedf0;
+  --bg-inverse: #0b1721;
+  --text-primary: #0b1721;
+  --text-secondary: #434f59;
+  --text-tertiary: #59656f;
+  --text-disabled: #96a0a8;
+  --text-inverse: #ffffff;
+  --brand-solid: #007a50;
+  --brand-solid-hover: #00603e;
+  --brand-solid-active: #00462c;
+  --text-on-brand: #ffffff;
+  --brand-text: #007a50;
+  --brand-subtle-bg: #eefaf5;
+  --brand-subtle-border: #bfe9d7;
+  --brand-ring: #00a97d;
+  --border-subtle: #e3e6e9;
+  --border-default: #dbe0e5;
+  --border-strong: #cad0d5;
+  --border-focus: #00a97d;
+    --success-bg: #f1f9f4;
+    --success-text: #007545;
+    --success-border: #c7e6d3;
+    --success-solid: #007545;
+    --success-on-solid: #ffffff;
+    --warning-bg: #fcf6ed;
+    --warning-text: #8e5100;
+    --warning-border: #f1dabb;
+    --warning-solid: #a96600;
+    --warning-on-solid: #ffffff;
+    --danger-bg: #fff3f1;
+    --danger-text: #ad2724;
+    --danger-border: #ffd0c9;
+    --danger-solid: #cc3e38;
+    --danger-on-solid: #ffffff;
+    --info-bg: #f0f7ff;
+    --info-text: #155cbd;
+    --info-border: #c7dfff;
+    --info-solid: #2a74dc;
+    --info-on-solid: #ffffff;
+}
+
+[data-theme="deep"][data-mode="dark"] {
+  --bg-canvas: #0b0f14;
+  --bg-surface: #121820;
+  --bg-subtle: #18202a;
+  --bg-sunken: #080b10;
+  --bg-hover: #1c2530;
+  --bg-active: #232e3b;
+  --text-primary: #e4e8ec;
+  --text-secondary: #aeb9c2;
+  --text-tertiary: #7a8894;
+  --text-disabled: #62727f;
+  --text-inverse: #0b0f14;
+  --brand-solid: #009365;
+  --brand-solid-hover: #00a97d;
+  --brand-solid-active: #42bc95;
+  --text-on-brand: #0b0f14;
+  --brand-text: #009365;
+  --brand-subtle-bg: #002015;
+  --brand-subtle-border: #003e2c;
+  --brand-ring: #009365;
+  --border-subtle: #232d3a;
+  --border-default: #2f3b4a;
+  --border-strong: #3f4d5e;
+  --border-focus: #009365;
+  --bg-inverse: #f9fafb;
+    --success-bg: #032011;
+    --success-text: #40a471;
+    --success-border: #073d25;
+    --success-solid: #40a471;
+    --success-on-solid: #0b0f14;
+    --warning-bg: #251600;
+    --warning-text: #be7f00;
+    --warning-border: #472d00;
+    --warning-solid: #be7f00;
+    --warning-on-solid: #0b0f14;
+    --danger-bg: #2b100e;
+    --danger-text: #e15d53;
+    --danger-border: #51231f;
+    --danger-solid: #e15d53;
+    --danger-on-solid: #0b0f14;
+    --info-bg: #0c192e;
+    --info-text: #498cef;
+    --info-border: #1b3356;
+    --info-solid: #498cef;
+    --info-on-solid: #0b0f14;
+}
+
+/* ---------------------------------------------------------------------------
+ * 极光 Aurora  ·  色相 286.0°
+ * ------------------------------------------------------------------------- */
+[data-theme="aurora"] {
+  --bg-canvas: #f5f5f8;
+  --bg-surface: #ffffff;
+  --bg-subtle: #fcfdfe;
+  --bg-sunken: #ececf0;
+  --bg-hover: #f5f5f8;
+  --bg-active: #ececf0;
+  --bg-inverse: #141522;
+  --text-primary: #141522;
+  --text-secondary: #4a4c5a;
+  --text-tertiary: #61626f;
+  --text-disabled: #9c9ea9;
+  --text-inverse: #ffffff;
+  --brand-solid: #725ce2;
+  --brand-solid-hover: #5d46c3;
+  --brand-solid-active: #49349d;
+  --text-on-brand: #ffffff;
+  --brand-text: #5d46c3;
+  --brand-subtle-bg: #f5f5ff;
+  --brand-subtle-border: #d9d8ff;
+  --brand-ring: #8777f5;
+  --border-subtle: #e5e5e9;
+  --border-default: #dedfe5;
+  --border-strong: #cecfd6;
+  --border-focus: #8777f5;
+    --success-bg: #f1f9f4;
+    --success-text: #007545;
+    --success-border: #c7e6d3;
+    --success-solid: #007545;
+    --success-on-solid: #ffffff;
+    --warning-bg: #fcf6ed;
+    --warning-text: #8e5100;
+    --warning-border: #f1dabb;
+    --warning-solid: #a96600;
+    --warning-on-solid: #ffffff;
+    --danger-bg: #fff3f1;
+    --danger-text: #ad2724;
+    --danger-border: #ffd0c9;
+    --danger-solid: #cc3e38;
+    --danger-on-solid: #ffffff;
+    --info-bg: #f0f7ff;
+    --info-text: #155cbd;
+    --info-border: #c7dfff;
+    --info-solid: #2a74dc;
+    --info-on-solid: #ffffff;
+}
+
+[data-theme="aurora"][data-mode="dark"] {
+  --bg-canvas: #0b0f14;
+  --bg-surface: #121820;
+  --bg-subtle: #18202a;
+  --bg-sunken: #080b10;
+  --bg-hover: #1c2530;
+  --bg-active: #232e3b;
+  --text-primary: #e7e7ed;
+  --text-secondary: #b5b6c2;
+  --text-tertiary: #838595;
+  --text-disabled: #6c6f81;
+  --text-inverse: #0b0f14;
+  --brand-solid: #8777f5;
+  --brand-solid-hover: #9c93fe;
+  --brand-solid-active: #b2acff;
+  --text-on-brand: #0b0f14;
+  --brand-text: #8777f5;
+  --brand-subtle-bg: #18162d;
+  --brand-subtle-border: #302c55;
+  --brand-ring: #8777f5;
+  --border-subtle: #232d3a;
+  --border-default: #2f3b4a;
+  --border-strong: #3f4d5e;
+  --border-focus: #8777f5;
+  --bg-inverse: #fafafb;
+    --success-bg: #032011;
+    --success-text: #40a471;
+    --success-border: #073d25;
+    --success-solid: #40a471;
+    --success-on-solid: #0b0f14;
+    --warning-bg: #251600;
+    --warning-text: #be7f00;
+    --warning-border: #472d00;
+    --warning-solid: #be7f00;
+    --warning-on-solid: #0b0f14;
+    --danger-bg: #2b100e;
+    --danger-text: #e15d53;
+    --danger-border: #51231f;
+    --danger-solid: #e15d53;
+    --danger-on-solid: #0b0f14;
+    --info-bg: #0c192e;
+    --info-text: #498cef;
+    --info-border: #1b3356;
+    --info-solid: #498cef;
+    --info-on-solid: #0b0f14;
+}
+
+/* ---------------------------------------------------------------------------
+ * 跟随系统：未显式指定 data-mode 时按系统偏好
+ * （JS 会在 <head> 同步写入 data-mode，此处是纯 CSS 的兜底）
+ * ------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  [data-theme="ink"]:not([data-mode]) {
+    --bg-canvas: #0b0f14;
+    --bg-surface: #121820;
+    --bg-subtle: #18202a;
+    --bg-sunken: #080b10;
+    --bg-hover: #1c2530;
+    --bg-active: #232e3b;
+    --text-primary: #e4e8ec;
+    --text-secondary: #afb8c2;
+    --text-tertiary: #7b8895;
+    --text-disabled: #647280;
+    --text-inverse: #0b0f14;
+    --brand-solid: #008e58;
+    --brand-solid-hover: #3aa470;
+    --brand-solid-active: #64b88a;
+    --text-on-brand: #0b0f14;
+    --brand-text: #3aa470;
+    --brand-subtle-bg: #032011;
+    --brand-subtle-border: #073d25;
+    --brand-ring: #3aa470;
+    --border-subtle: #232d3a;
+    --border-default: #2f3b4a;
+    --border-strong: #3f4d5e;
+    --border-focus: #3aa470;
+    --bg-inverse: #f9fafb;
+      --success-bg: #032011;
+      --success-text: #40a471;
+      --success-border: #073d25;
+      --success-solid: #40a471;
+      --success-on-solid: #0b0f14;
+      --warning-bg: #251600;
+      --warning-text: #be7f00;
+      --warning-border: #472d00;
+      --warning-solid: #be7f00;
+      --warning-on-solid: #0b0f14;
+      --danger-bg: #2b100e;
+      --danger-text: #e15d53;
+      --danger-border: #51231f;
+      --danger-solid: #e15d53;
+      --danger-on-solid: #0b0f14;
+      --info-bg: #0c192e;
+      --info-text: #498cef;
+      --info-border: #1b3356;
+      --info-solid: #498cef;
+      --info-on-solid: #0b0f14;
+  }
+}
+@media (prefers-color-scheme: dark) {
+  [data-theme="deep"]:not([data-mode]) {
+    --bg-canvas: #0b0f14;
+    --bg-surface: #121820;
+    --bg-subtle: #18202a;
+    --bg-sunken: #080b10;
+    --bg-hover: #1c2530;
+    --bg-active: #232e3b;
+    --text-primary: #e4e8ec;
+    --text-secondary: #aeb9c2;
+    --text-tertiary: #7a8894;
+    --text-disabled: #62727f;
+    --text-inverse: #0b0f14;
+    --brand-solid: #009365;
+    --brand-solid-hover: #00a97d;
+    --brand-solid-active: #42bc95;
+    --text-on-brand: #0b0f14;
+    --brand-text: #009365;
+    --brand-subtle-bg: #002015;
+    --brand-subtle-border: #003e2c;
+    --brand-ring: #009365;
+    --border-subtle: #232d3a;
+    --border-default: #2f3b4a;
+    --border-strong: #3f4d5e;
+    --border-focus: #009365;
+    --bg-inverse: #f9fafb;
+      --success-bg: #032011;
+      --success-text: #40a471;
+      --success-border: #073d25;
+      --success-solid: #40a471;
+      --success-on-solid: #0b0f14;
+      --warning-bg: #251600;
+      --warning-text: #be7f00;
+      --warning-border: #472d00;
+      --warning-solid: #be7f00;
+      --warning-on-solid: #0b0f14;
+      --danger-bg: #2b100e;
+      --danger-text: #e15d53;
+      --danger-border: #51231f;
+      --danger-solid: #e15d53;
+      --danger-on-solid: #0b0f14;
+      --info-bg: #0c192e;
+      --info-text: #498cef;
+      --info-border: #1b3356;
+      --info-solid: #498cef;
+      --info-on-solid: #0b0f14;
+  }
+}
+@media (prefers-color-scheme: dark) {
+  [data-theme="aurora"]:not([data-mode]) {
+    --bg-canvas: #0b0f14;
+    --bg-surface: #121820;
+    --bg-subtle: #18202a;
+    --bg-sunken: #080b10;
+    --bg-hover: #1c2530;
+    --bg-active: #232e3b;
+    --text-primary: #e7e7ed;
+    --text-secondary: #b5b6c2;
+    --text-tertiary: #838595;
+    --text-disabled: #6c6f81;
+    --text-inverse: #0b0f14;
+    --brand-solid: #8777f5;
+    --brand-solid-hover: #9c93fe;
+    --brand-solid-active: #b2acff;
+    --text-on-brand: #0b0f14;
+    --brand-text: #8777f5;
+    --brand-subtle-bg: #18162d;
+    --brand-subtle-border: #302c55;
+    --brand-ring: #8777f5;
+    --border-subtle: #232d3a;
+    --border-default: #2f3b4a;
+    --border-strong: #3f4d5e;
+    --border-focus: #8777f5;
+    --bg-inverse: #fafafb;
+      --success-bg: #032011;
+      --success-text: #40a471;
+      --success-border: #073d25;
+      --success-solid: #40a471;
+      --success-on-solid: #0b0f14;
+      --warning-bg: #251600;
+      --warning-text: #be7f00;
+      --warning-border: #472d00;
+      --warning-solid: #be7f00;
+      --warning-on-solid: #0b0f14;
+      --danger-bg: #2b100e;
+      --danger-text: #e15d53;
+      --danger-border: #51231f;
+      --danger-solid: #e15d53;
+      --danger-on-solid: #0b0f14;
+      --info-bg: #0c192e;
+      --info-text: #498cef;
+      --info-border: #1b3356;
+      --info-solid: #498cef;
+      --info-on-solid: #0b0f14;
+  }
+}

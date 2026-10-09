@@ -9,6 +9,7 @@ use Aimanong\Auth\PermissionGate;
 use Aimanong\Form\Fields\Field;
 use Aimanong\Schema\Compiler;
 use Aimanong\Support\FieldType;
+use Aimanong\Ui\ThemeConfig;
 
 /**
  * 能力清单。
@@ -41,6 +42,7 @@ class Capabilities
             'cannot_verify' => $this->cannotVerify(),
             'scope_hooks' => ScopeHooks::introspect(),
             'rbac' => $this->rbacCapabilities(),
+            'ui' => ThemeConfig::introspect(),
             'menu' => [
                 'how' => 'Resource 覆盖 menu() 方法声明菜单（可选，不实现也有默认菜单）',
                 'keys' => 'group（分组）| icon（图标）| sort（排序，小的在前）| label（显示名）| visible（是否显示）',

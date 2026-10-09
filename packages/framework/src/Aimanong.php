@@ -127,6 +127,23 @@ class Aimanong
     }
 
     /**
+     * 品牌名（控制台标题与页脚用）。
+     *
+     * 可在 config/aimanong.php 里改 ui.brand 换成自己的系统名 ——
+     * 基于 Aimanong 开发的项目通常不希望页脚写着框架名。
+     */
+    public static function brand(): string
+    {
+        try {
+            $brand = config('aimanong.ui.brand');
+        } catch (\Throwable) {
+            $brand = null;
+        }
+
+        return is_string($brand) && $brand !== '' ? $brand : 'Aimanong';
+    }
+
+    /**
      * 版本号 —— **单一来源**。
      *
      * 从 composer.json 读取，避免多处硬编码导致版本不一致。

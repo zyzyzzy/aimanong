@@ -11,6 +11,7 @@ use Aimanong\Models\Administrator;
 use Aimanong\Models\Permission;
 use Aimanong\Schema\Compiler;
 use Aimanong\Schema\Emitters\JsonSchemaEmitter;
+use Aimanong\Ui\ThemeConfig;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -64,7 +65,26 @@ class HomeController extends Controller
             'isSuper' => $isSuper,
             'userCount' => Administrator::query()->count(),
             'rbacEnabled' => PermissionGate::enabled(),
+            'ui' => $this->uiPreferences(),
         ]);
+    }
+
+    /**
+     * 当前用户的界面偏好。
+     *
+     * 服务端渲染时就注入，避免深色用户看到白色闪屏。
+     *
+     * @return array<string, mixed>
+     */
+    protected function uiPreferences(): array
+    {
+        $user = Aimanong::user();
+
+        if (! $user instanceof Administrator || ! is_array($user->preferences)) {
+            return ThemeConfig::defaults();
+        }
+
+        return ThemeConfig::normalize($user->preferences);
     }
 
     /**
@@ -102,6 +122,7 @@ class HomeController extends Controller
             'schema' => $schema,
             // 菜单（按当前用户权限过滤）
             'menu' => (new MenuRegistry)->tree(),
+            'ui' => $this->uiPreferences(),
         ]);
     }
 }

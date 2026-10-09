@@ -72,12 +72,9 @@ class Administrator extends Model implements AuthenticatableContract
             ->exists();
     }
 
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
-
     /**
+     * 界面偏好（主题/密度/圆角）。
+     *
      * @return array<string, string>
      */
     protected function casts(): array
@@ -85,8 +82,14 @@ class Administrator extends Model implements AuthenticatableContract
         return [
             'enabled' => 'boolean',
             'password' => 'hashed',
+            'preferences' => 'array',
         ];
     }
+
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
 
     /**
      * Laravel 11+ 契约要求 getAuthPasswordName()。

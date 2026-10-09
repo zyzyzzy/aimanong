@@ -19,7 +19,7 @@ export default defineConfig({
     nav: [
       { text: '指南', link: '/guide/quickstart' },
       { text: 'API 参考', link: '/api/' },
-      { text: 'AI 协作', link: '/guide/ai-collaboration' },
+      { text: 'AI 使用手册', link: '/guide/ai-handbook' },
       { text: 'Playground', link: '/playground/' },
       { text: '实测报告', link: '/blog/ai-first-in-practice' },
     ],
@@ -31,7 +31,13 @@ export default defineConfig({
           items: [
             { text: '快速开始', link: '/guide/quickstart' },
             { text: '核心概念', link: '/guide/concepts' },
-            { text: 'AI 协作指南', link: '/guide/ai-collaboration' },
+          ],
+        },
+        {
+          text: 'AI 协作',
+          items: [
+            { text: 'AI 使用手册', link: '/guide/ai-handbook' },
+            { text: 'AI 协作指南（技术向）', link: '/guide/ai-collaboration' },
           ],
         },
         {

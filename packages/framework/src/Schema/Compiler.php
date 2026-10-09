@@ -158,6 +158,20 @@ class Compiler
             if (in_array($c->name, $real, true) || $this->isVirtualAttribute($instance, $c->name)) {
                 continue;
             }
+
+            /*
+             * 关联列（如 category.name）：点号前的部分是关联名。
+             * 只要该关联在模型上存在，即视为合法 ——
+             * 关联的**目标字段**归属另一张表，不在本表的列清单里。
+             */
+            if (str_contains($c->name, '.')) {
+                $relation = explode('.', $c->name)[0];
+
+                if (method_exists($instance, $relation)) {
+                    continue;
+                }
+            }
+
             $ghosts[] = "column:{$c->name}";
         }
 

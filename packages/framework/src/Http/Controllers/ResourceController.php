@@ -56,6 +56,17 @@ class ResourceController extends Controller
         // 原先静默忽略、返回未排序结果 —— 比报错更危险。
         $unknown = $this->unknownQueryParams($request);
 
+        // 关联列需要预加载（避免 N+1）
+        $relations = [];
+
+        foreach ($node->columns as $c) {
+            $path = str_contains($c->name, '.') ? $c->name : null;
+
+            if ($path !== null) {
+                $relations[] = $path;
+            }
+        }
+
         $params = [
             'keyword' => $request->query('keyword'),
             'sort' => $request->query('sort'),
@@ -63,6 +74,7 @@ class ResourceController extends Controller
             'per_page' => $perPage,
             'searchable' => $searchable,
             'filters' => $request->query('filters'),
+            'relations' => $relations,
         ];
 
         $paginator = $this->repository($node)->paginate(

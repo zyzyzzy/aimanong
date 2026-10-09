@@ -113,6 +113,85 @@ class Column
         return $this;
     }
 
+    /**
+     * 条件样式：值满足条件时高亮。
+     *
+     * 真实场景需求：库存少于 10 要标红。
+     *
+     * 用法：$grid->column('stock', '库存')->dangerWhen(fn ($v) => $v < 10);
+     *
+     * 注意：闭包只在**编译期**用于生成判定规则，不会被序列化 ——
+     * 因此传的是「比较表达式」而非任意回调，保证 AI 可读、可序列化。
+     *
+     * @param  string  $operator  支持 < <= > >= == != 与 between
+     */
+    public function dangerWhen(string $operator, mixed $value, string $level = 'danger'): static
+    {
+        $this->props['highlight'] = [
+            'operator' => $operator,
+            'value' => $value,
+            'level' => $level,
+        ];
+
+        return $this;
+    }
+
+    /**
+     * 条件样式的语义化快捷方法：小于阈值时高亮。
+     */
+    public function dangerBelow(int|float $threshold, string $level = 'danger'): static
+    {
+        return $this->dangerWhen('<', $threshold, $level);
+    }
+
+    /**
+     * 条件样式的语义化快捷方法：大于阈值时高亮。
+     */
+    public function warningAbove(int|float $threshold, string $level = 'warning'): static
+    {
+        return $this->dangerWhen('>', $threshold, $level);
+    }
+
+    /**
+     * 关联列：显示关联模型的字段而非外键 ID。
+     *
+     * 真实场景需求：商品列表显示分类名，而不是 category_id。
+     *
+     * 用法：$grid->column('category.name', '分类');
+     *
+     * 点号路径会在查询时通过 Eloquent 的 with() 预加载，
+     * 避免 N+1 问题。
+     */
+    public function relation(string $path): static
+    {
+        $this->props['relation'] = $path;
+
+        return $this;
+    }
+
+    /**
+     * 关联列的简写：列名本身用点号表达关联路径时自动识别。
+     *
+     * 例：$grid->column('category.name', '分类') —— 构造函数里
+     * 检测到点号即自动设置关联，无需显式调用本方法。
+     */
+    public function isRelation(): bool
+    {
+        return isset($this->props['relation']) || str_contains($this->name, '.');
+    }
+
+    /**
+     * 关联路径（如 category.name）。
+     */
+    public function relationPath(): ?string
+    {
+        if (isset($this->props['relation'])) {
+            return (string) $this->props['relation'];
+        }
+
+        return str_contains($this->name, '.') ? $this->name : null;
+    }
+
     public function width(int $pixels): static
     {
         $this->props['width'] = $pixels;

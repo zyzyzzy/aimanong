@@ -40,6 +40,8 @@ class EloquentRepository implements RepositoryContract
     {
         $query = $this->model::query();
 
+        // 关联列需要预加载，否则会 N+1
+        $this->applyEagerLoad($query, $params);
         $this->applySearch($query, $params);
         $this->applySort($query, $params);
         $this->applyFilters($query, $params);
@@ -87,6 +89,34 @@ class EloquentRepository implements RepositoryContract
         }
 
         return $model;
+    }
+
+    /**
+     * 预加载关联。
+     *
+     * @param  Builder<Model>  $query
+     * @param  array<string, mixed>  $params
+     */
+    protected function applyEagerLoad(Builder $query, array $params): void
+    {
+        $relations = $params['relations'] ?? null;
+
+        if (! is_array($relations) || $relations === []) {
+            return;
+        }
+
+        // 'category.name' → 预加载 'category'
+        $with = [];
+
+        foreach ($relations as $path) {
+            if (is_string($path) && $path !== '') {
+                $with[] = explode('.', $path)[0];
+            }
+        }
+
+        if ($with !== []) {
+            $query->with(array_unique($with));
+        }
     }
 
     /**

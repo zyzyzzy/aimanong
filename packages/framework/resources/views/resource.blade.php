@@ -67,6 +67,10 @@
         .tag-on  { background: #e8f5e9; color: #2e7d4f; }
         .tag-off { background: #f0f2f1; color: #8a948f; }
         .muted   { color: #c3ccc7; }
+        /* 条件高亮（如库存不足） */
+        .hl-danger  { color: #c0392b; font-weight: 600; }
+        .hl-warning { color: #d68910; font-weight: 600; }
+        .hl-success { color: #2e7d4f; font-weight: 600; }
         /* 进度条 */
         .progress-wrap { display: inline-flex; align-items: center; gap: 8px; }
         .progress-bar {
@@ -126,25 +130,25 @@
                 </thead>
                 <tbody>
                     <tr v-for="row in rows" :key="row.id">
-                        <td v-for="col in columns" :key="col.name">
+                        <td v-for="col in columns" :key="col.name" :class="cellClass(col, row)">
                             <!-- 日期时间 -->
-                            <span v-if="col.formatter === 'datetime'">@{{ formatDate(row[col.name]) }}</span>
+                            <span v-if="col.formatter === 'datetime'">@{{ formatDate(cellValue(col, row)) }}</span>
 
                             <!-- 值 → 标签映射 -->
                             <span v-else-if="col.formatter === 'map'"
                                   class="tag" :class="tagClass(row[col.name])">
-                                @{{ mapLabel(col, row[col.name]) }}
+                                @{{ mapLabel(col, cellValue(col, row)) }}
                             </span>
 
                             <!-- 布尔：渲染为是/否标签，而非 true/false -->
                             <span v-else-if="col.formatter === 'bool'"
                                   class="tag" :class="row[col.name] ? 'tag-on' : 'tag-off'">
-                                @{{ row[col.name] ? (col.props.trueLabel || '是') : (col.props.falseLabel || '否') }}
+                                @{{ cellValue(col, row) ? (col.props.trueLabel || '是') : (col.props.falseLabel || '否') }}
                             </span>
 
                             <!-- 徽章 -->
                             <span v-else-if="col.formatter === 'badge'" class="badge">
-                                @{{ row[col.name] }}
+                                @{{ cellValue(col, row) }}
                             </span>
 
                             <!-- 图片 -->
@@ -176,7 +180,7 @@
                                   :style="{ paddingLeft: (row._depth || 0) * 20 + 'px' }">
                                 <span v-if="row._depth > 0" class="muted">└ </span>@{{ row[col.name] }}
                             </span>
-                            <span v-else>@{{ row[col.name] }}</span>
+                            <span v-else>@{{ cellValue(col, row) }}</span>
                         </td>
                         <td>
                             <button class="btn" style="padding:4px 8px;font-size:12px;" @click="edit(row)">编辑</button>
@@ -406,6 +410,43 @@ createApp({
             return String(v).replace('T', ' ').slice(0, 19);
         }
 
+        /**
+         * 取单元格值 —— 支持关联路径（如 category.name）。
+         *
+         * 关联列在 schema 里以点号命名，后端已预加载，此处直接深取。
+         */
+        function cellValue(col, row) {
+            if (!col.name.includes('.')) return row[col.name];
+
+            let v = row;
+            for (const part of col.name.split('.')) {
+                if (v === null || v === undefined) return '';
+                v = v[part];
+            }
+            return v ?? '';
+        }
+
+        /** 条件高亮的 CSS 类 */
+        function cellClass(col, row) {
+            const hl = col.props?.highlight;
+            if (!hl) return '';
+
+            const v = Number(cellValue(col, row));
+            const target = Number(hl.value);
+            if (!isFinite(v) || !isFinite(target)) return '';
+
+            const hit = {
+                '<': v < target,
+                '<=': v <= target,
+                '>': v > target,
+                '>=': v >= target,
+                '==': v === target,
+                '!=': v !== target,
+            }[hl.operator] ?? false;
+
+            return hit ? 'hl-' + (hl.level || 'danger') : '';
+        }
+
         /** 表单输入框的 HTML input type */
         function inputType(f) {
             const map = {
@@ -498,7 +539,7 @@ createApp({
             load, toggleSort, formatDate, edit, save, remove,
             exportable, doExport, isTree, treeTitleColumn, loadTree,
             isStepped, steps, currentStep, visibleFields,
-            inputType, mapLabel, tagClass, formatMoney,
+            inputType, mapLabel, tagClass, formatMoney, cellValue, cellClass,
         };
     },
 }).mount('#app');

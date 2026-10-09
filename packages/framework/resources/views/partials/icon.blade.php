@@ -60,6 +60,26 @@
       'trending'  => '<path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
   ];
 
+  /*
+   * emoji 别名 —— 向后兼容。
+   *
+   * 早期菜单声明用的是 emoji（'icon' => '📝'）。emoji 作为图标有
+   * 跨平台渲染不一致、无法控色的问题，因此统一换成 SVG。
+   * 这里做映射，让**已有的 menu() 声明不用改**也能得到正确图标。
+   */
+  $aliases = [
+      '📝' => 'article', '📄' => 'file', '🗂' => 'folder', '📁' => 'folder',
+      '👤' => 'user', '👥' => 'users', '🏷' => 'tag', '📦' => 'package',
+      '🛒' => 'cart', '🧾' => 'receipt', '🔐' => 'shield', '🔑' => 'key',
+      '🏢' => 'building', '⚙' => 'settings', '⚙️' => 'settings', '🔍' => 'search',
+      '➕' => 'plus', '✏️' => 'edit', '🗑' => 'trash', '⬇' => 'download',
+      '⬆' => 'upload', '🔄' => 'refresh', '⏱' => 'clock', '🖼' => 'image',
+      '📥' => 'inbox', '☰' => 'menu', '⚠️' => 'alert', 'ℹ️' => 'info',
+      '🔒' => 'lock', '✉️' => 'mail', '📞' => 'phone', '🗄' => 'database',
+      '📚' => 'layers', '📈' => 'trending', '🏠' => 'dashboard',
+  ];
+
+  $name = $aliases[$name] ?? $name;
   $path = $paths[$name] ?? $paths['file'];
 @endphp
 <svg xmlns="http://www.w3.org/2000/svg" width="{{ $size }}" height="{{ $size }}"

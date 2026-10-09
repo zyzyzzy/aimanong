@@ -36,6 +36,7 @@ class InstallCommand extends Command
 
         $this->newLine();
         $this->info('✅ 安装完成');
+        // 安装命令在 CLI 下运行，无请求上下文，直接读 config（正确行为）
         $prefix = config('aimanong.route.prefix', 'admin');
         $this->line('   访问: /'.(is_string($prefix) ? $prefix : 'admin'));
 

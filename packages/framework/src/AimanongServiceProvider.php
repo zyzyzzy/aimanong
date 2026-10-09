@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong;
 
+use Aimanong\Application\ApplicationContext;
 use Aimanong\Application\ApplicationManager;
 use Aimanong\Auth\AdminGuard;
 use Aimanong\Auth\AdminUserProvider;
@@ -109,6 +110,7 @@ class AimanongServiceProvider extends ServiceProvider
         $this->app->singleton('aimanong.asset', Asset::class);
         $this->app->singleton('aimanong.extensions', fn (): ExtensionManager => new ExtensionManager);
         $this->app->singleton('aimanong.application', fn (): ApplicationManager => new ApplicationManager);
+        $this->app->singleton('aimanong.context', fn (): ApplicationContext => new ApplicationContext);
         $this->app->singleton(Registry::class, fn (): Registry => new Registry);
     }
 
@@ -387,6 +389,15 @@ class AimanongServiceProvider extends ServiceProvider
             });
     }
 
+    /**
+     * 单后台模式的路由前缀。
+     *
+     * 仅在**未启用多应用**时使用（多应用走 registerApplicationRoutes）。
+     * 此时 config 不会被 switch() 改写，直接读是安全的。
+     *
+     * ⚠️ 其它任何地方都不得直接读 config('aimanong.route.prefix') ——
+     * 请用 Aimanong::context()->prefix()（多应用安全）。
+     */
     protected function routePrefix(): string
     {
         $prefix = config('aimanong.route.prefix');

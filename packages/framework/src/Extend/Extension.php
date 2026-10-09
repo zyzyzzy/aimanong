@@ -92,8 +92,8 @@ abstract class Extension
      */
     protected function routes(\Closure $callback): void
     {
-        $prefix = config('aimanong.route.prefix');
-        $prefix = is_string($prefix) ? trim($prefix, '/') : 'admin';
+        // 走 context 而非 config —— 多应用下扩展路由也要挂到正确的后台
+        $prefix = Aimanong::context()->prefix();
 
         Route::middleware('admin')
             ->prefix($prefix.'/extensions/'.$this->name())

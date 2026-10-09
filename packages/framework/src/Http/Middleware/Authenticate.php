@@ -20,7 +20,7 @@ class Authenticate
     public function handle(Request $request, Closure $next, ?string $guard = null): Response
     {
         // 多应用：支持 admin.auth:merchant 这样指定 guard
-        $guard ??= Aimanong::application()->guard();
+        $guard ??= Aimanong::context()->guard();
 
         $resolved = auth()->guard($guard);
 

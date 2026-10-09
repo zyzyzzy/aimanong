@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Http\Middleware;
 
-use Aimanong\Application\ApplicationManager;
+use Aimanong\Aimanong;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,57 +19,20 @@ class Session
     public function handle(Request $request, Closure $next): Response
     {
         /*
-         * 多应用下 config('aimanong.route.prefix') 会被最后一次 switch() 覆盖。
-         * 若直接用它设置 session.path，admin 请求会拿到 merchant 的 path，
-         * cookie 写错位置 → CSRF 419、登录态丢失。
-         *
-         * 因此从当前请求路径推断真实前缀。
+         * 全部通过 context 获取 —— 多应用 switch() 会改写全局 config，
+         * 直接读会让 admin 请求拿到 merchant 的值
+         * （cookie path 写错 → CSRF 419、登录态丢失）。
          */
-        $prefix = $this->resolvePrefix($request);
+        $context = Aimanong::context();
 
-        config(['session.path' => '/'.$prefix]);
+        config(['session.path' => '/'.$context->prefix()]);
 
-        $domain = config('aimanong.route.domain');
-        if (is_string($domain) && $domain !== '') {
+        $domain = $context->domain();
+
+        if ($domain !== null) {
             config(['session.domain' => $domain]);
         }
 
         return $next($request);
-    }
-
-    /**
-     * 推断当前请求所属后台的前缀。
-     */
-    protected function resolvePrefix(Request $request): string
-    {
-        $fallback = config('aimanong.route.prefix');
-        $fallback = is_string($fallback) ? trim($fallback, '/') : 'admin';
-
-        try {
-            /** @var ApplicationManager $apps */
-            $apps = app('aimanong.application');
-
-            if (! $apps->enabled()) {
-                return $fallback;
-            }
-
-            $path = trim($request->path(), '/');
-            $names = $apps->names();
-
-            // 长前缀优先，避免 admin 误匹配 admin-x
-            usort($names, fn ($a, $b): int => strlen($b) <=> strlen($a));
-
-            foreach ($names as $name) {
-                $p = $apps->prefix($name);
-
-                if ($path === $p || str_starts_with($path, $p.'/')) {
-                    return $p;
-                }
-            }
-        } catch (\Throwable) {
-            // 无容器/无应用配置时回退
-        }
-
-        return $fallback;
     }
 }

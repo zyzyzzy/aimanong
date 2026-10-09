@@ -68,7 +68,7 @@ Aimanong 为此明确牺牲部分"灵活性"来换取"确定性"：
 | M4 字段与组件库 | ⬜ 下一个 | 字段类型与展示器扩充 |
 | M4 组件库 | ⬜ | 字段与展示器 |
 | M5 增强 | ⬜ | Tree / 分步表单 / 多应用 |
-| M6 生态与文档 | ⬜ | 文档站 / 代码生成器 / v1.0 |
+| M6 生态与文档 | 🚧 部分完成 | 文档站✅ / Playground✅ / 代码生成器⬜ / 首批扩展⬜ |
 
 ### M0 已交付
 
@@ -121,6 +121,42 @@ php artisan aimanong:schema --check   # 漂移检测（漂移 exit=1 阻断 CI�
 
 AI 打错类型时会得到可自愈提示：`texte` → 建议 `text`。
 
+
+### M5 已交付
+
+| 功能 | 声明方式 | 关键设计 |
+|---|---|---|
+| **数据导出** | `$grid->export()` | 复用列表的搜索/排序逻辑，导出内容与界面一致；分批流式，大表不炸内存；UTF-8 BOM 防 Excel 乱码 |
+| **树形结构** | Resource 实现 `tree()` | **循环引用检测**（A→B→A 返回 422 而非无限递归）；移动校验拒绝移到子孙下 |
+| **分步表单** | `$form->step('标题')` | 用「当前步骤游标」而非嵌套闭包；字段归属由声明顺序决定 |
+| **插件系统** | 继承 `Extension` | **依赖检查** + **失败隔离**（单个扩展出错不拖垮其它） |
+| **多应用** | `config('aimanong.applications')` | 独立前缀/guard/用户模型；用 Laravel 12 Context 做请求级隔离 |
+
+```php
+// 导出：复用列表逻辑，导出内容与界面一致
+$grid->export()->exportExcept(['cover_url']);
+
+// 树形：循环引用会被检出，不会无限递归
+public static function tree(Tree $tree): void
+{
+    $tree->parentColumn('parent_id')->titleColumn('name')->draggable();
+}
+
+// 分步表单：扁平声明，无嵌套闭包
+$form->step('基本信息');
+$form->text('name')->required();
+$form->step('联系方式');
+$form->email('email');
+```
+
+**插件系统实测**（失败隔离是重点）：
+
+```
+✅ 正常扩展启动
+❌ needs-dep  缺少依赖: not-installed     ← 明确拒绝，非运行时崩溃
+❌ broken     register() 失败: 模拟注册失败
+→ 正常扩展未被前两者影响 = 失败已隔离
+```
 
 ### M4 已交付
 

@@ -505,3 +505,86 @@
 | `read_minutes` | 阅读时长(分钟) | `number` |  |  |
 | `seo_title` | SEO 标题 | `text` |  | `max:200` |
 | `seo_description` | SEO 描述 | `textarea` |  |  |
+
+## 租户
+
+- URI：`tenants`
+- 模型：`App\Models\Tenant`
+- 类：`App\Aimanong\TenantResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `name` | 名称 |  | ✓ |  |
+| `code` | 编码 |  | ✓ |  |
+| `plan` | 套餐 |  |  | `map` |
+| `active` | 是否启用 |  |  | `bool` |
+| `expired_at` | 到期时间 | ✓ |  | `datetime` |
+| `created_at` | 创建时间 | ✓ |  | `datetime` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `name` | 名称 | `text` | ✓ | `required`, `max:64` |
+| `code` | 编码 | `text` | ✓ | `required`, `max:32`, `alpha_dash` |
+| `plan` | 套餐 | `select` |  |  |
+| `active` | 是否启用 | `switch` |  |  |
+| `expired_at` | 到期时间 | `datetime` |  |  |
+
+## 客户
+
+- URI：`saas-customers`
+- 模型：`App\Models\SaasCustomer`
+- 类：`App\Aimanong\SaasCustomerResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `name` | 姓名 |  | ✓ |  |
+| `email` | 邮箱 |  | ✓ |  |
+| `phone` | 电话 |  |  |  |
+| `level` | 等级 |  |  | `map` |
+| `balance` | 余额 | ✓ |  | `money` |
+| `active` | 是否启用 |  |  | `bool` |
+| `created_at` | 创建时间 | ✓ |  | `datetime` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `name` | 姓名 | `text` | ✓ | `required`, `max:64` |
+| `email` | 邮箱 | `email` | ✓ | `required`, `email`, `max:128` |
+| `phone` | 电话 | `tel` |  | `max:20` |
+| `level` | 等级 | `select` |  |  |
+| `balance` | 余额 | `money` |  |  |
+| `active` | 是否启用 | `switch` |  |  |
+
+## 订单
+
+- URI：`saas-orders`
+- 模型：`App\Models\SaasOrder`
+- 类：`App\Aimanong\SaasOrderResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `order_no` | 订单号 |  | ✓ |  |
+| `customer.name` | 客户 |  |  |  |
+| `amount` | 金额 | ✓ |  | `money` |
+| `status` | 状态 |  |  | `map` |
+| `paid_at` | 支付时间 | ✓ |  | `datetime` |
+| `created_at` | 创建时间 | ✓ |  | `datetime` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `order_no` | 订单号 | `text` | ✓ | `required`, `max:32` |
+| `customer_id` | 客户 | `select` | ✓ | `required` |
+| `amount` | 金额 | `money` | ✓ | `required` |
+| `status` | 状态 | `select` |  |  |
+| `paid_at` | 支付时间 | `datetime` |  |  |

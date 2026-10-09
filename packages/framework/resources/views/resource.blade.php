@@ -209,7 +209,7 @@
                 <div v-for="(st, i) in steps" :key="i"
                      class="step-item"
                      :class="{ active: i === currentStep, done: i < currentStep }"
-                     @click="i <= currentStep && (currentStep = i)">
+                     @click="goStep(i)">
                     <span class="step-dot">@{{ i < currentStep ? '✓' : (i + 1) }}</span>
                     <span class="step-name">@{{ st.title }}</span>
                 </div>
@@ -621,11 +621,32 @@ createApp({
             return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         }
 
+        /**
+         * 跳转到指定步骤。
+         *
+         * 分步表单的两条规则：
+         *   - 新增：只能往前走（防止跳过必填项）
+         *   - **编辑：可以自由跳转** —— 用户需要查看/修改任意步骤的字段，
+         *     锁死在第 1 步会导致后面的字段根本改不了。
+         */
+        function goStep(i) {
+            if (editing.value || i <= currentStep.value) {
+                currentStep.value = i;
+            }
+        }
+
         /** 打开新增弹窗（含插件字段初始化） */
         function openCreate() {
             editing.value = false;
             currentStep.value = 0;
             form.value = {};
+
+            // 多选类字段必须初始化为数组，否则 v-model 无法绑定
+            for (const f of (schema.form?.fields ?? [])) {
+                if (f.type === 'multiselect' || f.type === 'checkbox') {
+                    form.value[f.name] = [];
+                }
+            }
 
             // 插件字段需要预置状态，否则模板取值会报 undefined
             for (const f of (schema.form?.fields ?? [])) {
@@ -638,11 +659,43 @@ createApp({
         function edit(row) {
             editing.value = true;
             currentStep.value = 0;
+
             // 初始化插件字段状态
             for (const f of (schema.form?.fields ?? [])) {
                 if (f.type === 'region') ensureRegion(f.name);
             }
+
             form.value = { ...row };
+
+            /*
+             * 归一化表单值 —— 这是「编辑回填」的关键。
+             *
+             * 多对多关联字段（如 tags）API 返回的是对象数组
+             * [{id:1,name:'Laravel'}, ...]，而 checkbox 的 :value 是标量 '1'。
+             * Vue 的 v-model 用 === 严格相等匹配 → 对象永远不等于标量
+             * → **一个都勾不上**，用户随手保存就会静默清空原有标签。
+             *
+             * 因此在进入表单前把关联对象提取成标量 id 数组。
+             */
+            for (const f of (schema.form?.fields ?? [])) {
+                const v = form.value[f.name];
+
+                if (Array.isArray(v) && v.length > 0 && typeof v[0] === 'object' && v[0] !== null) {
+                    // 取 id（无 id 时退化为 name/label）
+                    const key = ('id' in v[0]) ? 'id' : (('value' in v[0]) ? 'value' : 'name');
+                    form.value[f.name] = v.map(item => {
+                        const x = item == null ? '' : item[key];
+                        return x === undefined || x === null ? '' : String(x);
+                    }).filter(x => x !== '');
+                }
+
+                // 选项的 value 也统一成字符串，保证 === 能匹配
+                if (Array.isArray(form.value[f.name]) && Array.isArray(f.props?.options)) {
+                    const allowed = new Set(f.props.options.map(o => String(o.value)));
+                    form.value[f.name] = form.value[f.name].map(String).filter(x => allowed.has(x));
+                }
+            }
+
             showCreate.value = true;
         }
 
@@ -695,7 +748,7 @@ createApp({
             exportable, doExport, isTree, treeTitleColumn, loadTree,
             isStepped, steps, currentStep, visibleFields,
             inputType, mapLabel, tagClass, formatMoney, cellValue, cellClass, normalizeCell,
-            regionProvinces, regionTree, regionForm, onProvinceChange, onCityChange, ensureRegion, openCreate,
+            regionProvinces, regionTree, regionForm, onProvinceChange, onCityChange, ensureRegion, openCreate, goStep,
         };
     },
 }).mount('#app');

@@ -1,6 +1,6 @@
 {
     "name": "aimanong/framework",
-    "version": "1.1.1",
+    "version": "1.2.0",
     "description": "Aimanong（AI 码农）—— 为 AI Agent 设计的 Laravel 后台开发框架",
     "type": "library",
     "keywords": [

@@ -37,6 +37,8 @@ class Capabilities
             'tree_options' => $this->treeOptions(),
             'extension' => $this->extensionCapabilities(),
             'requirement_keys' => $this->requirementKeys(),
+            'cannot_verify' => $this->cannotVerify(),
+            'scope_hooks' => ScopeHooks::introspect(),
             'query_columns' => $this->queryColumnRules(),
             'applications' => $this->applicationCapabilities(),
             'column_options' => $this->columnOptions(),
@@ -185,6 +187,37 @@ class Capabilities
             '多对多' => '列表显示与导出均支持（自动拼成「A / B / C」）；'
                 .'表单用 multiselect + ->relation() 声明即可自动写入',
             '错误码' => 'GHOST_COLUMN（列不存在）/ INVALID_QUERY_COLUMN（不可用于查询）',
+        ];
+    }
+
+    /**
+     * **框架无法自动验证的需求** —— 必须人工确认。
+     *
+     * 多租户场景验证发现的最危险问题：
+     * `validate_declaration`（含 requirements）全绿的同时，
+     * 租户名单正在被泄漏。因为「每租户只能看自己数据」这类
+     * **安全需求**映射不到任何一个 requirements 键，
+     * 校验器对它完全无感，AI 会误以为已验证。
+     *
+     * 因此这里显式列出「校验器管不了、必须人工确认」的领域，
+     * 让 AI 至少知道「这条我没验证过」，而不是默认通过。
+     *
+     * @return array<string, string>
+     */
+    public function cannotVerify(): array
+    {
+        return [
+            '多租户/数据隔离' => '框架**不提供**行级数据隔离（无 tenant 概念、无全局作用域钩子）。'
+                .'必须自己在模型层实现（全局作用域 + creating 盖章），并人工验证越权。',
+            '权限/RBAC' => '框架**没有**权限系统，只有「登录/未登录」一个粒度。'
+                .'角色、菜单、按钮级权限需自行实现。',
+            '行级权限' => '「A 只能看自己创建的数据」这类需求框架无法验证，'
+                .'也不提供官方拦截点，必须自己写并测试。',
+            '审计日志' => '框架不记录谁改了什么，需自行实现。',
+            '接口限流' => '框架不限流，需在 Laravel 层自行配置。',
+            '提示' => '以上需求若出现在客户要求里，**不要指望 validate_declaration 会验证** —— '
+                .'它会返回「全部满足」但实际上这类需求不在它的能力范围内。'
+                .'请改用实际的越权测试来验证。',
         ];
     }
 

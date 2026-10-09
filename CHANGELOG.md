@@ -2,6 +2,90 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.2.0] - 2026-10-09
+
+> 本版本来自 **SaaS 多租户场景验证**（第四轮真实场景）。
+> 该场景暴露的不是功能缺失，而是**一个更根本的问题**：
+> **校验器对安全需求完全无感，却照样给绿灯。**
+
+### 最重要的发现
+
+AI 在 `validate_declaration`（含 requirements）+ `ai:verify` + 16 条隔离测试
+**全部绿灯**的同时，发现租户名单正在被泄漏。
+
+原因：「每租户只能看自己数据」这类**安全需求**，
+映射不到 requirements 的任何一个键（只有 9 个：
+searchable/sortable/required/columns/fields/per_page/tree/export/step），
+**校验器对它完全无感，也不会说"我无法验证这条"**。
+
+> 这意味着电商场景「传 requirements 就够」的方法论，
+> **在安全需求上直接失效**。
+
+### 修复 1：显式声明能力边界（`cannot_verify`）
+
+框架现在会**主动告诉 AI「这些领域我管不了」**：
+
+```json
+"cannot_verify": {
+  "多租户/数据隔离": "框架不提供行级数据隔离…",
+  "权限/RBAC": "框架没有权限系统，只有登录/未登录一个粒度",
+  "行级权限": "…",
+  "审计日志": "…",
+  "接口限流": "…"
+}
+```
+
+原则：**宁可说"我不知道"，也不能默认通过。**
+
+### 修复 2：数据作用域钩子（`ScopeHooks`）
+
+AI 报告指出：框架对多租户零支持，且**默认姿势相反**
+（Resource 一注册就全表裸奔），**不提供任何官方拦截点**。
+
+新增官方注册点：
+
+```php
+// 查询作用域（读）
+ScopeHooks::query('tenant', fn ($q) => $q->where('tenant_id', TenantContext::id()));
+
+// 写入钩子（自动盖章）
+ScopeHooks::writing('tenant', fn ($data) => $data + ['tenant_id' => TenantContext::id()]);
+```
+
+- 自动应用于所有 Resource 的查询与写入
+- **可自省**：未配置时 `introspect()` 返回警告
+  「⚠️ 未配置任何数据作用域 —— 所有 Resource 默认返回全表数据」
+- 状态暴露在 `capabilities.json` 的 `scope_hooks`
+
+> 这把「不可见的业务约定」变成「框架能感知的声明」。
+
+### 修复 3：现代访问器被误判为幽灵列
+
+`isVirtualAttribute()` 只检查了传统写法 `hasGetMutator()`，
+漏了 Laravel 9+ 推荐写法 `hasAttributeGetMutator()`。
+已补齐，两种写法都能识别。
+
+### 修复 4：编辑表单回填不完整（我上一轮的修复有漏洞）
+
+v1.1.1 修了 API 返回，但**前端仍勾不上**：
+API 返回 `[{id,name}]`，checkbox `:value` 是标量 `'1'`，
+Vue 的 `v-model` 用 `===` 严格相等 → 对象永远不等于标量。
+
+> **教训：我上一轮只验了 API 返回值就宣布"修好了"，没验 UI。**
+> 这是「三层验证」里第 3 层缺失的典型。
+
+已修：
+- 进入表单时把关联对象归一化成标量 id 数组
+- 新增时多选字段初始化为 `[]`（否则 v-model 无法绑定）
+
+### 修复 5：分步表单编辑时锁死在第 1 步
+
+`@click="i <= currentStep && ..."` 导致编辑时无法跳到后续步骤，
+**后面的字段根本改不了**。已改为：新增只许往前（防跳过必填），
+**编辑可自由跳转**。
+
+---
+
 ## [1.1.1] - 2026-10-09
 
 > 本版本修复 **多对多关联（belongsToMany）支持缺失** ——
@@ -287,6 +371,7 @@ $form->mytype('field', '标签');
 
 ## 版本链接
 
+- [1.2.0](https://github.com/zyzyzzy/aimanong/releases/tag/v1.2.0)
 - [1.1.1](https://github.com/zyzyzzy/aimanong/releases/tag/v1.1.1)
 - [1.1.0](https://github.com/zyzyzzy/aimanong/releases/tag/v1.1.0)
 - [1.0.0](https://github.com/zyzyzzy/aimanong/releases/tag/v1.0.0)

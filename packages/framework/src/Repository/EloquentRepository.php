@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Repository;
 
+use Aimanong\Ai\ScopeHooks;
 use Aimanong\Contracts\Repository;
 use Aimanong\Contracts\Repository as RepositoryContract;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -70,6 +71,9 @@ class EloquentRepository implements RepositoryContract
 
         $query = $this->model::query();
 
+        // 数据作用域（多租户等）—— 官方拦截点，用户通过 ScopeHooks 注册
+        ScopeHooks::applyQuery($query);
+
         // 关联列需要预加载，否则会 N+1
         $this->applyEagerLoad($query, $params);
         $this->applySearch($query, $params);
@@ -93,7 +97,9 @@ class EloquentRepository implements RepositoryContract
             return $this->inner->create($data);
         }
 
-        return $this->model::query()->create($data);
+        return $this->model::query()->create(
+            ScopeHooks::applyWriting($data)
+        );
     }
 
     /**

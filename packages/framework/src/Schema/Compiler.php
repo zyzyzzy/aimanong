@@ -291,8 +291,19 @@ class Compiler
             return false;
         }
 
-        // 访问器：getXxxAttribute / xxx() 返回 Attribute
+        /*
+         * 访问器：两种写法都要认。
+         *
+         * Laravel 9+ 推荐 `protected function xxx(): Attribute`，
+         * 对应的检测 API 是 hasAttributeGetMutator() ——
+         * 只检查传统写法 hasGetMutator() 会把现代写法误判成「幽灵列」
+         * （CMS 场景验证发现）。
+         */
         if ($instance->hasGetMutator($name)) {
+            return true;
+        }
+
+        if ($instance->hasAttributeGetMutator($name)) {
             return true;
         }
 

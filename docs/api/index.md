@@ -12,11 +12,11 @@
 
 | 项 | 值 |
 |---|---|
-| 框架版本 | 1.1.1 |
+| 框架版本 | 1.2.0 |
 | Laravel | 12.69.3 |
 | PHP | 8.2.29 |
 | 字段类型数 | 27 |
-| 已注册 Resource | 17 |
+| 已注册 Resource | 20 |
 
 ## 已注册 Resource
 
@@ -39,6 +39,9 @@
 | 作者 | `cms-authors` | `App\Models\CmsAuthor` | 6 | 4 |
 | 标签 | `cms-tags` | `App\Models\CmsTag` | 4 | 2 |
 | 文章 | `cms-articles` | `App\Models\CmsArticle` | 11 | 13 |
+| 租户 | `tenants` | `App\Models\Tenant` | 6 | 5 |
+| 客户 | `saas-customers` | `App\Models\SaasCustomer` | 7 | 6 |
+| 订单 | `saas-orders` | `App\Models\SaasOrder` | 6 | 5 |
 
 ## 其它页面
 

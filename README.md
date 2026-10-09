@@ -39,6 +39,8 @@ Aimanong 为此明确牺牲部分"灵活性"来换取"确定性"：
 ## 文档
 
 - 📖 **[在线文档站](https://aimanong.com)** —— 人读这个（`cd docs && npm run dev` 本地预览）
+- 🎮 **[Playground](/playground/)** —— 浏览器里改 Resource 声明，实时看四份产物
+- 📝 **[四轮 AI 实测报告](/blog/ai-first-in-practice)** —— 15 个缺陷与三条教训
 - [llms.txt](./llms.txt) —— **AI 读这个**
 - [AGENTS.md](./AGENTS.md) —— **AI Agent 项目内约定**
 - [API 参考](./docs/api/) —— **由 Schema 自动生成**，永不漂移

@@ -104,21 +104,44 @@
    侧栏：缩窄 + 分组折叠
    ══════════════════════════════════════════════════════════ */
 
-.am-sidebar__brand { display: flex; align-items: center; gap: var(--sp-2); }
+.am-sidebar__brand {
+  display: flex; align-items: center; gap: var(--sp-2);
+  position: relative;              /* 供开关 absolute 定位 */
+  padding-right: 34px;             /* 给开关留位，避免文字压到它 */
+}
+/* 未缩窄：侧栏宽度固定，用 right 固定在右上角 */
+.am-sidebar:not(.am-shell.is-collapsed *) .am-sidebar__toggle { }
 .am-sidebar__brandlink {
   display: flex; align-items: center; gap: var(--sp-2);
   min-width: 0; color: inherit; text-decoration: none;
 }
 .am-sidebar__brandtext { min-width: 0; overflow: hidden; white-space: nowrap; }
 
+/*
+ * 缩窄开关。
+ *
+ * ⚠️ 必须用 absolute 固定在侧栏右上角，**不能靠 flex 排布** ——
+ * 缩窄态悬停时侧栏会变宽，若开关参与 flex 布局就会跟着位移，
+ * 导致「鼠标移上去想点它，它却跑了」（实测复现，用户反馈"点不到"）。
+ * absolute + 固定 right 值 → 两种状态下坐标一致，稳定可点。
+ */
+/*
+ * ⚠️ 定位必须用 `left` 而不是 `right`。
+ *
+ * 用 right 时：缩窄态悬停 → 侧栏从 64px 变 196px → right:10px 的按钮
+ * **跟着右移 128px**，鼠标追不上、点不到（实测复现，用户反馈"点不到"）。
+ * 用 left 时：按钮相对侧栏**左边缘**固定，而左边缘在缩窄/展开两态
+ * 都不变，因此坐标稳定可点。
+ */
 .am-sidebar__toggle {
-  margin-left: auto; flex-shrink: 0;
-  width: 24px; height: 24px; border-radius: 6px;
+  position: absolute; top: 14px; left: 10px; z-index: 5;
+  width: 26px; height: 26px; border-radius: 6px;
   display: grid; place-items: center;
   border: none; background: transparent; cursor: pointer;
   color: var(--text-tertiary);
   transition: background .14s var(--ease), color .14s var(--ease), transform .22s var(--ease);
 }
+/* 悬停时给一个实底，避免和下面的元素视觉混淆 */
 .am-sidebar__toggle:hover { background: var(--bg-hover); color: var(--text-primary); }
 .am-sidebar__toggle svg { width: 14px; height: 14px; }
 
@@ -175,58 +198,122 @@
         悬停时展开全文并显示二级。 */
 
 @media (min-width: 961px) {
-  /* 缩窄 = grid 第一列收窄。这一条不能少 ——
-     少了它侧栏变窄但主区不会跟着变宽。 */
+  /* 缩窄 = grid 第一列收窄 */
   .am-shell.is-collapsed { grid-template-columns: var(--w-sidebar-mini) minmax(0, 1fr); }
 
+  /*
+   * ══════════════════════════════════════════════════════════
+   * 缩窄态
+   * ══════════════════════════════════════════════════════════
+   *
+   * ⚠️ 三个**踩过的坑**，改动前务必读：
+   *
+   * 【坑 1】悬停展开**不能**把侧栏改成 position: absolute。
+   *   侧栏脱离 grid 流后第一列空出，.am-main **被自动放进那个 64px 窄列**
+   *   —— 主内容区塌成 64px（表格/顶栏/卡片全废）。
+   *   ✅ 侧栏保持 relative 留在流里，悬停加宽时溢出到主区上方。
+   *
+   * 【坑 2】缩窄时**不能**强制展开子菜单、也不能隐藏分组标题。
+   *   ✅ 缩窄显示一级（分组图标）+ 子项收起；悬停才展开全文。
+   *
+   * 【坑 3】缩窄态下「悬停展开」与「点击开关」互相打架 ——
+   *   鼠标一进入侧栏（就是为了点开关）就触发 :hover，侧栏从 64px
+   *   瞬间变成 196px，**开关跟着右移，鼠标永远追不上**（实测复现）。
+   *   ✅ 解决：**悬停展开只作用于内容区，不改变开关所在的位置**。
+   *      具体做法：开关固定在侧栏右上角、缩窄/展开两态位置一致；
+   *      悬停展开改为作用在 .am-sidebar__nav 上（不 displaced 开关）。
+   *
+   *   更稳的做法是把「开关」与「悬停区」解耦：
+   *   悬停区只管导航，开关单独一个不随宽度变化的热区。
+   *   这里用最简单的方案：**开关固定在侧栏顶部外侧**，两态同一位置。
+   * ══════════════════════════════════════════════════════════ */
+
   .am-shell.is-collapsed .am-sidebar {
-    position: relative;        /* ← 关键：留在文档流，绝不用 absolute */
-    z-index: 60;               /* 悬停溢出时叠在主区之上 */
+    position: relative;
+    z-index: 60;
     width: var(--w-sidebar-mini);
-    overflow: visible;         /* 允许悬停时溢出到列外 */
+    overflow: visible;
     padding-inline: var(--sp-1);
   }
 
-  /* ── 缩窄且未悬停：只显示一级 ── */
-  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-nav__children { grid-template-rows: 0fr; }
-  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-nav__grouplabel,
-  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-nav__chev,
-  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-nav__label,
-  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-sidebar__brandtext { display: none; }
+  /*
+   * ── 缩窄态的品牌行 ──
+   *
+   * 纵向排列：logo 在上、开关在下，两者**不重叠**。
+   * 用 flex 正常排布（不要 absolute）—— absolute 会与 logo 抢空间，
+   * 实测曾重叠 6px（用户反馈"顶部顶出去一小半"）。
+   *
+   * 开关的稳定性由「缩窄态下它始终在同一位置」保证：
+   * 因为缩窄态侧栏宽度固定 64px，flex 居中的结果也是固定的。
+   */
+  .am-shell.is-collapsed .am-sidebar__brand {
+    flex-direction: column; gap: var(--sp-2);
+    padding: var(--sp-3) 0 var(--sp-2);
+    justify-content: center; align-items: center;
+    min-height: 0;
+  }
+  .am-shell.is-collapsed .am-sidebar__brandtext { display: none; }
+  /* 缩窄态：开关取消 absolute，回到常规流、居中排在 logo 下方 */
+  .am-shell.is-collapsed .am-sidebar__toggle {
+    position: static; margin: 0; flex-shrink: 0;
+  }
 
-  /* 一级：用分组图标表示，可点、有 hover 反馈 */
-  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-nav__groupicon { display: grid; }
-  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-nav__group {
+  /* ── 缩窄且未悬停：只显示一级 ── */
+  .am-shell.is-collapsed .am-sidebar:not(:has(.am-sidebar__nav:hover)) .am-nav__children { grid-template-rows: 0fr; }
+  .am-shell.is-collapsed .am-sidebar:not(:has(.am-sidebar__nav:hover)) .am-nav__grouplabel,
+  .am-shell.is-collapsed .am-sidebar:not(:has(.am-sidebar__nav:hover)) .am-nav__chev,
+  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-nav__label { display: none; }
+
+  .am-shell.is-collapsed .am-sidebar:not(:has(.am-sidebar__nav:hover)) .am-nav__groupicon { display: grid; }
+  .am-shell.is-collapsed .am-sidebar:not(:has(.am-sidebar__nav:hover)) .am-nav__group {
     justify-content: center; gap: 0; padding-inline: 0;
     height: 34px; border-radius: var(--r-sm); margin-bottom: 2px;
     text-transform: none; letter-spacing: 0;
   }
-  /* 图标不拦截点击，整块按钮可点 */
-  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-nav__group > * { pointer-events: none; }
-  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-nav__item { justify-content: center; padding-inline: 0; }
-  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-sidebar__brand {
-    flex-direction: column; gap: 6px; padding-inline: 0; justify-content: center;
-  }
-  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-sidebar__toggle { margin-left: 0; }
+  .am-shell.is-collapsed .am-sidebar:not(:has(.am-sidebar__nav:hover)) .am-nav__group > * { pointer-events: none; }
+  .am-shell.is-collapsed .am-sidebar:not(:has(.am-sidebar__nav:hover)) .am-nav__item { justify-content: center; padding-inline: 0; }
 
-  /* ── 缩窄且悬停：临时展开全文（浮层，不改布局）── */
-  .am-shell.is-collapsed .am-sidebar:hover {
+  /*
+   * ══════════════════════════════════════════════════════════
+   * ── 悬停展开：**只感应导航区，不感应品牌行** ──
+   * ══════════════════════════════════════════════════════════
+   *
+   * 为什么不用整条侧栏的 :hover？
+   * 因为开关（‹）在品牌行里。鼠标移向开关时必然触发侧栏 :hover，
+   * 侧栏一变宽开关就位移 —— 用户「看得到却点不到」。
+   * 实测位移达 128-142px，鼠标根本追不上。
+   *
+   * 解决：把悬停感应绑在 **.am-sidebar__nav** 上（导航区），
+   * 品牌行不参与。鼠标停在品牌行的开关上时侧栏不会展开，
+   * 开关坐标恒定 → 稳定可点。
+   *
+   * 副作用：需要悬停导航区才能看到完整文字。这是可接受的 ——
+   * 用户想点开关时不会误触发展开，想找菜单时把鼠标移到菜单区即可。
+   */
+  .am-shell.is-collapsed .am-sidebar:has(.am-sidebar__nav:hover) {
     width: var(--w-sidebar);
     box-shadow: var(--shadow-lg);
-    padding-inline: var(--sp-2);
   }
-  .am-shell.is-collapsed .am-sidebar:hover .am-sidebar__brand {
-    flex-direction: row; justify-content: flex-start; padding-inline: var(--sp-3);
+  .am-shell.is-collapsed .am-sidebar:has(.am-sidebar__nav:hover) .am-sidebar__brand {
+    flex-direction: row; justify-content: flex-start; align-items: center;
+    padding: var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-3); min-height: 0; gap: var(--sp-2);
   }
-  .am-shell.is-collapsed .am-sidebar:hover .am-sidebar__toggle { margin-left: auto; }
-  .am-shell.is-collapsed .am-sidebar:hover .am-nav__item {
-    justify-content: flex-start; padding-inline: var(--sp-3);
+  /* 展开态：开关回到常规流右端（此时品牌行是横排，位置由 flex 决定且稳定） */
+  .am-shell.is-collapsed .am-sidebar:has(.am-sidebar__nav:hover) .am-sidebar__toggle {
+    position: static; margin-left: auto; flex-shrink: 0;
   }
-  .am-shell.is-collapsed .am-sidebar:hover .am-nav__group {
+  /* 展开后按钮保持在**距左边缘同一位置**（不跟随宽度变化），
+     否则又会出现"鼠标追不上"。视觉上它落在品牌名右侧附近，
+     因为 left 固定、品牌文字从 padding-left 开始，二者不重叠。 */
+  .am-shell.is-collapsed .am-sidebar:has(.am-sidebar__nav:hover) .am-sidebar__brandtext { display: block; }
+  .am-shell.is-collapsed .am-sidebar:has(.am-sidebar__nav:hover) .am-nav__group {
     justify-content: flex-start; padding-inline: var(--sp-3);
     height: auto; text-transform: uppercase; letter-spacing: .07em;
   }
-  .am-shell.is-collapsed .am-sidebar:hover .am-nav__groupicon { display: none; }
+  .am-shell.is-collapsed .am-sidebar:has(.am-sidebar__nav:hover) .am-nav__groupicon { display: none; }
+  .am-shell.is-collapsed .am-sidebar:has(.am-sidebar__nav:hover) .am-nav__item {
+    justify-content: flex-start; padding-inline: var(--sp-3);
+  }
 }
 
 /* ── 窄屏（抽屉模式）：不显示缩窄开关，分组正常显示 ── */

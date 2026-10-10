@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-mode="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aimanong · 终端蓝图 v3</title>
+<link rel="stylesheet" href="aimanong-v3.css">
+<style>
+  /* 仅 demo 用：图标与页脚 */
+  .ico { width:16px; height:16px; flex-shrink:0; }
+  .am-footer { padding: 16px 24px; font-size:12px; color: var(--text-4);
+    border-top:1px solid var(--line-faint); font-family: var(--font-mono); }
+  .demo-switch { display:flex; gap:8px; align-items:center; }
+  @media (max-width:860px){ .am-scrim{display:block} }
+  .am-scrim { display: none; }
+</style>
+</head>
+<body>
+<div class="am-shell" id="shell">
+
+  <!-- 抽屉遮罩（<860 生效） -->
+  <div class="am-scrim" data-nav-close></div>
+
+  <!-- ══ 侧栏 ══ -->
+  <aside class="am-sidebar">
+    <a class="am-sidebar__brand" href="#">
+      <span class="am-sidebar__mark"><span>AI</span></span>
+      <span class="am-brand-text">Aimanong</span>
+    </a>
+    <nav class="am-sidebar__nav">
+      <div class="am-nav__group">工作台</div>
+      <a class="am-nav__item is-active" href="#">
+        <svg class="am-nav__icon ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        <span class="am-nav__label">概览</span></a>
+      <a class="am-nav__item" href="#">
+        <svg class="am-nav__icon ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+        <span class="am-nav__label">文章</span></a>
+      <a class="am-nav__item" href="#">
+        <svg class="am-nav__icon ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span class="am-nav__label">栏目</span></a>
+      <div class="am-nav__group">电商</div>
+      <a class="am-nav__item" href="#">
+        <svg class="am-nav__icon ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7l2-4h14l2 4v12H3z"/><path d="M3 7h18M12 3v4"/></svg>
+        <span class="am-nav__label">商品</span></a>
+      <a class="am-nav__item" href="#">
+        <svg class="am-nav__icon ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M3 4h2l2.5 11h11L21 7H6"/></svg>
+        <span class="am-nav__label">订单</span></a>
+      <div class="am-nav__group">系统</div>
+      <a class="am-nav__item" href="#">
+        <svg class="am-nav__icon ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+        <span class="am-nav__label">角色</span></a>
+      <a class="am-nav__item" href="#">
+        <svg class="am-nav__icon ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="14" r="4"/><path d="M11 11l8-8 2 2-2 2 2 2-2 2-2-2-2 2"/></svg>
+        <span class="am-nav__label">权限节点</span></a>
+    </nav>
+  </aside>
+
+  <!-- ══ 主区 ══ -->
+  <div class="am-main">
+    <header class="am-topbar">
+      <div class="am-topbar__left">
+        <button class="am-btn am-btn--ghost am-btn--icon am-menu-toggle" data-nav-open aria-label="打开菜单">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <div class="am-crumb">
+          <a href="#">控制台</a><span class="am-crumb__sep">/</span><span class="am-crumb__current">文章</span>
+        </div>
+      </div>
+      <div class="am-topbar__right">
+        <!-- ★ Agent 活动指示 -->
+        <span class="am-agent-status" data-state="working" title="AI Agent 正在处理">
+          <span class="am-agent-status__ring"></span>
+          <span class="am-agent-status__text">agent · 写入中 2</span>
+        </span>
+        <button class="am-btn am-btn--ghost am-btn--icon" title="切换亮/暗" data-theme-toggle>
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>
+        </button>
+        <span class="am-text-secondary am-user-name" style="font-size:13px">超级管理员</span>
+      </div>
+    </header>
+
+    <div class="am-content">
+      <div class="am-page-head">
+        <div>
+          <h1 class="am-page-head__title">文章</h1>
+          <div class="am-page-head__desc">共 42 条记录 · 最后同步 <span class="am-time">2026-08-30 14:32:56</span></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="am-btn am-btn--sm">导出</button>
+          <button class="am-btn am-btn--primary am-btn--sm">新增文章</button>
+        </div>
+      </div>
+
+      <div class="am-card am-ring-gradient">
+        <div class="am-toolbar">
+          <input class="am-input" style="width:200px" placeholder="搜索标题、别名…">
+          <button class="am-btn am-btn--sm">筛选</button>
+          <span class="am-toolbar__spacer"></span>
+          <span class="am-time">42 / 42</span>
+        </div>
+
+        <div class="am-table-wrap am-table-wrap--stack">
+          <table class="am-table">
+            <thead>
+              <tr>
+                <th style="width:48px">ID</th>
+                <th>别名</th><th>标题</th>
+                <th class="am-col-sm-hide">栏目</th>
+                <th class="am-col-sm-hide">作者</th>
+                <th class="am-col-md-hide">浏览量</th>
+                <th>状态</th>
+                <th class="am-col-xs-hide">发布时间</th>
+                <th class="am-table__actions">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="is-agent-active">
+                <td class="am-id" data-label="ID">1</td>
+                <td class="am-mono" data-label="别名">laravel-12-queue-notes</td>
+                <td data-label="标题">Laravel 12 队列深度实践</td>
+                <td class="am-col-sm-hide am-short" data-label="栏目">后端</td>
+                <td class="am-col-sm-hide am-short" data-label="作者">赵启明</td>
+                <td class="am-num am-col-md-hide" data-label="浏览量">23000</td>
+                <td class="am-short" data-label="状态"><span class="am-badge am-badge--success">已发布</span></td>
+                <td class="am-time am-col-xs-hide" data-label="发布时间">2026-08-30 14:32:56</td>
+                <td class="am-table__actions" data-label="操作">
+                  <button class="am-btn am-btn--sm am-btn--ghost">编辑</button>
+                  <button class="am-btn am-btn--sm am-btn--ghost">删除</button>
+                </td>
+              </tr>
+              <tr>
+                <td class="am-id" data-label="ID">2</td>
+                <td class="am-mono" data-label="别名">vue3-composition-patterns</td>
+                <td class="am-cell--written" data-label="标题">Vue 3 组合式 API 的 7 个模式</td>
+                <td class="am-col-sm-hide am-short" data-label="栏目">前端</td>
+                <td class="am-col-sm-hide am-short" data-label="作者">李思远</td>
+                <td class="am-num am-col-md-hide" data-label="浏览量">10450</td>
+                <td class="am-short" data-label="状态"><span class="am-badge am-badge--success">已发布</span></td>
+                <td class="am-time am-col-xs-hide" data-label="发布时间">2026-09-09 14:32:56</td>
+                <td class="am-table__actions" data-label="操作">
+                  <button class="am-btn am-btn--sm am-btn--ghost">编辑</button>
+                  <button class="am-btn am-btn--sm am-btn--ghost">删除</button>
+                </td>
+              </tr>
+              <tr>
+                <td class="am-id" data-label="ID">3</td>
+                <td class="am-mono" data-label="别名">mysql-index-in-action</td>
+                <td data-label="标题">MySQL 索引失效的 12 种场景</td>
+                <td class="am-col-sm-hide am-short" data-label="栏目">后端</td>
+                <td class="am-col-sm-hide am-short" data-label="作者">赵启明</td>
+                <td class="am-num am-col-md-hide" data-label="浏览量">8800</td>
+                <td class="am-short" data-label="状态"><span class="am-badge am-badge--muted">草稿</span></td>
+                <td class="am-time am-col-xs-hide" data-label="发布时间">2026-09-14 14:32:56</td>
+                <td class="am-table__actions" data-label="操作">
+                  <button class="am-btn am-btn--sm am-btn--ghost">编辑</button>
+                  <button class="am-btn am-btn--sm am-btn--ghost">删除</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="am-pagination">
+          <span>共 42 条</span><span class="am-pagination__spacer"></span>
+          <button class="am-pagination__page">上一页</button>
+          <button class="am-pagination__page is-current">1</button>
+          <button class="am-pagination__page">2</button>
+          <button class="am-pagination__page">3</button>
+          <button class="am-pagination__page">下一页</button>
+        </div>
+      </div>
+
+      <!-- ★ 空状态使用二进制网格底纹 -->
+      <div class="am-card am-grid-bg" style="padding:0">
+        <div class="am-empty">
+          <div class="am-empty__title">还没有 Agent 任务</div>
+          <div class="am-empty__desc">AI 生成资源声明后，任务会出现在这里。<br>你只需审阅与合并。</div>
+          <div class="am-empty__actions">
+            <button class="am-btn am-btn--primary am-btn--sm">新建资源</button>
+            <button class="am-btn am-btn--sm">查看文档</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="am-footer">Aimanong v0.1.0 · 终端蓝图</footer>
+  </div>
+</div>
+
+<script>
+// 抽屉开关 —— 这就是当前框架**缺失**的那段 JS
+(function () {
+  var shell = document.getElementById('shell');
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-nav-open]'))  shell.classList.add('is-nav-open');
+    if (e.target.closest('[data-nav-close]')) shell.classList.remove('is-nav-open');
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') shell.classList.remove('is-nav-open');
+  });
+  // 主题切换
+  document.querySelector('[data-theme-toggle]').addEventListener('click', function () {
+    var r = document.documentElement;
+    r.dataset.mode = r.dataset.mode === 'light' ? 'dark' : 'light';
+  });
+})();
+</script>
+</body>
+</html>

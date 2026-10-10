@@ -1,0 +1,334 @@
+<!DOCTYPE html><html lang="zh-CN" data-mode="dark"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aimanong · 新设计方向</title>
+<style>
+:root{
+  --b-300:#a3d0ff;--b-400:#8ab9ff;--b-500:#6e9fea;--b-600:#5586d1;--b-700:#4071bb;
+  --b-800:#2d5ca4;--b-900:#184588;--ok:#70d070;--warn:#e8a840;--danger:#e05040;
+  --bg-0:#0a0c10;--bg-1:#0f1218;--bg-2:#141821;--bg-3:#1a1f2a;--bg-4:#222836;
+  --line-1:#1b212c;--line-2:#242b38;--line-3:#323a4a;
+  --tx-1:#e8ecf2;--tx-2:#98a2b3;--tx-3:#6b7688;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Noto Sans SC",sans-serif;
+  --r:10px;
+  --ease:cubic-bezier(.4,0,.2,1);
+}
+/* ── 亮色 ── */
+[data-mode="light"]{
+  --bg-0:#f7f8fa;--bg-1:#fbfbfc;--bg-2:#ffffff;--bg-3:#f4f5f7;--bg-4:#eaecf0;
+  --line-1:#eceef2;--line-2:#e2e5ea;--line-3:#d3d8e0;
+  --tx-1:#12161d;--tx-2:#525a68;--tx-3:#828b9a;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg-1);color:var(--tx-1);font-family:var(--sans);font-size:14px;
+     line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
+:focus-visible{outline:2px solid var(--b-500);outline-offset:2px;border-radius:4px}
+
+/* ══════ 布局：侧栏 + 主区，全断点自适应 ══════ */
+.shell{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100vh}
+
+.side{
+  background:var(--bg-2);border-right:1px solid var(--line-1);
+  display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;
+  transition:width .2s var(--ease);
+}
+.side__brand{display:flex;align-items:center;gap:11px;padding:18px 16px;border-bottom:1px solid var(--line-1)}
+.brand-ring{position:relative;width:34px;height:34px;flex-shrink:0;display:grid;place-items:center}
+.brand-ring svg{position:absolute;inset:0;animation:spin 40s linear infinite}
+.brand-ring b{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--b-300);
+  width:24px;height:24px;border-radius:50%;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--b-700),var(--b-900));box-shadow:0 0 14px rgba(64,113,187,.4)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.side__name{font-size:14.5px;font-weight:650;letter-spacing:-.01em}
+.side__ver{font-family:var(--mono);font-size:10.5px;color:var(--tx-3)}
+
+.side__nav{padding:12px 8px;flex:1}
+.nav-g{padding:14px 10px 6px;font-family:var(--mono);font-size:10.5px;font-weight:500;
+       color:var(--tx-3);text-transform:uppercase;letter-spacing:.08em}
+.nav-i{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;
+       font-size:13.5px;color:var(--tx-2);transition:all .13s var(--ease);position:relative}
+.nav-i:hover{background:var(--bg-3);color:var(--tx-1)}
+.nav-i.on{background:linear-gradient(90deg,rgba(64,113,187,.16),rgba(64,113,187,.04));
+          color:var(--b-300);font-weight:550}
+.nav-i.on::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);
+  width:2px;height:16px;border-radius:2px;background:var(--b-500);box-shadow:0 0 8px var(--b-500)}
+.nav-i svg{width:15px;height:15px;flex-shrink:0;opacity:.8}
+.nav-i.on svg{opacity:1}
+.nav-i .cnt{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--tx-3);
+  background:var(--bg-4);padding:1px 6px;border-radius:4px}
+
+/* 主区 */
+.main{min-width:0;display:flex;flex-direction:column}
+.top{
+  height:56px;display:flex;align-items:center;gap:14px;padding:0 22px;
+  border-bottom:1px solid var(--line-1);background:var(--bg-2);
+  position:sticky;top:0;z-index:30;
+}
+.crumb{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12.5px;color:var(--tx-3)}
+.crumb b{color:var(--tx-1);font-weight:500}
+.top__r{margin-left:auto;display:flex;align-items:center;gap:10px}
+
+.body{padding:24px 26px;flex:1}
+
+/* ══════ 按钮 ══════ */
+.btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border-radius:8px;
+     border:1px solid var(--line-2);background:var(--bg-2);color:var(--tx-2);
+     font-size:13px;font-weight:500;transition:all .14s var(--ease);white-space:nowrap}
+.btn:hover{border-color:var(--line-3);color:var(--tx-1);background:var(--bg-3)}
+.btn svg{width:14px;height:14px}
+.btn--p{background:var(--b-700);border-color:var(--b-700);color:#fff;
+        box-shadow:0 0 0 1px rgba(64,113,187,.5),0 4px 14px rgba(64,113,187,.28)}
+.btn--p:hover{background:var(--b-600);border-color:var(--b-600);color:#fff}
+.btn--sm{height:28px;padding:0 9px;font-size:12.5px;border-radius:6px}
+.btn--ghost{border-color:transparent;background:transparent}
+.btn--ghost:hover{background:var(--bg-3)}
+
+/* ══════ 页头 ══════ */
+.ph{display:flex;align-items:flex-start;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+.ph__t{font-size:26px;font-weight:660;letter-spacing:-.025em;line-height:1.25}
+.ph__m{display:flex;align-items:center;gap:14px;margin-top:7px;
+       font-family:var(--mono);font-size:12px;color:var(--tx-3);flex-wrap:wrap}
+.ph__m span{display:flex;align-items:center;gap:5px}
+.ph__a{margin-left:auto;display:flex;gap:9px;flex-wrap:wrap}
+
+/* ══════ 统计：圆环语言 ══════ */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:20px}
+.stat{background:var(--bg-2);border:1px solid var(--line-1);border-radius:12px;padding:16px;
+      position:relative;overflow:hidden;transition:border-color .16s}
+.stat:hover{border-color:var(--line-2)}
+.stat::after{content:'';position:absolute;top:-40%;right:-25%;width:130px;height:130px;
+  border-radius:50%;background:radial-gradient(circle,rgba(64,113,187,.10),transparent 68%)}
+.stat__k{font-family:var(--mono);font-size:11px;color:var(--tx-3);text-transform:uppercase;letter-spacing:.07em}
+.stat__v{font-family:var(--mono);font-size:26px;font-weight:650;letter-spacing:-.03em;margin-top:5px}
+.stat__d{font-size:11.5px;margin-top:3px;display:flex;align-items:center;gap:4px}
+.up{color:var(--ok)}.down{color:var(--danger)}
+
+/* ══════ 卡片/表格 ══════ */
+.card{background:var(--bg-2);border:1px solid var(--line-1);border-radius:12px;overflow:hidden}
+.card__h{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line-1)}
+.card__t{font-size:14.5px;font-weight:600}
+.card__s{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--tx-3)}
+
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px;min-width:640px}
+th{text-align:left;padding:10px 16px;font-family:var(--mono);font-size:10.5px;font-weight:500;
+   color:var(--tx-3);text-transform:uppercase;letter-spacing:.07em;
+   border-bottom:1px solid var(--line-2);white-space:nowrap;background:var(--bg-2)}
+td{padding:12px 16px;border-bottom:1px solid var(--line-1);vertical-align:middle}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:var(--bg-3)}
+tbody tr:last-child td{border-bottom:none}
+.id{font-family:var(--mono);color:var(--b-400);font-size:12px}
+.num{font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:5px;
+      font-family:var(--mono);font-size:11px;font-weight:500;
+      background:var(--bg-4);color:var(--tx-2);border:1px solid var(--line-2);white-space:nowrap}
+.chip--ok{background:rgba(112,208,112,.13);color:var(--ok);border-color:rgba(112,208,112,.26)}
+.chip--warn{background:rgba(232,168,64,.13);color:var(--warn);border-color:rgba(232,168,64,.26)}
+.chip--b{background:rgba(64,113,187,.15);color:var(--b-400);border-color:rgba(64,113,187,.32)}
+.dot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+
+/* ══════ 输入 ══════ */
+.inp{height:34px;padding:0 11px;border-radius:8px;border:1px solid var(--line-2);
+     background:var(--bg-2);color:var(--tx-1);font-size:13px;transition:all .15s;min-width:0}
+.inp::placeholder{color:var(--tx-3)}
+.inp:focus{outline:none;border-color:var(--b-600);box-shadow:0 0 0 3px rgba(64,113,187,.18)}
+
+/* ══════ 响应式：五个断点 ══════ */
+/* ≥1440 完整 */
+/* 1200-1439：侧栏收窄 */
+@media (max-width:1439px){ .shell{grid-template-columns:210px minmax(0,1fr)} }
+/* 1024-1199：侧栏收成图标条 */
+@media (max-width:1199px){
+  .shell{grid-template-columns:60px minmax(0,1fr)}
+  .side__name,.side__ver,.nav-g,.nav-i span:not(.cnt),.nav-i .cnt{display:none}
+  .nav-i{justify-content:center;padding:10px}
+  .side__brand{justify-content:center;padding:16px 8px}
+  .body{padding:20px}
+}
+/* 768-1023：改为抽屉式（默认隐藏，按钮唤出） */
+@media (max-width:1023px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .side{position:fixed;left:0;top:0;z-index:60;width:236px;
+        transform:translateX(-100%);transition:transform .24s var(--ease)}
+  .side.open{transform:translateX(0);box-shadow:0 0 0 100vmax rgba(0,0,0,.5)}
+  .side__name,.side__ver,.nav-g,.nav-i span:not(.cnt),.nav-i .cnt{display:block}
+  .nav-i{justify-content:flex-start;padding:9px 10px}
+  .side__brand{justify-content:flex-start;padding:18px 16px}
+  .menu-btn{display:grid !important}
+  .body{padding:18px}
+  .ph__t{font-size:22px}
+}
+/* <768：手机 —— 表格卡片化 */
+@media (max-width:767px){
+  /* 顶栏：面包屑只留当前页；搜索与快捷键让位 */
+  .crumb span:first-child, .crumb span:nth-child(2){display:none}
+  .crumb{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+  .top__r .inp{display:none}
+  .top__r .btn:first-of-type{display:none}
+  .top__r .btn{flex-shrink:0}
+  .body{padding:14px}
+  .ph__t{font-size:20px}
+  .ph__a{width:100%;margin-left:0}
+  .ph__a .btn{flex:1;justify-content:center}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .stat__v{font-size:21px}
+  .stat{padding:13px}
+  .top{padding:0 14px;gap:9px}
+  .crumb{font-size:11.5px}
+  /* 表格 → 卡片 */
+  table{min-width:0}
+  thead{display:none}
+  tbody tr{display:block;padding:13px 14px;border-bottom:1px solid var(--line-1)}
+  tbody tr:last-child{border-bottom:none}
+  tbody td{display:flex;justify-content:space-between;gap:14px;padding:4px 0;border:none;text-align:right}
+  tbody td::before{content:attr(data-l);font-family:var(--mono);font-size:11px;
+    color:var(--tx-3);text-transform:uppercase;letter-spacing:.06em;flex-shrink:0}
+  .num{text-align:right}
+}
+.menu-btn{display:none;width:34px;height:34px;border-radius:8px;border:1px solid var(--line-2);
+          place-items:center;background:var(--bg-2)}
+.menu-btn svg{width:16px;height:16px}
+</style></head><body>
+<div class="shell">
+
+  <aside class="side" id="side">
+    <div class="side__brand">
+      <div class="brand-ring">
+        <svg viewBox="0 0 40 40">
+          <circle cx="20" cy="20" r="17" fill="none" stroke="#2d5ca4" stroke-width="1.6"
+                  stroke-dasharray="7 4" stroke-linecap="round"/>
+        </svg>
+        <b>AI</b>
+      </div>
+      <div>
+        <div class="side__name">Aimanong</div>
+        <div class="side__ver">v1.4.1</div>
+      </div>
+    </div>
+
+    <nav class="side__nav">
+      <div class="nav-g">内容管理</div>
+      <a class="nav-i on" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+        <span>文章</span><span class="cnt">12</span>
+      </a>
+      <a class="nav-i" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span>栏目</span>
+      </a>
+      <a class="nav-i" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg>
+        <span>作者</span>
+      </a>
+      <div class="nav-g">系统</div>
+      <a class="nav-i" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>
+        <span>角色</span>
+      </a>
+      <a class="nav-i" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="14" r="4"/><path d="M11 11l8-8 2 2-2 2 2 2-2 2-2-2-2 2"/></svg>
+        <span>权限节点</span><span class="cnt">132</span>
+      </a>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <header class="top">
+      <button class="menu-btn" onclick="document.getElementById('side').classList.toggle('open')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <div class="crumb"><span>cms-articles</span><span>/</span><b>文章管理</b></div>
+      <div class="top__r">
+        <input class="inp" placeholder="搜索…" style="width:170px">
+        <button class="btn btn--sm">⌘K</button>
+        <button class="btn btn--sm btn--ghost">退出</button>
+      </div>
+    </header>
+
+    <div class="body">
+      <div class="ph">
+        <div>
+          <h1 class="ph__t">文章管理</h1>
+          <div class="ph__m">
+            <span>11 个字段</span><span>·</span><span>12 条记录</span>
+            <span>·</span><span><span class="dot" style="color:var(--ok)"></span>导出已开启</span>
+          </div>
+        </div>
+        <div class="ph__a">
+          <button class="btn">刷新</button>
+          <button class="btn">导出</button>
+          <button class="btn btn--p">+ 新增</button>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="stat__k">总记录</div><div class="stat__v">12</div>
+          <div class="stat__d up">↑ 3 本周</div></div>
+        <div class="stat"><div class="stat__k">已发布</div><div class="stat__v">8</div>
+          <div class="stat__d" style="color:var(--tx-3)">66.7%</div></div>
+        <div class="stat"><div class="stat__k">总浏览</div><div class="stat__v">96,208</div>
+          <div class="stat__d up">↑ 12.4%</div></div>
+        <div class="stat"><div class="stat__k">待审核</div><div class="stat__v" style="color:var(--warn)">1</div>
+          <div class="stat__d down">需处理</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card__h">
+          <span class="card__t">文章列表</span>
+          <span class="card__s">schema v1 · 自动生成</span>
+        </div>
+        <div class="tw">
+          <table>
+            <thead><tr>
+              <th style="width:54px">ID</th><th>SLUG</th><th>标题</th>
+              <th>状态</th><th class="num">浏览量</th><th>发布时间</th><th style="width:90px"></th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td class="id" data-l="ID">01</td>
+                <td class="mono" style="color:var(--tx-2);font-size:12.5px" data-l="SLUG">laravel-12-queue</td>
+                <td data-l="标题">Laravel 12 队列深度实践</td>
+                <td data-l="状态"><span class="chip chip--ok"><i class="dot"></i>published</span></td>
+                <td class="num" data-l="浏览量">23,000</td>
+                <td class="mono" style="color:var(--tx-3);font-size:12.5px" data-l="发布">08-30</td>
+                <td data-l=""><button class="btn btn--sm btn--ghost">编辑</button></td>
+              </tr>
+              <tr>
+                <td class="id" data-l="ID">02</td>
+                <td class="mono" style="color:var(--tx-2);font-size:12.5px" data-l="SLUG">vue3-patterns</td>
+                <td data-l="标题">Vue 3 组合式 API 的 7 个模式</td>
+                <td data-l="状态"><span class="chip chip--b"><i class="dot"></i>review</span></td>
+                <td class="num" data-l="浏览量">10,450</td>
+                <td class="mono" style="color:var(--tx-3);font-size:12.5px" data-l="发布">09-09</td>
+                <td data-l=""><button class="btn btn--sm btn--ghost">编辑</button></td>
+              </tr>
+              <tr>
+                <td class="id" data-l="ID">03</td>
+                <td class="mono" style="color:var(--tx-2);font-size:12.5px" data-l="SLUG">mysql-index</td>
+                <td data-l="标题">MySQL 索引失效的 12 种场景</td>
+                <td data-l="状态"><span class="chip chip--warn"><i class="dot"></i>draft</span></td>
+                <td class="num" style="color:var(--warn)" data-l="浏览量">8</td>
+                <td class="mono" style="color:var(--tx-3);font-size:12.5px" data-l="发布">—</td>
+                <td data-l=""><button class="btn btn--sm btn--ghost">编辑</button></td>
+              </tr>
+              <tr>
+                <td class="id" data-l="ID">04</td>
+                <td class="mono" style="color:var(--tx-2);font-size:12.5px" data-l="SLUG">ai-agent-flow</td>
+                <td data-l="标题">AI Agent 在内容生产中的落地</td>
+                <td data-l="状态"><span class="chip chip--ok"><i class="dot"></i>published</span></td>
+                <td class="num" data-l="浏览量">15,600</td>
+                <td class="mono" style="color:var(--tx-3);font-size:12.5px" data-l="发布">09-19</td>
+                <td data-l=""><button class="btn btn--sm btn--ghost">编辑</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>

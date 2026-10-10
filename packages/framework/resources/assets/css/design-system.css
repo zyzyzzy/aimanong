@@ -106,78 +106,105 @@
   --density: 1;        /* default: 1 | compact: .85 */
 }
 
-/* --- 颜色 token 兜底（若未加载 themes.css，退回"墨玉·浅色"） ---
- * 真实值由 themes.css 提供；此处仅保证单文件可用时页面不崩。 */
+/* --- 颜色 token 兜底（若未加载 themes.css，退回「墨玉·浅色」） ---
+ * 真实值由 themes.css 提供；此处仅保证单文件可用时页面不崩。
+ * 色值同样源自 LOGO 品牌色。 */
 :root {
-  --bg-canvas: #f4f6f8;
+  --bg-canvas: #f2f6fd;
   --bg-surface: #ffffff;
-  --bg-subtle: #fcfdfe;
-  --bg-sunken: #eaedf0;
-  --bg-hover: #f4f6f8;
-  --bg-active: #eaedf0;
-  --bg-inverse: #0d1721;
-  --text-primary: #0d1721;
-  --text-secondary: #444e59;
-  --text-tertiary: #5a646f;
-  --text-disabled: #979fa8;
+  --bg-subtle: #f7fbff;
+  --bg-sunken: #eaeef5;
+  --bg-hover: #eff4fa;
+  --bg-active: #e5eaf0;
+  --bg-inverse: #13161b;
+  --text-primary: #12161d;
+  --text-secondary: #43484f;
+  --text-tertiary: #686c73;
+  --text-disabled: #9b9fa5;
   --text-inverse: #ffffff;
-  --brand-solid: #007643;
-  --brand-solid-hover: #005d33;
-  --brand-solid-active: #004424;
+  --brand-solid: #3363ac;
+  --brand-solid-hover: #214f95;
+  --brand-solid-active: #113e80;
   --text-on-brand: #ffffff;
-  --brand-text: #007643;
-  --brand-subtle-bg: #f0f9f4;
-  --brand-subtle-border: #c7e7d3;
-  --brand-ring: #3aa470;
-  --border-subtle: #e3e6e9;
-  --border-default: #dce0e5;
-  --border-strong: #cbd0d6;
-  --border-focus: #3aa470;
-  --success-bg: #f0f9f4;
-  --success-text: #007643;
-  --success-border: #c7e7d3;
-  --warning-bg: #fdf6ec;
-  --warning-text: #8a5200;
-  --warning-border: #f0dcb8;
-  --danger-bg: #fdf1f0;
-  --danger-text: #b3261e;
-  --danger-border: #f3cbc7;
-  --info-bg: #f0f4ff;
-  --info-text: #1d4ed8;
-  --info-border: #c9d6f7;
-  --overlay: rgba(16, 24, 40, .45);
+  --brand-text: #2b5ba2;
+  --brand-subtle-bg: #caf2ff;
+  --brand-subtle-border: #aad6ff;
+  --brand-ring: #4f80cb;
+  --border-subtle: #e2e6ed;
+  --border-default: #d6dae1;
+  --border-strong: #bfc3c9;
+  --border-focus: #4f80cb;
+  --overlay: rgba(15,23,42,.45);
+  --success-bg: #e6f7e5;
+  --success-text: #16691c;
+  --success-border: #bae4b8;
+  --success-solid: #2e7c30;
+  --success-on-solid: #ffffff;
+  --warning-bg: #ffefdb;
+  --warning-text: #834600;
+  --warning-border: #f6d09c;
+  --warning-solid: #975900;
+  --warning-on-solid: #ffffff;
+  --danger-bg: #ffe9e4;
+  --danger-text: #9e1e14;
+  --danger-border: #ffc1b4;
+  --danger-solid: #b43629;
+  --danger-on-solid: #ffffff;
+  --info-bg: #caf2ff;
+  --info-text: #2b5ba2;
+  --info-border: #aad6ff;
+  --info-solid: #3363ac;
+  --info-on-solid: #ffffff;
 }
 
 /* 深色模式：在 themes.css 未覆盖时也保证可用 */
 [data-mode="dark"] {
   color-scheme: dark;
-  --bg-canvas: #0b0f14;
-  --bg-surface: #121820;
-  --bg-subtle: #18202a;
-  --bg-sunken: #080b10;
-  --bg-hover: #1c2530;
-  --bg-active: #232e3b;
-  --bg-inverse: #f4f6f8;
-  --text-primary: #e4e8ec;
-  --text-secondary: #afb8c2;
-  --text-tertiary: #7b8895;
-  --text-disabled: #647280;
-  --text-inverse: #0b0f14;
-  --brand-solid: #008e58;
-  --text-on-brand: #0b0f14;
-  --brand-text: #3aa470;
-  --brand-subtle-bg: #032011;
-  --brand-subtle-border: #073d25;
-  --border-subtle: #232d3a;
-  --border-default: #2f3b4a;
-  --border-strong: #3f4d5e;
-  --border-focus: #3aa470;
-  --overlay: rgba(0, 0, 0, .6);
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, .3);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, .35), 0 1px 2px rgba(0, 0, 0, .25);
-  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, .4), 0 2px 4px -2px rgba(0, 0, 0, .3);
-  --shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, .5), 0 4px 8px -4px rgba(0, 0, 0, .35);
-  --shadow-xl: 0 24px 48px -8px rgba(0, 0, 0, .6), 0 8px 16px -8px rgba(0, 0, 0, .4);
+  --bg-canvas: #0a0c11;
+  --bg-surface: #14171c;
+  --bg-subtle: #1b1e23;
+  --bg-sunken: #05070a;
+  --bg-hover: #202328;
+  --bg-active: #2a2d32;
+  --bg-inverse: #e1e5eb;
+  --text-primary: #e1e7ee;
+  --text-secondary: #a8adb4;
+  --text-tertiary: #80858c;
+  --text-disabled: #595c62;
+  --text-inverse: #0b0d12;
+  --brand-solid: #5688d3;
+  --brand-solid-hover: #6c9ee9;
+  --brand-solid-active: #4374be;
+  --text-on-brand: #0b0d12;
+  --brand-text: #75a6f0;
+  --brand-subtle-bg: #1a283d;
+  --brand-subtle-border: #24395a;
+  --brand-ring: #5688d3;
+  --border-subtle: #202328;
+  --border-default: #2c2f34;
+  --border-strong: #404449;
+  --border-focus: #5688d3;
+  --overlay: rgba(0,0,0,.62);
+  --success-bg: #1b301b;
+  --success-text: #85c483;
+  --success-border: #274626;
+  --success-solid: #5c9f5c;
+  --success-on-solid: #0b0d12;
+  --warning-bg: #38260a;
+  --warning-text: #dca653;
+  --warning-border: #523709;
+  --warning-solid: #b88019;
+  --warning-on-solid: #0b0d12;
+  --danger-bg: #421e19;
+  --danger-text: #fb8e7e;
+  --danger-border: #602b24;
+  --danger-solid: #d66556;
+  --danger-on-solid: #0b0d12;
+  --info-bg: #1a283d;
+  --info-text: #75a6f0;
+  --info-border: #24395a;
+  --info-solid: #5688d3;
+  --info-on-solid: #0b0d12;
 }
 
 /* ==========================================================================

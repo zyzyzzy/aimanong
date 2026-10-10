@@ -38,9 +38,10 @@ class ThemeConfig
                 'default' => 'ink',
                 'choices' => [
                     // 名称与 themes.css 的 data-theme 值一一对应
-                    'ink' => ['label' => '墨玉', 'desc' => '克制专业', 'swatch' => ['#007643', '#f4f6f8']],
-                    'deep' => ['label' => '深空', 'desc' => '科技炫酷', 'swatch' => ['#007a50', '#f1f7fb']],
-                    'aurora' => ['label' => '极光', 'desc' => '现代活力', 'swatch' => ['#6c56e0', '#f4f5fb']],
+                    // 色值取自 LOGO 品牌色盘（主蓝 #205098 衍生）
+                    'ink' => ['label' => '墨玉', 'desc' => 'LOGO 正蓝', 'swatch' => ['#3363ac', '#f2f6fd']],
+                    'deep' => ['label' => '深空', 'desc' => '靛蓝沉静', 'swatch' => ['#4861a2', '#f3f6fc']],
+                    'aurora' => ['label' => '极光', 'desc' => '青蓝明亮', 'swatch' => ['#006dae', '#f0f7fd']],
                 ],
                 'help' => '风格决定配色与质感；默认「墨玉」最耐看',
             ],

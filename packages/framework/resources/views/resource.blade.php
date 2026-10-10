@@ -213,7 +213,8 @@
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
+{{-- Vue 从框架自带的静态资源加载（不依赖外部 CDN）--}}
+<script src="{{ \Aimanong\Aimanong::asset()->url('js/vue.global.prod.js') }}"></script>
 <script>
 const { createApp, ref, computed, onMounted } = Vue;
 

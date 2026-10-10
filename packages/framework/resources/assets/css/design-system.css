@@ -42,19 +42,19 @@
   --r-xl: calc(20px * var(--radius-scale));   /* 登录卡/大容器 */
   --r-full: 999px;
 
-  /* --- 字号阶梯（中文适配） --- */
-  --fs-xs: 12px;    /* 表头、徽章、辅助说明 —— 仅限短文本 */
-  --fs-sm: 13px;    /* 次要 UI：按钮、表单控件、表格单元格 */
-  --fs-base: 14px;  /* 正文主力 */
-  --fs-md: 15px;    /* 卡片标题 */
-  --fs-lg: 17px;    /* 卡片大标题 */
-  --fs-xl: 21px;
-  --fs-2xl: 27px;
-  --fs-display: 34px;  /* 统计数字（B 的彩色数字锚点） */
-  --fs-hero: 44px;     /* 页面主标题（B 的冲击力来源：字号而非颜色） */
-  --fs-xl: 20px;    /* 区块大标题 */
-  --fs-2xl: 24px;   /* 统计数字 */
-  --fs-3xl: 30px;   /* 登录页标题 */
+  /* --- 字号阶梯（中文适配，8 档） ---
+   * ⚠️ 这个块曾因多次叠加修改出现**重复声明**
+   * （--fs-xl/--fs-2xl 各定义两次，后值覆盖前值），
+   * 导致改字号不生效。新增档位前请先确认没有同名 token。 */
+  --fs-xs: 12px;       /* 表头、徽章、辅助说明 */
+  --fs-sm: 13px;       /* 次要 UI：按钮、表单控件、表格单元格 */
+  --fs-base: 14px;     /* 正文主力 */
+  --fs-md: 15px;       /* 卡片标题 */
+  --fs-lg: 17px;       /* 区块大标题 */
+  --fs-xl: 20px;       /* 弹窗标题 */
+  --fs-2xl: 28px;      /* 页面标题（曾为 44px，用户反馈过大后下调） */
+  --fs-3xl: 34px;      /* 统计数字（彩色锚点） */
+  --fs-hero: 40px;     /* 登录页主标题 —— 仅登录页用，后台正文区不用 */
 
   /* --- 行高：中文需显著大于拉丁文 --- */
   --lh-tight: 1.35;  /* 标题、单行标签 */
@@ -472,6 +472,19 @@ hr {
   top: 0;
   z-index: var(--z-sticky);
 }
+/* 汉堡按钮：仅窄屏（抽屉模式）显示。
+ * ⚠️ base 规则必须在媒体查询**之前**，否则会被反向覆盖（已踩过）。 */
+.am-menu-toggle {
+  display: none;
+  width: 34px; height: 34px; border-radius: var(--r-sm);
+  align-items: center; justify-content: center; flex-shrink: 0;
+  border: 1px solid var(--border-default); background: var(--bg-surface);
+  color: var(--text-secondary); cursor: pointer;
+  transition: background .14s var(--ease), color .14s var(--ease);
+}
+.am-menu-toggle:hover { background: var(--bg-hover); color: var(--text-primary); }
+.am-menu-toggle svg { width: 16px; height: 16px; }
+
 .am-topbar::before {
   content: '';
   position: absolute; left: 0; right: 0; top: 0; height: 4px;
@@ -516,11 +529,17 @@ hr {
   flex-wrap: wrap;
 }
 .am-page-head__title {
-  /* B 的核心决策：冲击力来自**字号**而非颜色。
-     页面主标题 44px，配 -0.035em 字距（中文不要收太紧）。 */
-  font-size: var(--fs-hero);
-  font-weight: 680;
-  letter-spacing: -.035em;
+  /*
+   * 字号 28px（原 44px）。
+   *
+   * 44px 在营销页/仪表盘上震撼，但这是**后台工具**：
+   * 用户每天看几十次这个标题，过大的字号会挤压首屏有效信息，
+   * 且与表格正文的对比过强，反而显得"标题比内容重要"。
+   * 28px 保留层次感（正文 14px 的 2 倍），又不喧宾夺主。
+   */
+  font-size: var(--fs-2xl);
+  font-weight: 660;
+  letter-spacing: -.025em;
   line-height: 1.06;
 }
 .am-page-head__desc {
@@ -542,16 +561,13 @@ hr {
 .am-toolbar__spacer { flex: 1; min-width: var(--sp-2); }
 
 /* --- 响应式 --- */
-@media (max-width: 1024px) {
-  .am-shell { grid-template-columns: var(--w-sidebar-mini) minmax(0, 1fr); }
-  .am-sidebar__nav { padding-inline: var(--sp-2); }
-  .am-nav__item { justify-content: center; padding: 0; gap: 0; }
-  .am-nav__item span:not(.am-nav__icon) { display: none; }
-  .am-nav__group { text-align: center; padding-inline: 0; font-size: 10px; }
-  .am-sidebar__brand { justify-content: center; padding: 0; }
-  .am-sidebar__brand span:not(.am-sidebar__mark) { display: none; }
-}
-@media (max-width: 768px) {
+/*
+ * 断点统一为 960px（原 1024）：
+ * 与表格卡片化、侧栏抽屉保持一致，避免出现
+ * "侧栏已收窄但表格还没卡片化"这类中间态错位。
+ */
+@media (max-width: 960px) {
+  .am-menu-toggle { display: inline-flex; }
   .am-shell { grid-template-columns: minmax(0, 1fr); }
   .am-sidebar {
     position: fixed;
@@ -562,7 +578,8 @@ hr {
     transition: transform var(--dur-slow) var(--ease);
     box-shadow: var(--shadow-xl);
   }
-  .am-shell.is-nav-open .am-sidebar { transform: none; }
+  /* 抽屉打开态：由 sidebar partial 的脚本切换 .is-open */
+  .am-shell.is-open .am-sidebar { transform: none; }
   .am-content { padding: var(--sp-4); }
   .am-topbar {
   /* B 的品牌签名：顶部 4px 四色通栏条（LOGO 的蓝/橙红/橙黄/绿按序）
@@ -1207,7 +1224,7 @@ hr {
 .am-stat__value {
   /* B 的决策：统计数字是**彩色锚点**（34px），
      冲击力来自字号 + 色彩，不是卡片装饰。 */
-  font-size: var(--fs-display);
+  font-size: var(--fs-3xl);
   font-weight: 680;
   letter-spacing: -.04em;
   font-family: var(--font-mono);

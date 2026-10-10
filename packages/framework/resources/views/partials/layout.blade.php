@@ -80,7 +80,49 @@
   </div>
 </div>
 
+{{-- 抽屉遮罩（窄屏点击关闭） --}}
+<div class="am-scrim" id="am-scrim"></div>
+
 @include('aimanong::partials.theme-panel')
+<style>
+/* 抽屉遮罩：仅窄屏且打开时有意义 */
+.am-scrim {
+  position: fixed; inset: 0; z-index: 70;
+  background: var(--overlay);
+  opacity: 0; pointer-events: none;
+  transition: opacity .22s var(--ease);
+}
+.am-scrim.is-on { opacity: 1; pointer-events: auto; }
+</style>
+<script>
+/* 窄屏抽屉导航开关。
+   与 sidebar partial 的分组折叠是两套独立机制：
+   这里管「整条侧栏进/出视口」，那里管「组内展开/收起」。 */
+(function () {
+  var btn = document.getElementById('am-menu-toggle');
+  var shell = document.querySelector('.am-shell');
+  var scrim = document.getElementById('am-scrim');
+  if (!btn || !shell) return;
+
+  function set(open) {
+    shell.classList.toggle('is-open', open);
+    if (scrim) scrim.classList.toggle('is-on', open);
+    btn.setAttribute('aria-label', open ? '关闭导航' : '打开导航');
+  }
+
+  btn.addEventListener('click', function () {
+    set(!shell.classList.contains('is-open'));
+  });
+  if (scrim) scrim.addEventListener('click', function () { set(false); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') set(false);
+  });
+  // 从窄屏拉宽时自动关掉抽屉，否则会残留一个"已打开"的状态
+  window.addEventListener('resize', function () {
+    if (window.innerWidth > 960) set(false);
+  });
+})();
+</script>
 @stack('scripts')
 </body>
 </html>

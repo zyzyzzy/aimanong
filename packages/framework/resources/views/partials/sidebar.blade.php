@@ -126,15 +126,22 @@
  * absolute + 固定 right 值 → 两种状态下坐标一致，稳定可点。
  */
 /*
- * ⚠️ 定位必须用 `left` 而不是 `right`。
+ * ⚠️ 开关的定位方式**必须两态不同**，这是一个踩了三次的坑：
  *
- * 用 right 时：缩窄态悬停 → 侧栏从 64px 变 196px → right:10px 的按钮
- * **跟着右移 128px**，鼠标追不上、点不到（实测复现，用户反馈"点不到"）。
- * 用 left 时：按钮相对侧栏**左边缘**固定，而左边缘在缩窄/展开两态
- * 都不变，因此坐标稳定可点。
+ * 【正常态（侧栏 196px）】用 `right`
+ *   品牌行里 logo 在左、文字居中偏左，右侧是空的 → 放这里不挡任何东西。
+ *   侧栏宽度固定，right 定位稳定。
+ *
+ * 【缩窄态（侧栏 64px）】用 `left`
+ *   若仍用 right：悬停展开时侧栏变宽 → 按钮跟着右移 128px，
+ *   鼠标追不上、点不到（实测复现）。
+ *   改用 left 后按钮相对**左边缘**固定，而左边缘在两态都不变 → 稳定可点。
+ *
+ * 【正常态若误用 left】按钮会落在 logo 上被遮住 ——
+ *   表现为「看不到 ‹」（用户反馈）。
  */
 .am-sidebar__toggle {
-  position: absolute; top: 14px; left: 10px; z-index: 5;
+  position: absolute; top: 14px; right: 10px; z-index: 5;
   width: 26px; height: 26px; border-radius: 6px;
   display: grid; place-items: center;
   border: none; background: transparent; cursor: pointer;
@@ -246,16 +253,32 @@
    * 开关的稳定性由「缩窄态下它始终在同一位置」保证：
    * 因为缩窄态侧栏宽度固定 64px，flex 居中的结果也是固定的。
    */
+  /*
+   * 缩窄态品牌行：纵向堆叠 —— logo 在上、开关在下，**两者都在行内**。
+   *
+   * 高度 = padding-top(14) + logo(28) + 间距(8) + 开关(26) + padding-bottom(10) = 86
+   * 开关用 absolute 定位在 left:10 / top:50（= 14 + 28 + 8），
+   * 这样它的坐标不随侧栏宽度变化 —— 悬停展开时不会跑，稳定可点。
+   */
   .am-shell.is-collapsed .am-sidebar__brand {
-    flex-direction: column; gap: var(--sp-2);
-    padding: var(--sp-3) 0 var(--sp-2);
-    justify-content: center; align-items: center;
-    min-height: 0;
+    flex-direction: column; gap: 0;
+    padding: 14px 0 10px;
+    justify-content: flex-start; align-items: center;
+    min-height: 86px;
   }
+  .am-shell.is-collapsed .am-sidebar__brandlink { padding-top: 0; }
   .am-shell.is-collapsed .am-sidebar__brandtext { display: none; }
-  /* 缩窄态：开关取消 absolute，回到常规流、居中排在 logo 下方 */
+  /*
+   * 缩窄态：开关放在**品牌行下方**（top: 56px），而不是左上角。
+   *
+   * ⚠️ 之前放左上角（top:14）会与 logo **重叠 16px** —— logo 也在顶部。
+   * 用 left 定位（不用 right）：right 会随悬停展开把按钮推走 128px（实测）。
+   * 用固定 top/left → 两态坐标一致，稳定可点。
+   */
   .am-shell.is-collapsed .am-sidebar__toggle {
-    position: static; margin: 0; flex-shrink: 0;
+    /* top = 品牌行 padding-top(14) + logo 高(28) + 间距(8) = 50
+       → 与 logo 明确错开；left 固定 → 悬停展开时不位移，稳定可点。 */
+    left: 10px; right: auto; top: 50px; margin: 0;
   }
 
   /* ── 缩窄且未悬停：只显示一级 ── */
@@ -298,9 +321,9 @@
     flex-direction: row; justify-content: flex-start; align-items: center;
     padding: var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-3); min-height: 0; gap: var(--sp-2);
   }
-  /* 展开态：开关回到常规流右端（此时品牌行是横排，位置由 flex 决定且稳定） */
+  /* 悬停展开态：开关回到品牌行右侧（此态品牌行是横排、宽度固定 196，稳定） */
   .am-shell.is-collapsed .am-sidebar:has(.am-sidebar__nav:hover) .am-sidebar__toggle {
-    position: static; margin-left: auto; flex-shrink: 0;
+    left: auto; right: 10px; top: 14px; margin: 0;
   }
   /* 展开后按钮保持在**距左边缘同一位置**（不跟随宽度变化），
      否则又会出现"鼠标追不上"。视觉上它落在品牌名右侧附近，

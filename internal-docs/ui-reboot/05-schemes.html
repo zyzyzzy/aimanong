@@ -1,0 +1,1688 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-mode="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aimanong · 5 个差异极大的界面方案</title>
+<style>
+/* ============================================================================
+ * Aimanong 五方案展厅
+ * 零构建、零 CDN、纯 CSS。每个方案用 [data-scheme] 作用域隔离令牌，
+ * 每个方案自带亮/暗两套值 —— 直接就是可落地的 themes.css 片段。
+ * ========================================================================= */
+
+:root{
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB",
+    "Microsoft YaHei UI","Microsoft YaHei","Noto Sans SC","Source Han Sans SC","WenQuanYi Micro Hei",system-ui,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono","Cascadia Mono",Menlo,
+    Consolas,"Liberation Mono","Noto Sans Mono CJK SC",monospace;
+  --g-bg:#0a0a0c; --g-panel:#111114; --g-line:#26262b; --g-tx:#f2f2f5; --g-tx2:#a0a0ab; --g-tx3:#6e6e79;
+  --g-acc:#6e7be8;
+}
+html[data-mode="light"]{
+  --g-bg:#f4f4f6; --g-panel:#fff; --g-line:#e2e2e8; --g-tx:#14141a; --g-tx2:#55555f; --g-tx3:#8a8a94;
+  --g-acc:#4753c4;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--g-bg); color:var(--g-tx);
+  font-family:var(--font-sans); font-size:15px; line-height:1.75;
+  -webkit-font-smoothing:antialiased;
+  padding:0 0 120px;
+}
+.wrap{max-width:1240px;margin:0 auto;padding:0 28px}
+
+/* ---------- 展厅页头 ---------- */
+.masthead{padding:64px 0 40px;border-bottom:1px solid var(--g-line);margin-bottom:44px}
+.kicker{
+  font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--g-acc);font-weight:600;margin-bottom:14px
+}
+.masthead h1{font-size:clamp(30px,4.6vw,50px);line-height:1.14;margin:0 0 18px;letter-spacing:-.028em;font-weight:800}
+.masthead p{color:var(--g-tx2);max-width:78ch;margin:0 0 10px;font-size:15.5px}
+.masthead strong{color:var(--g-tx);font-weight:650}
+
+/* ---------- 诊断条 ---------- */
+.diag{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(228px,1fr));margin:32px 0 0}
+.diag div{background:var(--g-panel);border:1px solid var(--g-line);border-radius:10px;padding:15px 17px}
+.diag h4{margin:0 0 5px;font-size:12px;font-family:var(--font-mono);color:var(--g-tx3);font-weight:600;letter-spacing:.05em}
+.diag p{margin:0;font-size:14px;color:var(--g-tx);line-height:1.6}
+.diag code{font-family:var(--font-mono);font-size:12.5px;background:color-mix(in srgb,var(--g-acc) 15%,transparent);
+  color:var(--g-tx);padding:1px 5px;border-radius:4px}
+
+/* ---------- 工具条 ---------- */
+.toolbar{
+  position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--g-bg) 86%,transparent);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--g-line);padding:11px 0;margin-bottom:40px
+}
+.toolbar .wrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.toolbar b{font-size:14px;margin-right:auto}
+.btn{
+  font:inherit;font-size:13px;font-weight:600;color:var(--g-tx);background:var(--g-panel);
+  border:1px solid var(--g-line);border-radius:8px;padding:7px 13px;cursor:pointer;
+  transition:border-color .15s,background .15s,transform .12s
+}
+.btn:hover{border-color:var(--g-acc)}
+.btn:active{transform:scale(.97)}
+.btn[aria-pressed="true"]{background:var(--g-acc);border-color:var(--g-acc);color:#fff}
+
+/* ---------- 方案卡 ---------- */
+.scheme{margin:0 0 68px;scroll-margin-top:70px}
+.scheme__head{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;margin-bottom:6px}
+.scheme__no{
+  font-family:var(--font-mono);font-size:13px;font-weight:700;color:#fff;background:var(--g-acc);
+  min-width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex-shrink:0;margin-top:3px
+}
+.scheme__head h2{font-size:clamp(23px,3.1vw,31px);margin:0;letter-spacing:-.022em;font-weight:750;line-height:1.25}
+.scheme__vibe{color:var(--g-tx2);font-size:15px;margin:7px 0 0;max-width:82ch}
+.tags{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0 20px}
+.tag{
+  font-family:var(--font-mono);font-size:11.5px;font-weight:600;letter-spacing:.03em;
+  border:1px solid var(--g-line);border-radius:999px;padding:3.5px 11px;color:var(--g-tx2);background:var(--g-panel)
+}
+.tag--key{border-color:var(--g-acc);color:var(--g-acc)}
+
+/* ---------- 模拟界面 ---------- */
+.mock{
+  border:1px solid var(--g-line);border-radius:14px;overflow:hidden;background:#000;
+  margin-bottom:26px;box-shadow:0 20px 48px -20px rgba(0,0,0,.5)
+}
+.mock__bar{
+  display:flex;align-items:center;gap:7px;padding:9px 13px;background:#17171b;
+  border-bottom:1px solid #26262b
+}
+.mock__bar i{width:10px;height:10px;border-radius:50%;background:#3a3a42;display:block}
+.mock__bar i:first-child{background:#ff5f57}.mock__bar i:nth-child(2){background:#febc2e}.mock__bar i:nth-child(3){background:#28c840}
+.mock__url{
+  margin-left:9px;font-family:var(--font-mono);font-size:11.5px;color:#7c7c88;
+  background:#111114;border-radius:6px;padding:3px 10px
+}
+
+/* ===== 每个方案在 .mock__view 内重建一个真实后台外壳 ===== */
+.view{--sb:236px;--tb:56px;background:var(--c-canvas);color:var(--c-tx1);
+  font-size:13.5px;line-height:1.62;display:grid;grid-template-columns:var(--sb) minmax(0,1fr);
+  min-height:396px}
+
+/* 侧栏 */
+.v-side{background:var(--c-side);border-right:1px solid var(--c-line);padding:14px 12px;display:flex;flex-direction:column;gap:4px}
+.v-brand{display:flex;align-items:center;gap:9px;padding:4px 7px 14px;font-weight:700;font-size:14px}
+.v-mark{width:26px;height:26px;border-radius:var(--c-mark-r);display:grid;place-items:center;
+  font-family:var(--font-mono);font-size:10.5px;font-weight:700;flex-shrink:0;
+  background:var(--c-mark-bg);color:var(--c-mark-tx);border:var(--c-mark-bd)}
+.v-navlabel{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--c-tx3);padding:12px 8px 5px;font-weight:600}
+.v-item{display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:var(--c-item-r);
+  color:var(--c-tx2);height:var(--c-item-h);font-size:13px;font-weight:500}
+.v-item svg{width:15px;height:15px;flex-shrink:0;opacity:.85}
+.v-item.on{background:var(--c-active-bg);color:var(--c-active-tx);font-weight:600;border:var(--c-active-bd)}
+.v-dot{width:6px;height:6px;border-radius:2px;background:var(--c-dot);flex-shrink:0}
+.v-count{margin-left:auto;font-family:var(--font-mono);font-size:10.5px;opacity:.7}
+
+/* 主区 */
+.v-main{display:flex;flex-direction:column;min-width:0}
+.v-top{height:var(--tb);display:flex;align-items:center;gap:12px;padding:0 20px;
+  border-bottom:1px solid var(--c-line);background:var(--c-top);flex-shrink:0}
+.v-crumb{font-size:12.5px;color:var(--c-tx3);font-family:var(--font-mono)}
+.v-crumb b{color:var(--c-tx1);font-weight:600;font-family:var(--font-sans)}
+.v-search{margin-left:auto;font-size:12px;color:var(--c-tx3);border:1px solid var(--c-line);
+  border-radius:var(--c-input-r);padding:4px 11px;background:var(--c-input-bg);min-width:132px;
+  display:flex;align-items:center;gap:6px}
+.v-kbd{font-family:var(--font-mono);font-size:10px;border:1px solid var(--c-line);border-radius:4px;
+  padding:1px 5px;margin-left:auto;color:var(--c-tx3)}
+.v-body{padding:var(--c-pad);display:flex;flex-direction:column;gap:16px;min-width:0;flex:1}
+.v-hero{font-size:var(--c-h1);font-weight:var(--c-h1-w);letter-spacing:var(--c-h1-ls);
+  line-height:1.16;margin:0;color:var(--c-tx1)}
+.v-sub{color:var(--c-tx2);font-size:13px;margin:6px 0 0}
+.v-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--c-gap)}
+.v-stat{background:var(--c-card);border:var(--c-card-bd);border-radius:var(--c-card-r);
+  padding:13px 15px;position:relative;overflow:hidden;box-shadow:var(--c-card-sh)}
+.v-stat::after{content:'';position:absolute;inset:0;background:var(--c-stat-fx);pointer-events:none}
+.v-stat__k{font-size:11px;color:var(--c-tx3);font-family:var(--font-mono);letter-spacing:.05em;position:relative}
+.v-stat__v{font-size:var(--c-stat);font-weight:750;letter-spacing:-.03em;margin-top:3px;
+  font-family:var(--c-stat-font);position:relative;line-height:1.15;color:var(--c-stat-tx)}
+.v-stat__v small{font-size:.5em;font-weight:600;opacity:.6;margin-left:2px}
+.v-table{background:var(--c-card);border:var(--c-card-bd);border-radius:var(--c-card-r);
+  overflow:hidden;box-shadow:var(--c-card-sh)}
+.v-throw{display:flex;align-items:center;padding:9px 15px;border-bottom:1px solid var(--c-line);
+  font-size:11px;font-family:var(--font-mono);color:var(--c-tx3);letter-spacing:.05em;
+  background:var(--c-th);font-weight:600}
+.v-tr{display:grid;grid-template-columns:52px minmax(0,1fr) 92px 76px;gap:10px;align-items:center;
+  padding:10px 15px;border-bottom:1px solid var(--c-line);font-size:13px}
+.v-tr:last-child{border-bottom:0}
+.v-tr span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.v-id{font-family:var(--font-mono);font-size:11.5px;color:var(--c-tx3)}
+.v-pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;
+  padding:2px 9px;border-radius:var(--c-pill-r);border:var(--c-pill-bd);
+  background:var(--c-pill-bg);color:var(--c-pill-tx);width:max-content}
+.v-pill em{width:5px;height:5px;border-radius:50%;background:currentColor;display:block}
+.v-num{font-family:var(--font-mono);font-size:12.5px;text-align:right;color:var(--c-tx2)}
+
+/* 方案 A：额外的顶部活动条 */
+.v-actbar{height:30px;background:var(--c-actbar-bg);border-bottom:1px solid var(--c-line);
+  display:flex;align-items:center;gap:8px;padding:0 20px;font-size:11.5px;
+  font-family:var(--font-mono);color:var(--c-tx2);flex-shrink:0;position:relative;overflow:hidden}
+.v-actbar::after{content:'';position:absolute;left:0;bottom:0;height:2px;width:38%;
+  background:var(--c-actbar-fx);animation:vslide 3.4s var(--c-ease) infinite}
+@keyframes vslide{0%{left:-38%}100%{left:100%}}
+.v-rail{background:var(--c-rail);border-right:1px solid var(--c-line);
+  display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 0}
+.v-rail div{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;
+  color:var(--c-tx3);font-size:15px}
+.v-rail div.on{background:var(--c-active-bg);color:var(--c-active-tx)}
+.v-three{display:grid;grid-template-columns:var(--c-rail) var(--c-ctx) minmax(0,1fr)}
+
+/* 方案 C：抽屉式无常驻侧栏 */
+.v-noside{display:grid;grid-template-columns:minmax(0,1fr)}
+.v-center{max-width:var(--c-maxw);margin:0 auto;width:100%}
+.v-fab{position:absolute;left:16px;bottom:16px;width:44px;height:44px;border-radius:50%;
+  background:var(--c-fab-bg);color:var(--c-fab-tx);display:grid;place-items:center;
+  box-shadow:0 8px 24px -6px rgba(0,0,0,.34);font-size:17px;z-index:9}
+.v-rel{position:relative}
+
+/* 方案 D：通栏渐变 hero */
+.v-gradhero{background:var(--c-hero-bg);padding:26px 24px 30px;border-radius:var(--c-hero-r);
+  position:relative;overflow:hidden;border:var(--c-card-bd)}
+.v-gradhero .v-hero{color:var(--c-hero-tx)}
+.v-gradhero .v-sub{color:var(--c-hero-tx2)}
+.v-herobig{font-size:var(--c-stat-big);font-weight:800;letter-spacing:-.04em;
+  font-family:var(--font-mono);color:var(--c-hero-tx);line-height:1;margin-top:14px}
+.v-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.v-tile{background:var(--c-card);border:var(--c-card-bd);border-radius:var(--c-card-r);
+  padding:14px 16px;position:relative;overflow:hidden;box-shadow:var(--c-card-sh)}
+.v-tile::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--c-tile-fx)}
+.v-tile h5{margin:0 0 4px;font-size:13.5px;font-weight:650}
+.v-tile p{margin:0;font-size:12px;color:var(--c-tx2);line-height:1.6}
+
+/* 方案 E：彩色卡片导航 + 硬阴影 */
+.v-bazaar .v-side{background:var(--c-side);border-right:var(--c-side-bd)}
+.v-cards{display:flex;flex-direction:column;gap:8px}
+.v-navcard{border:var(--c-navcard-bd);border-radius:var(--c-navcard-r);
+  background:var(--c-navcard-bg);box-shadow:var(--c-navcard-sh);padding:9px 12px;
+  display:flex;align-items:center;gap:9px;font-size:13px;font-weight:650;color:var(--c-tx1)}
+.v-navcard.on{background:var(--c-navcard-on-bg);color:var(--c-navcard-on-tx)}
+.v-navcard b{width:9px;height:9px;border-radius:2px;display:block;background:var(--c-dot);flex-shrink:0}
+.v-navcard.on b{background:currentColor}
+.v-hard{box-shadow:var(--c-hard-sh)}
+
+/* ---------- 规格区块 ---------- */
+.specs{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(298px,1fr))}
+.spec{background:var(--g-panel);border:1px solid var(--g-line);border-radius:11px;padding:17px 19px}
+.spec h4{
+  margin:0 0 12px;font-size:12px;font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;
+  color:var(--g-acc);font-weight:700;display:flex;align-items:center;gap:7px
+}
+.spec ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px}
+.spec li{font-size:13.5px;line-height:1.68;color:var(--g-tx2);display:flex;gap:9px}
+.spec li b{color:var(--g-tx);font-weight:640;flex-shrink:0}
+.spec li i{font-style:normal;flex-shrink:0;color:var(--g-acc);font-weight:700}
+.spec.full{grid-column:1/-1}
+
+/* 色板 */
+.sw{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
+.sw figure{margin:0;width:80px}
+.sw .chip{height:46px;border-radius:8px;border:1px solid var(--g-line);margin-bottom:5px;position:relative}
+.sw .chip span{position:absolute;bottom:4px;right:5px;font-family:var(--font-mono);font-size:9px;
+  color:#fff;mix-blend-mode:difference;letter-spacing:.02em}
+.sw figcaption{font-size:10.5px;color:var(--g-tx3);line-height:1.35;font-family:var(--font-mono);
+  overflow-wrap:anywhere}
+.sw .grad{width:100%;height:44px;border-radius:8px;border:1px solid var(--g-line);margin-bottom:6px}
+
+/* 尺寸条 */
+.dims{display:flex;flex-direction:column;gap:11px}
+.dim{display:grid;grid-template-columns:118px minmax(0,1fr) 62px;gap:11px;align-items:center;font-size:12.5px}
+.dim span:first-child{color:var(--g-tx3);font-family:var(--font-mono);font-size:11.5px}
+.dim .track{height:9px;background:var(--g-line);border-radius:3px;overflow:hidden}
+.dim .fill{height:100%;background:var(--g-acc);border-radius:3px}
+.dim b{font-family:var(--font-mono);font-size:11.5px;text-align:right;color:var(--g-tx)}
+
+/* 表格（可行性） */
+table.feas{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
+table.feas th{text-align:left;padding:9px 11px;border-bottom:1px solid var(--g-line);
+  font-family:var(--font-mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--g-tx3)}
+table.feas td{padding:9px 11px;border-bottom:1px solid var(--g-line);color:var(--g-tx2);vertical-align:top}
+table.feas td b{color:var(--g-tx)}
+.ok{color:#3fb950;font-weight:700}
+.mid{color:#d29922;font-weight:700}
+.no{color:#f85149;font-weight:700}
+html[data-mode="light"] .ok{color:#1a7f37}
+html[data-mode="light"] .mid{color:#9a6700}
+html[data-mode="light"] .no{color:#cf222e}
+
+/* 推荐区 */
+.verdict{border:1px solid var(--g-acc);border-radius:15px;padding:30px 32px;background:var(--g-panel);
+  margin-top:52px;position:relative;overflow:hidden}
+.verdict::before{content:'';position:absolute;inset:0;background:
+  radial-gradient(60% 120% at 100% 0%,color-mix(in srgb,var(--g-acc) 17%,transparent),transparent 70%);pointer-events:none}
+.verdict h2{margin:0 0 6px;font-size:clamp(22px,3vw,29px);letter-spacing:-.022em;position:relative}
+.verdict h3{margin:26px 0 9px;font-size:16px;position:relative}
+.verdict p,.verdict li{color:var(--g-tx2);position:relative;font-size:14.5px}
+.verdict ul{margin:9px 0;padding-left:20px}
+.verdict li{margin:6px 0}
+.verdict code{font-family:var(--font-mono);font-size:12.5px;background:var(--g-bg);
+  border:1px solid var(--g-line);padding:1px 5px;border-radius:4px;color:var(--g-tx)}
+
+.note{font-size:13px;color:var(--g-tx3);border-left:2px solid var(--g-line);padding-left:13px;margin:16px 0 0}
+/* ---- 响应式：按 320 → 2560 逐档处理，表格是重点 ----
+ * 关键：A 是三栏、C 是单栏、B/D/E 是两栏，必须分别处理，
+ * 不能用一个 .view 通用规则（会把 C 挤进 56px 列、让 A 的第三栏换行）。 */
+
+/* --- A · 三栏降级：先收上下文栏，再收图标轨 --- */
+@media (max-width:1180px){
+  [data-scheme="A"] .v-three{grid-template-columns:72px minmax(0,1fr)}
+  [data-scheme="A"] .v-side{display:none}
+}
+/* --- B/D/E · 两栏：侧栏收窄 --- */
+@media (max-width:1180px){
+  [data-scheme="B"] .view,
+  [data-scheme="D"] .view{grid-template-columns:172px minmax(0,1fr)}
+  [data-scheme="E"] .v-three{grid-template-columns:184px minmax(0,1fr)}
+}
+@media (max-width:900px){
+  .v-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  /* 表格降级：先砍「浏览量」，再砍 ID */
+  .v-tr{grid-template-columns:44px minmax(0,1fr) 74px}
+  .v-tr span:last-child{display:none}
+  .v-body{padding:16px}
+  .v-hero{font-size:calc(var(--c-h1) * .82)}
+}
+@media (max-width:760px){
+  /* 窄屏统一收成 56px 图标条；C 是单栏，不参与 */
+  [data-scheme="A"] .v-three{grid-template-columns:56px minmax(0,1fr)}
+  [data-scheme="B"] .view,
+  [data-scheme="D"] .view,
+  [data-scheme="E"] .v-three{grid-template-columns:56px minmax(0,1fr)}
+  .v-side{padding:10px 6px}
+  .v-side .v-brand span:last-child,
+  .v-side .v-navlabel,
+  .v-item span:not(.v-count),
+  .v-item .v-count,
+  .v-navcard span{display:none}
+  .v-item{justify-content:center;padding:6px}
+  .v-navcard{justify-content:center;padding:8px}
+  .v-tr{grid-template-columns:minmax(0,1fr) 68px}
+  .v-tr span:first-child{display:none}
+}
+@media (max-width:620px){
+  .wrap{padding:0 16px}
+  .v-stats{grid-template-columns:minmax(0,1fr)}
+  .v-tiles{grid-template-columns:minmax(0,1fr)}
+  .dim{grid-template-columns:88px minmax(0,1fr) 54px}
+  .mock__url{display:none}
+}
+@media (max-width:420px){
+  /* 320px 兜底：表格彻底转堆叠卡片，杜绝横向滚动 */
+  .v-tr{grid-template-columns:minmax(0,1fr);gap:3px}
+  .v-tr span:last-child{display:block;text-align:left}
+  .v-num{text-align:left}
+  .v-throw{display:none}
+  .v-hero{font-size:calc(var(--c-h1) * .68)}
+  .v-search{min-width:0;flex:1}
+  .v-kbd{display:none}
+}
+@media (min-width:1600px){
+  .v-center{max-width:var(--c-maxw)}
+  .view{--c-pad:32px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ==========================================================================
+ * 方案令牌 —— 每个 [data-scheme] 就是一份可直接搬进 themes.css 的片段
+ * ======================================================================= */
+
+/* ---------- A · 蓝图 Blueprint（暗色优先 / 三栏 / Linear 底座） ---------- */
+[data-scheme="A"]{
+  /* Linear 实测令牌：画布 #08090a、卡片 #0f1011、边框 #23252a / 6% 白 */
+  --c-canvas:#08090a; --c-side:#0a0b0d; --c-rail:#050607; --c-top:#0a0b0d;
+  --c-ctx:#0c0d0f; --c-rail:88px; --c-ctx:196px;
+  --c-card:#0f1011; --c-th:#0b0c0d; --c-input-bg:#0b0c0d;
+  --c-line:#23252a;
+  --c-card-bd:1px solid rgba(255,255,255,.075);
+  --c-card-sh:none; --c-card-r:10px; --c-pill-r:999px;
+  --c-pill-bg:color-mix(in srgb,#4ade80 17%,transparent); --c-pill-tx:#6ee7a0;
+  --c-pill-bd:1px solid color-mix(in srgb,#4ade80 30%,transparent);
+  /* Linear 四级文本实测：#f7f8f8 / #d0d6e0 / #8a8f98 / #62666d */
+  --c-tx1:#f7f8f8; --c-tx2:#d0d6e0; --c-tx3:#8a8f98;
+  /* Linear 关键分工：#5E6AD2 只做「面」，#7170FF/#828FFF 只做「字与线」 */
+  --c-active-bg:#18182f; --c-active-tx:#828fff; --c-active-bd:none;
+  --c-mark-bg:linear-gradient(135deg,#5e6ad2,#3f4bb8); --c-mark-tx:#fff; --c-mark-r:7px; --c-mark-bd:none;
+  --c-dot:#5e6ad2; --c-gap:11px; --c-pad:20px; --c-ease:cubic-bezier(.22,1,.36,1);
+  --c-item-r:7px; --c-item-h:29px; --c-input-r:7px;
+  --c-h1:27px; --c-h1-w:700; --c-h1-ls:-.028em; --c-stat:25px;
+  --c-stat-font:var(--font-mono); --c-stat-tx:#f2f5f8;
+  --c-stat-fx:radial-gradient(80% 130% at 100% 0,color-mix(in srgb,#5e6ad2 16%,transparent),transparent 62%);
+  --c-actbar-bg:#0a0b0e;
+  --c-actbar-fx:linear-gradient(90deg,transparent,#5e6ad2,#828fff,#5e6ad2,transparent);
+}
+[data-scheme="A"][data-m="light"]{
+  /* Linear light 实测：画布 #fff、四级底 #f8f8f8/#f4f4f4/#f0f0f0、边框 #e9e8ea */
+  --c-canvas:#ffffff; --c-side:#fafafa; --c-rail:#fafafa; --c-top:#fafafa;
+  --c-ctx:#f8f8f8; --c-card:#ffffff; --c-th:#fafafa; --c-input-bg:#f8f8f8;
+  --c-line:#e9e8ea; --c-card-bd:1px solid #e9e8ea;
+  --c-card-sh:0 1px 2px rgba(16,24,40,.05);
+  --c-tx1:#282a30; --c-tx2:#3c4149; --c-tx3:#6f6e77;
+  --c-pill-tx:#15803d; --c-active-bg:#f1f1ff; --c-active-tx:#5e6ad2;
+  --c-stat-fx:radial-gradient(80% 130% at 100% 0,#eef1fe,transparent 62%);
+}
+
+/* ---------- B · 新芽 Sprout（亮色为主 / 超大顶栏 / Stripe 底座） ---------- */
+[data-scheme="B"]{
+  /* Stripe 实测：画布 #f6f9fc、边框 #e5edf5、字 #0a2540 / #425466 / #697386 */
+  --c-canvas:#f6f9fc; --c-side:#ffffff; --c-top:#ffffff; --c-rail:#ffffff; --c-ctx:#ffffff;
+  --c-card:#ffffff; --c-th:#f8fafd; --c-input-bg:#f0f4f8;
+  --c-line:#e5edf5; --c-card-bd:1px solid #e5edf5;
+  --c-card-sh:0 1px 3px rgba(60,50,30,.07),0 8px 22px -14px rgba(60,50,30,.2);
+  --c-card-r:14px; --c-pill-r:999px;
+  --c-pill-bg:#e8f8ee; --c-pill-tx:#0f7a3d;
+  --c-pill-bd:1px solid #bfe8cf;
+  --c-tx1:#0a2540; --c-tx2:#425466; --c-tx3:#697386;
+  --c-active-bg:#f5f5ff; --c-active-tx:#533afd; --c-active-bd:none;
+  /* LOGO 四色（唯一用满四色相处） */
+  --c-mark-bg:linear-gradient(135deg,#e0503c,#e8a840 45%,#4bbf6b); --c-mark-tx:#fff; --c-mark-r:8px; --c-mark-bd:none;
+  --c-dot:#533afd; --c-gap:13px; --c-pad:22px; --c-ease:cubic-bezier(.22,1,.36,1);
+  --c-item-r:9px; --c-item-h:31px; --c-input-r:999px;
+  --c-h1:31px; --c-h1-w:780; --c-h1-ls:-.03em; --c-stat:34px;
+  --c-stat-font:var(--font-sans); --c-stat-tx:#0a2540;
+  --c-stat-fx:linear-gradient(160deg,color-mix(in srgb,#533afd 8%,transparent),transparent 58%);
+  --c-actbar-bg:#fff; --c-actbar-fx:linear-gradient(90deg,#e0503c,#e8a840,#70d070,#205098);
+  /* 数字强调色：亮色档（对白卡 ≥4.5:1，实测 5.81 / 5.42） */
+  --c-num-a:#533afd; --c-num-b:#0f7a3d;
+}
+[data-scheme="B"][data-m="dark"]{
+  /* 暗色不是取反：Stripe 深蓝 #0a2540 家族，保持冷色温 */
+  --c-canvas:#0a1628; --c-side:#0d1b30; --c-top:#0d1b30; --c-rail:#0d1b30; --c-ctx:#0d1b30;
+  --c-card:#131f33; --c-th:#0e1a2c; --c-input-bg:#1a2740;
+  --c-line:#1f3350; --c-card-bd:1px solid #24405f;
+  --c-card-sh:0 1px 3px rgba(0,0,0,.34);
+  --c-tx1:#e6edf7; --c-tx2:#9fb3cc; --c-tx3:#7d90a8;
+  --c-pill-bg:#12291c; --c-pill-tx:#6ee7a0; --c-pill-bd:1px solid #1f4530;
+  --c-active-bg:#1c2b4a; --c-active-tx:#8b93ff;
+  --c-stat-tx:#e6edf7;
+  --c-stat-fx:linear-gradient(160deg,color-mix(in srgb,#8b93ff 15%,transparent),transparent 58%);
+  /* 暗色档：必须提亮，否则对深卡仅 2.93 / 3.13（实测 6.18 / 11.01） */
+  --c-num-a:#8b93ff; --c-num-b:#6ee7a0;
+}
+
+/* ---------- C · 纯白 Pure（极简精致 / 无常驻侧栏 / Geist 底座） ---------- */
+[data-scheme="C"]{
+  --c-canvas:#ffffff; --c-side:#fafafa; --c-top:#ffffff; --c-rail:#fafafa; --c-ctx:#fafafa;
+  --c-card:#ffffff; --c-th:#fafafa; --c-input-bg:#fafafa;
+  --c-line:#ededed; --c-card-bd:none;
+  /* Geist 签名：边框不是 border，是 8% 黑阴影环 */
+  --c-card-sh:0 0 0 1px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.03);
+  --c-card-r:12px; --c-pill-r:999px;
+  --c-pill-bg:#f2f2f2; --c-pill-tx:#171717; --c-pill-bd:1px solid #e2e2e2;
+  /* Geist 实测：#171717 / #4c4c4c 与灰阶 10 级语义 */
+  --c-tx1:#171717; --c-tx2:#4c4c4c; --c-tx3:#8f8f8f;
+  --c-active-bg:#f2f2f2; --c-active-tx:#0a0a0a; --c-active-bd:none;
+  --c-mark-bg:#0a0a0a; --c-mark-tx:#fff; --c-mark-r:6px; --c-mark-bd:none;
+  --c-dot:#12a150; --c-gap:12px; --c-pad:26px; --c-ease:cubic-bezier(.175,.885,.32,1.1);
+  --c-item-r:6px; --c-item-h:30px; --c-input-r:6px; --c-maxw:1000px;
+  --c-h1:44px; --c-h1-w:680; --c-h1-ls:-.035em; --c-stat:38px;
+  --c-stat-font:var(--font-sans); --c-stat-tx:#0a0a0a;
+  --c-stat-fx:none;
+  --c-fab-bg:#0a0a0a; --c-fab-tx:#fff;
+  --c-actbar-bg:#fff; --c-actbar-fx:linear-gradient(90deg,#0a0a0a,#737373);
+}
+[data-scheme="C"][data-m="dark"]{
+  --c-canvas:#000000; --c-side:#0a0a0a; --c-top:#000000; --c-rail:#0a0a0a; --c-ctx:#0a0a0a;
+  --c-card:#0a0a0a; --c-th:#000000; --c-input-bg:#0a0a0a;
+  --c-line:#1f1f1f; --c-card-bd:none;
+  /* 暗色环 14% 白（实测 #ffffff25 档） */
+  --c-card-sh:0 0 0 1px rgba(255,255,255,.14),0 1px 2px rgba(0,0,0,.5);
+  --c-tx1:#ededed; --c-tx2:#a1a1a1; --c-tx3:#7d7d7d;
+  --c-pill-bg:#1a1a1a; --c-pill-tx:#ededed; --c-pill-bd:1px solid #2e2e2e;
+  --c-active-bg:#1a1a1a; --c-active-tx:#ededed;
+  --c-mark-bg:#ededed; --c-mark-tx:#0a0a0a;
+  --c-dot:#3ecf8e; --c-stat-tx:#ededed;
+  --c-fab-bg:#ededed; --c-fab-tx:#0a0a0a;
+  --c-actbar-bg:#000; --c-actbar-fx:linear-gradient(90deg,#ededed,#7d7d7d);
+}
+
+/* ---------- D · 双轨 Duotone（强烈渐变 / 通栏 Hero / Sentry 底座） ---------- */
+[data-scheme="D"]{
+  /* Sentry 实测：画布 #1f1633、卡片 #181225、边框 #362d59 */
+  --c-canvas:#1f1633; --c-side:#1a1229; --c-top:#1a1229; --c-rail:#1a1229; --c-ctx:#1a1229;
+  --c-card:#251a3d; --c-th:#1f1633; --c-input-bg:#2b1f47;
+  --c-line:#362d59;
+  --c-card-bd:1px solid #362d59;
+  --c-card-sh:0 8px 26px -14px rgba(0,0,0,.7);
+  --c-card-r:18px; --c-pill-r:999px;
+  --c-pill-bg:color-mix(in srgb,#c2ef4e 15%,transparent); --c-pill-tx:#c2ef4e;
+  --c-pill-bd:1px solid color-mix(in srgb,#c2ef4e 30%,transparent);
+  /* Sentry 实测：#ececf1 / #a9a4c8，favicon 色域的绿粉只做点位强调 */
+  --c-tx1:#ececf1; --c-tx2:#b9b3d4; --c-tx3:#8b85a8;
+  --c-active-bg:linear-gradient(135deg,#422082,#4e2a9a); --c-active-tx:#fff; --c-active-bd:none;
+  --c-mark-bg:linear-gradient(135deg,#7553ff,#f0369a 55%,#67c800); --c-mark-tx:#fff; --c-mark-r:9px; --c-mark-bd:none;
+  --c-dot:#fd44b0; --c-gap:13px; --c-pad:22px; --c-ease:cubic-bezier(.34,1.3,.5,1);
+  --c-item-r:10px; --c-item-h:32px; --c-input-r:10px;
+  --c-h1:30px; --c-h1-w:780; --c-h1-ls:-.03em; --c-stat:32px;
+  --c-stat-font:var(--font-mono); --c-stat-tx:#ececf1;
+  --c-stat-fx:radial-gradient(90% 140% at 100% 0,color-mix(in srgb,#fd44b0 18%,transparent),transparent 64%);
+  /* Sentry 实测渐变 linear-gradient(149deg,#36166b 18.17%,#422082 56.94%,#4e2a9a 95.71%) */
+  --c-hero-bg:linear-gradient(149deg,#36166b 18%,#422082 57%,#4e2a9a 96%);
+  --c-hero-tx:#fff; --c-hero-tx2:rgba(255,255,255,.82); --c-hero-r:20px;
+  --c-stat-big:46px;
+  --c-tile-fx:linear-gradient(90deg,#7553ff,#f0369a,#67c800);
+  --c-actbar-bg:#100e1f; --c-actbar-fx:linear-gradient(90deg,#7553ff,#f0369a,#c2ef4e,#36c5f0);
+}
+[data-scheme="D"][data-m="light"]{
+  --c-canvas:#faf9ff; --c-side:#ffffff; --c-top:#ffffff; --c-rail:#ffffff; --c-ctx:#ffffff;
+  --c-card:#ffffff; --c-th:#f8f6ff; --c-input-bg:#f3f1fb;
+  --c-line:#e4dff5; --c-card-bd:1px solid #e4dff5;
+  --c-card-sh:0 4px 16px -8px rgba(80,60,180,.2);
+  --c-tx1:#1f1633; --c-tx2:#554d75; --c-tx3:#6f6790;
+  --c-pill-bg:#eef8d8; --c-pill-tx:#3f6b00; --c-pill-bd:1px solid #cdea9a;
+  --c-stat-fx:radial-gradient(90% 140% at 100% 0,color-mix(in srgb,#f0369a 11%,transparent),transparent 64%);
+}
+
+/* ---------- E · 集市 Bazaar（大胆用色 / 硬阴影 / PostHog 底座） ---------- */
+[data-scheme="E"]{
+  /* PostHog 官方：底 #EEEFE9 暖鼠尾草、文字 #151515、accent #E5E7E0 */
+  --c-canvas:#EEEFE9; --c-side:#EEEFE9; --c-top:#fff; --c-rail:#EEEFE9; --c-ctx:#EEEFE9;
+  --c-card:#ffffff; --c-th:#f7f7f2; --c-input-bg:#fff;
+  --c-line:#1a1a1a; --c-card-bd:2px solid #1a1a1a;
+  --c-card-sh:none; --c-side-bd:2px solid #1a1a1a;
+  --c-card-r:8px; --c-pill-r:4px;
+  --c-pill-bg:#f9bd2b; --c-pill-tx:#1a1a1a; --c-pill-bd:2px solid #1a1a1a;
+  --c-tx1:#151515; --c-tx2:#4a4a45; --c-tx3:#6b6b63;
+  --c-active-bg:#1d4aff; --c-active-tx:#fff; --c-active-bd:2px solid #1a1a1a;
+  --c-mark-bg:#1d4aff; --c-mark-tx:#fff; --c-mark-r:4px; --c-mark-bd:2px solid #1a1a1a;
+  --c-dot:#F54E00; --c-gap:13px; --c-pad:24px; --c-ease:cubic-bezier(.34,1.45,.5,1);
+  --c-item-r:4px; --c-item-h:32px; --c-input-r:4px;
+  --c-h1:33px; --c-h1-w:800; --c-h1-ls:-.022em; --c-stat:36px;
+  --c-stat-font:var(--font-sans); --c-stat-tx:#151515;
+  --c-stat-fx:none;
+  --c-navcard-bd:2px solid #1a1a1a; --c-navcard-r:6px; --c-navcard-bg:#fff;
+  --c-navcard-sh:3px 3px 0 #1a1a1a;
+  --c-navcard-on-bg:#f9bd2b; --c-navcard-on-tx:#1a1a1a;
+  --c-hard-sh:4px 4px 0 #1a1a1a;
+  --c-actbar-bg:#fff; --c-actbar-fx:linear-gradient(90deg,#f54e00,#f9bd2b,#1d4aff,#12a150);
+  /* 亮色档（对白卡实测 6.04 / 5.42） */
+  --c-num-a:#1d4aff; --c-num-b:#0f7a3d;
+}
+[data-scheme="E"][data-m="dark"]{
+  --c-canvas:#171310; --c-side:#171310; --c-top:#1f1a16; --c-rail:#171310; --c-ctx:#171310;
+  --c-card:#221c17; --c-th:#2a231d; --c-input-bg:#2a231d;
+  --c-line:#e8e0d4; --c-tx1:#f7f2ea; --c-tx2:#c2b8a8; --c-tx3:#9c9284;
+  --c-card-bd:2px solid #f7f2ea; --c-side-bd:2px solid #f7f2ea;
+  --c-pill-bg:#f9bd2b; --c-pill-tx:#171310; --c-pill-bd:2px solid #f7f2ea;
+  --c-navcard-bd:2px solid #f7f2ea; --c-navcard-bg:#221c17;
+  --c-navcard-sh:3px 3px 0 #f7f2ea;
+  --c-navcard-on-bg:#1d4aff; --c-navcard-on-tx:#fff;
+  --c-hard-sh:4px 4px 0 #f7f2ea;
+  --c-stat-tx:#f7f2ea;
+  /* 暗色档：蓝必须提亮（2.79 → 7.53），绿本就达标 */
+  --c-num-a:#8cabff; --c-num-b:#12a150;
+  --c-actbar-bg:#1f1a16;
+}
+
+/* 长 CSS 值/色值不撑破容器（主 agent 补充：响应式验证发现） */
+code, pre, .spec, .kv, .swatch-row {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+pre { overflow-x: auto; max-width: 100%; }
+code { max-width: 100%; display: inline-block; vertical-align: bottom; }
+
+/* 320px 极窄档：中文长句与连续色值的断行（主 agent 补充） */
+li, li span, li b, p, p span, p b, .spec, .kv, td, th {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+}
+ul, ol { padding-left: 1.1em; }
+@media (max-width: 420px) {
+  body { padding-left: 12px; padding-right: 12px; }
+  .wrap, .container, main { padding-left: 0; padding-right: 0; }
+}
+
+/* 展厅内嵌的产品 mockup 在极窄屏的处理（主 agent 补充）
+   320px 下 mockup 的最小内容宽度仍会溢出 → 改为横向可滚，不撑破页面 */
+.view, .view * { min-width: 0; }
+@media (max-width: 520px) {
+  .view-wrap, .mock, .device {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .view {
+    min-width: 300px;   /* 保证内部布局不崩，由外层滚动 */
+  }
+}
+/* 兜底：任何元素都不许撑破视口 */
+html, body { max-width: 100%; overflow-x: hidden; }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <b>Aimanong · 5 个差异极大的界面方案</b>
+    <button class="btn" id="modeBtn">切换亮 / 暗</button>
+    <button class="btn" id="allMode">全部亮色</button>
+    <button class="btn" id="allDark">全部暗色</button>
+    <button class="btn" id="allSig">恢复各自本色</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+<header class="masthead">
+  <div class="kicker">UI Reboot · 2026</div>
+  <h1>五个差异极大的方案，<br>外加一份基于实测的产品视觉语言解剖</h1>
+  <p>前几版之所以被否决，根因不是「没做好看」，而是<strong>把 LOGO 的四个色相压成了一个蓝色</strong>，同时保留了
+  2015 年的骨架。下面分三步：<b>① 诊断（像素级证据）→ ② 11 个产品的视觉语言解剖（实测色值/尺寸）→ ③ 五个差异极大的方案 + 可行性</b>。</p>
+
+  <div class="diag">
+    <div>
+      <h4>证据 1 · 色相被压扁</h4>
+      <p>对 <code>logo.png</code> 逐像素统计：蓝 <code>#205098</code> 占 61.8%、绿 15.7%、橙红 9.0%、橙黄 8.6%。
+      品牌本来是<strong>四色相</strong>，v3 却只用蓝色 → 单色相必然「闷」。</p>
+    </div>
+    <div>
+      <h4>证据 2 · 骨架十年未变</h4>
+      <p><code>--w-sidebar:236px</code> + <code>--h-topbar:52px</code> + 内容区。这与 AdminLTE 2015 的结构同构，
+      只是把 56 改成 52。改数字不等于换骨架。</p>
+    </div>
+    <div>
+      <h4>证据 3 · 冲击面为零</h4>
+      <p>最大字号 26px、最大色块是白色卡片、唯一渐变是 3% 白的光晕。整个界面没有任何一处
+      「面积 × 饱和度」同时高的区域。</p>
+    </div>
+    <div>
+      <h4>证据 4 · 细节在省事而非精致</h4>
+      <p>等宽字体被大量用于中文（<code>SLUG</code>、面包屑、表头），hairline 全是 1px 而不是 0.5px。
+      精致来自<strong>亚像素与 1%–6% 的 alpha 台阶</strong>，不是来自「用了 mono 字体」。</p>
+    </div>
+  </div>
+</header>
+
+<!-- ================================================== 第一步：视觉语言解剖 -->
+<section class="scheme" id="anatomy">
+  <div class="scheme__head">
+    <div class="scheme__no">1</div>
+    <div>
+      <h2>第一步 · 11 个产品的视觉语言解剖</h2>
+      <p class="scheme__vibe">下面每个数值都来自对产品<b>生产环境 CSS 的直接抓取</b>、官方品牌页或设计系统文档，
+      不是凭记忆写的。凡属推断的都标了「估」。</p>
+    </div>
+  </div>
+
+  <div class="specs">
+
+    <div class="spec">
+      <h4>Linear · 冷静精密</h4>
+      <ul>
+        <li><i>签名</i><span><b>光晕是数学不是模糊</b>：把 6% 白 tint 手工切成 8 段 alpha
+        （100→94→78→58→35→16→3→0%）用 <code>color-mix</code> 逐段递减，替代 <code>filter:blur</code>。
+        另加 <code>--border-hairline:.5px</code> 亚像素描边。</span></li>
+        <li><i>色</i><span>主 <code>#5E6AD2</code>（只做「面」：按钮底/焦点环/选区）·
+        强调 <code>#7170FF</code>/<code>#828FFF</code>（只做「字与线」）·
+        画布 <code>#08090a</code>，四级 <code>#08090a→#0f1011→#141516→#191a1b</code> ·
+        边框 <code>#23252a</code> / 6% 白 <code>#ffffff0f</code> ·
+        文字 <code>#f7f8f8</code>/<code>#d0d6e0</code>/<code>#8a8f98</code>/<code>#62666d</code></span></li>
+        <li><i>渐变</i><span>描边 <code>linear-gradient(135deg,#ffffff26 0%,#ffffff0d 25%) border-box</code>；
+        hero <code>linear-gradient(180deg,#08090a 10%,#d0d6e0 100%)</code> —— <b>用文字色当背景亮部</b></span></li>
+        <li><i>尺寸</i><span>侧栏 232px · 顶栏 72px（≤640 降 64）· 圆角 4/6/8/12/16/24/32 ·
+        正文 15px/1.6/-0.011em · 标题 17→72px · 导航项高 28px、<b>项间距仅 2px</b> ·
+        字重 300/400/<b>510/590/680</b>（刻意避开 500/600/700）</span></li>
+        <li><i>冲击来源</i><span>近黑画布 + 亚像素结构 + 局部光源。<b>没有一处饱和色铺大面积</b>，
+        冲击来自「在几乎全黑的画面上仍能分辨 4 层结构」</span></li>
+        <li><i>细节</i><span>active <code>scale(.97)</code> · hover <code>brightness(1.08)</code> ·
+        过渡 <code>.16s ease-out-quad</code> · 图标 12/16/18px · 焦点环 2px offset 2px</span></li>
+        <li><i>怎么不闷</i><span>4 级近黑台阶 + 1%~25% 白 <b>9 档 alpha 台阶</b> +
+        大面积中性配极小面积高饱和 + 外来彩色 logo 一律 <code>grayscale</code> 强制单色化</span></li>
+        <li><i>中文坑</i><span>字重 510/590 <b>无法映射</b>中文字体；负字距对中文必须归零；
+        15px 对中文偏小，建议 16px / 行高 1.75–1.8；Berkeley Mono 不含中文字形</span></li>
+      </ul>
+    </div>
+
+    <div class="spec">
+      <h4>Vercel / Geist · 黑白极简</h4>
+      <ul>
+        <li><i>签名</i><span><b>边框不是 border，是阴影环</b>：<code>0 0 0 1px #00000014</code>（光）/
+        <code>0 0 0 1px #ffffff25</code>（暗）。这样描边能贴合任意圆角，
+        消除 <code>border</code> 在圆角处的取整毛刺。官方文档把「叠加 alpha 边框」列为禁止项。</span></li>
+        <li><i>色</i><span>文字 <code>#171717</code>（暗 <code>#ededed</code>）·
+        focus <code>#0072f5</code>（暗 <code>#50a8ff</code>）·
+        画布 <code>#fafafa</code>（暗 <b>纯黑 <code>#000000</code></b>）·
+        卡片 <code>#ffffff</code>（暗 <code>#0a0a0a</code>）· 边框 <code>#ebebeb</code></span></li>
+        <li><i>灰阶语义</i><span>10 级每级绑死角色：100 静止底 / 200 hover 底 / 300 active 底 /
+        400 默认边框 / 500 hover 边框 / 600 active 边框 / 700 填充 / 800 填充 hover /
+        900 次级文字 / 1000 主文字。<b>步进即语义</b></span></li>
+        <li><i>渐变</i><span>develop <code>linear-gradient(90deg,#007cf0,#00dfd8)</code>；
+        preview <code>#7928ca→#ff0080</code>；ship <code>#ff4d4d→#f9cb28</code>；
+        conic 环形高光 <code>conic-gradient(from 218deg,…#ffffffb8 82deg…)</code></span></li>
+        <li><i>尺寸</i><span>侧栏 260px · 顶栏 64px · 圆角 控件 6 / 卡片 8 / 浮层 12 / 全屏 16 ·
+        间距 4px 基准 · 控件高 32/40/48 配内边距 6/10/14 ·
+        标题 <code>72px/72px/-4.32px 600</code>（<b>负字距约 -6%</b>）</span></li>
+        <li><i>冲击来源</i><span>① 全站只有 1 种边框粗细　② 10 级灰阶读出 10 个层级
+        ③ 极端负字距把字块压成紧密灰矩形　④ 99% 灰 + 极少量高饱和</span></li>
+        <li><i>细节</i><span>阴影永远「多段小偏移 + 1px 环」，从不单段大模糊；
+        <b>按钮永不投影</b>；focus 环两层先铺 2px 底色再描 2px 蓝</span></li>
+        <li><i>中文坑</i><span>负字距必须归零（汉字满框，-6% 会笔画相撞）；
+        官方 label 行高仅 1.14–1.43，中文需 ≥1.6；Geist 字体无 CJK 字形</span></li>
+      </ul>
+    </div>
+
+    <div class="spec">
+      <h4>Raycast · 暗色玻璃 + 硬件质感</h4>
+      <ul>
+        <li><i>签名</i><span><b>玻璃不靠模糊靠固定配方</b>：
+        <code>linear-gradient(137deg,#111214bf 4.87%,#0c0d0fe6 75.88%)</code>
+        + <code>backdrop-filter:blur(10px)</code> + <code>border:1px solid #ffffff0f</code>
+        + <code>inset 0 1px 1px #ffffff26</code>。这个 137deg 与两个 stop 位置全站完全一致。</span></li>
+        <li><i>签名 2</i><span>品牌红 <code>#FF6363</code> <b>只做标点色</b>（logo 填充/选区/链接）。
+        需要「大面积红」时改用 3px 暗红发光细线：
+        <code>linear-gradient(90deg,#452324 0%,#eca5a7 93%,#581d27 100%)</code></span></li>
+        <li><i>色</i><span>画布 <code>#07080a</code> · 面 <code>#101111</code> ·
+        边框 <code>#242728</code> · 文字 <code>#f4f4f6</code>/<code>#c2c7ca</code>/<code>#9c9c9d</code> ·
+        冷色 <code>#57c1ff</code>/<code>#59d499</code>/<code>#ffc533</code></span></li>
+        <li><i>辉光</i><span><code>conic-gradient(from 136.95deg,#0294fe,#ff2136,#9b4dff,#0294fe,#ff2136)</code></span></li>
+        <li><i>冲击来源</i><span>暗色玻璃分层 + 品牌红作为唯一高饱和标点 +
+        <b>把网页按键当硬件做</b>：键帽用 <code>radial-gradient(75% 75% at 50% 91.9%,#151515,#0d0d0d)</code>
+        （光源从键帽底部往上打）+ 5 层 box-shadow + <code>:active translateY(2px)</code> + 红色辉光</span></li>
+        <li><i>怎么不闷</i><span>画布蓝偏近黑（R7 G8 B10，蓝通道最高）→ 不是死黑；
+        暗玻璃 + 红标点 + 硬件键帽质感</span></li>
+      </ul>
+    </div>
+
+    <div class="spec">
+      <h4>Stripe · 明亮 + 渐变舞台</h4>
+      <ul>
+        <li><i>签名</i><span>品牌色换代：<code>#635bff</code> <b>只剩焦点环</b>，
+        主按钮改走 <code>#533afd</code>；正文压到 <b>300 字重</b>，把全部饱和度让给渐变。</span></li>
+        <li><i>色</i><span>accent <code>#00d4ff</code>/<code>#ff7a59</code> · 画布 <code>#fff</code> ·
+        面 <code>#f8fafd</code>/<code>#f6f9fc</code> · 边框 <code>#e5edf5</code>/<code>#d4dee9</code> ·
+        文字 <code>#0a2540</code>/<code>#425466</code>/<code>#697386</code> · Dashboard 主色 <code>#5469d4</code></span></li>
+        <li><i>渐变</i><span>日落 <code>radial-gradient(1660px 1064px at 50% 100%,#ffa577 0,#ff90a1 15.52%,#ddadff 30.09%,#ecd8ff 45.72%,#f5eaff 54.96%,#f8fafd 88.16%)</code>；
+        统计卡 <code>270deg #ffd601,-380% → #ee30fb,-60% → #635bff,110%</code></span></li>
+        <li><i>尺寸</i><span>侧栏 250/280px（折叠 56）· 顶栏 48px · 圆角 2/4/6px（<b>极小</b>）·
+        控件 min-height 28/36/44、最常 40 · 正文 14px/1.4 w300 · hero 40px/1.1/-0.02em</span></li>
+        <li><i>冲击来源</i><span>底缘巨型径向渐变当<b>舞台灯自下打上</b>；
+        产品截图靠三层叠影悬浮 <code>0 30px 60px -12px rgba(50,50,93,.25), 0 18px 36px -18px rgba(0,0,0,.3)</code></span></li>
+        <li><i>细节</i><span>1px 极浅 hairline 代替阴影做分隔 · 按钮 2/4px 微圆角 · 图标细线单色 ·
+        hover <b>只换色不位移</b> · 焦点环 <code>0 0 0 4px rgba(cyan,28%)</code> ·
+        阴影靠上下双色而非单一黑</span></li>
+        <li><i>怎么不闷</i><span>2 个主色相（紫 14 阶 + 冷蓝灰中性）+ 6 组 accent，
+        靠高饱和径向渐变补活力</span></li>
+      </ul>
+    </div>
+
+    <div class="spec">
+      <h4>Supabase · 近单色 + 唯一强调</h4>
+      <ul>
+        <li><i>签名</i><span><b>整套 UI 由单一 <code>--hue:157.5</code> + <code>--chroma:.005</code> 算出</b>，
+        品牌绿只是同族偏移 4.4deg 的兄弟。所以「近单色」画布天生带一丝绿味，
+        <b>不是纯灰</b>——这就是它单色相却不显灰的原因。</span></li>
+        <li><i>签名 2</i><span>网格背景不是 CSS 渐变，而是 <b>2880 个 3px rect 的 SVG</b>，
+        按索引相位错开做波浪淡入</span></li>
+        <li><i>色</i><span>绿 <code>#3ECF8E</code> · 画布 <code>#131413</code> ·
+        卡片 <code>#181A19</code>（= 画布明度 +.025）· 边框 1px <code>oklch(.95 .001485 157.5/.075)</code> ·
+        文字 <code>#ECEFED</code></span></li>
+        <li><i>尺寸</i><span>圆角 2.67/5.33/8/10.67/16px · 正文 Inter 16px/400 ·
+        H1 Manrope 46px/500 · 网格块 3px、间距 3.5px · 断点 520/600/720/768/960</span></li>
+        <li><i>冲击来源</i><span>绿 <code>#3ECF8E</code> 明度 .527 压在画布 .19 上，是页面<b>唯一锚点</b>；
+        网格相位错开提供动势</span></li>
+        <li><i>细节</i><span>卡片靠 <b>+.025 明度分层而非阴影</b>；图标 Lucide 24px stroke 2；
+        微交互 = 网格方块 opacity .4s 按索引 +0.01s 错开；<b>几乎不用阴影</b></span></li>
+      </ul>
+    </div>
+
+    <div class="spec">
+      <h4>Sentry · 紫粉渐变 + 数据可视化</h4>
+      <ul>
+        <li><i>签名</i><span>hero 用 <b>88px 粗体</b>，且<b>只有一个词</b>硬编码跳出成
+        <code>#fd44b0</code>；渐变<b>只做结构带</b>——<code>clip-path: polygon(0 0,100% 0,100% calc(100% - 3rem),0 100%)</code> + <code>opacity:.5</code> 斜切</span></li>
+        <li><i>色</i><span>主 <code>#6a5fc1</code>(blurple) · 强调 <code>#fd44b0</code>(hot pink)
+        + <code>#c2ef4e</code>(lime) · 画布 <code>#1f1633</code> · 卡片 <code>#181225</code> ·
+        边框 <code>#362d59</code> · 文字 <code>#fff</code>/<code>#ececf1</code></span></li>
+        <li><i>渐变</i><span><code>linear-gradient(149deg,#36166b 18.17%,#422082 56.94%,#4e2a9a 95.71%)</code>
+        + 紫色辉光 <code>radial-gradient(ellipse 50% 50%,rgba(173,108,170,.15),#1F1633 65%)</code></span></li>
+        <li><i>尺寸</i><span>圆角 4/6/8/12/16px · hero 88px/1.2、h2 60px、正文 16px/1.5 ·
+        容器 1152px · 断点 576/768/992/1152</span></li>
+        <li><i>冲击来源</i><span>暗底两处叠加：hero 渐变 + 200×200px 纹理
+        <code>blend-mode:darken</code>，再加紫色辉光</span></li>
+        <li><i>细节</i><span>按钮渐变<b>非静态</b>：<code>background-size:250%</code>，hover 时滑动；
+        描边统一 1px <code>#362d59</code>；logo 是三轮 <code>stroke-dasharray</code> 循环描边</span></li>
+        <li><i>怎么不闷</i><span>5–6 个色相<b>全部高饱和</b>；靠同色相多档
+        （<code>#36166b→#422082→#4e2a9a</code>）串成渐变，紫↔粉↔橙邻近色互推，
+        荧光绿只作单点爆点</span></li>
+      </ul>
+    </div>
+
+    <div class="spec">
+      <h4>PostHog · 大胆用色 + 插画</h4>
+      <ul>
+        <li><i>签名</i><span><b>官方色板把「Red」定成橙 <code>#F54E00</code>、「Yellow」定成琥珀
+        <code>#DC9300</code></b> —— 名字与色相故意错位。底色拒绝纯白，用暖鼠尾草
+        <code>#EEEFE9</code>。并明文规定「插画饱和度必须高于周边版式」以拽走视线。
+        <b>明确禁用渐变背景</b>。</span></li>
+        <li><i>色</i><span>底 <code>#EEEFE9</code> · 文字 <code>#151515</code> ·
+        accent <code>#E5E7E0</code> · 虚线 <code>#D0D1C9</code> ·
+        Red <code>#F54E00</code> / Blue <code>#1D4AFF</code> / Yellow <code>#DC9300</code>（暗 <code>#F1A82C</code>）·
+        Gray <code>#BFBFBC</code></span></li>
+        <li><i>尺寸</i><span>圆角 2px 标签 / 4px 按钮输入 / 6px 卡片 / 胶囊 ·
+        hero 30px/800/-0.75px · h2 36px/700 · 正文 16px/1.5 · nav 15px/600 · 控件高约 40px</span></li>
+        <li><i>冲击来源</i><span><b>色块而非渐变</b>：奶油底上直接压高饱和橙/黄/蓝大色块，
+        配粗黑单线手绘插画；CTA 用近黑 <code>#1E1F23</code> 拉高对比</span></li>
+        <li><i>细节</i><span>1px 鼠尾草灰边框、虚线分隔 · 卡片 4–6px <b>近直角</b> ·
+        图标是等粗黑 monoline 手绘刺猬 · hover 文字闪 <code>#F54E00</code> ·
+        阴影极克制，仅浮层 <code>0 25px 50px -12px rgba(0,0,0,.25)</code></span></li>
+        <li><i>怎么不闷</i><span>仅 3 主色；<b>高饱和只给插画，版式保持低饱和</b>；
+        靠「暖灰底 vs 高饱和插画」的对比</span></li>
+      </ul>
+    </div>
+
+    <div class="spec">
+      <h4>Clerk · 精致暗色 + 品牌渐变</h4>
+      <ul>
+        <li><i>签名</i><span>全站只留<b>一个</b>高饱和紫，且渐变（紫→天蓝）<b>只做光晕/时间轴指示，
+        绝不填按钮</b>。暗色模式<b>取消所有投影</b>，改用
+        <code>inset 0 0 0 1px rgba(255,255,255,.025)</code> 分层。</span></li>
+        <li><i>色</i><span>主 <code>#6c47ff</code> · 天蓝 <code>#00aee3→#3ad4fd</code> ·
+        画布 亮 <code>#f7f7f8</code> / 暗 <code>#131316</code> ·
+        面 <code>#fff</code>/<code>#2f3037</code> · 边框 <code>#d9d9de</code>，暗 <code>#42434d</code> ·
+        muted <code>#747686</code></span></li>
+        <li><i>尺寸</i><span>H1 64px/700/-0.035em → H2 56 → H3 48 → H4 32 ·
+        正文 18/15/13 · mono 14/12 · eyebrow 11px/0.1em ·
+        按钮高 30/26/24 · 圆角 6/8/12/16/9999 · 容器 1280 · 触控 44</span></li>
+        <li><i>冲击来源</i><span>暗段 <code>#131316</code> <b>直接摆真实产品 UI 截图当插画</b>，
+        不给抽象图形；4 层阴影卡浮出；紫→天蓝渐变晕在组件下方发光</span></li>
+        <li><i>细节</i><span>亮 1px <code>#d9d9de</code>、分割 <b>0.5px</b>；
+        图标 16/20px stroke 1.25–1.5 round；100ms hover / 450ms 主题色
+        <code>cubic-bezier(.33,1,.68,1)</code>；按钮白 inset 高光 + hover 箭头滑入</span></li>
+      </ul>
+    </div>
+
+    <div class="spec">
+      <h4>Resend · 纯黑 + 排版张力</h4>
+      <ul>
+        <li><i>签名</i><span>全站<b>仅 <code>#000</code> 画布 + 近黑卡</b>，严禁浅色区块；
+        衬线体只准出现在营销 hero、产品内明令禁用；
+        <b>圆角恒 16/24px，没有小圆角</b></span></li>
+        <li><i>色</i><span>面 <code>linear-gradient(138deg,#101010→#0C0C0C)</code> ·
+        边框 <code>#2a2a2a</code> / <code>rgba(214,235,253,.19)</code> ·
+        文字 <code>#f0f0f0</code>/<code>#a1a4a5</code> ·
+        accent <code>#44ffa4</code>/<code>#0090ff</code>/<code>#fe4e54</code>/<code>#ffc53d</code></span></li>
+        <li><i>渐变</i><span>hero 文字 <code>linear-gradient(180deg,#fff 12%,#c3c3c3 92%)</code>
+        —— <b>自上而下渐隐</b>；卡片 <code>radial-gradient(98% 98% at 96% 94%,#6464641a,透明)</code></span></li>
+        <li><i>尺寸</i><span>顶栏 58px sticky · 侧栏 264px · 内容 1280 / 区块 pad 96 ·
+        圆角 2→32px + 胶囊 · <b>H1 96px 字重 400</b> · H2 56 · 正文 16 · 控件 40/32</span></li>
+        <li><i>冲击来源</i><span>96px 大字于纯黑上的绝对对比 + 文字渐隐。
+        <b>不用字号粗体，用字号尺寸</b></span></li>
+        <li><i>细节</i><span>描边恒 1px；弃重投影改<b>白微光</b>
+        <code>0 0 4px #ffffff0f, 0 1px 14px #ffffff1f, 0 3px 32px #ffffff2e</code>；
+        缓动 <code>cubic-bezier(.36,.66,.6,.96)</code></span></li>
+        <li><i>怎么不闷</i><span>1 个中性色相主导 + 4 个高饱和状态色<b>只出现在徽章</b>；
+        靠 <code>#f0f0f0</code>↔<code>#000</code> 的绝对明度差 + 冷蓝描边 + 白光微光</span></li>
+      </ul>
+    </div>
+
+    <div class="spec">
+      <h4>Framer · 超大字号 + 光效</h4>
+      <ul>
+        <li><i>签名</i><span>hero 用 <b>54px / 行高 1em / 字距 -0.04em</b>，
+        把三行标题<b>压成一个实心白块</b>（行高等于字号是关键）；
+        圆角走 squircle <code>corner-shape:superellipse(1.5)</code>（fallback .752）</span></li>
+        <li><i>色</i><span>主 <code>#0099ff</code> · 紫 <code>#9869fd</code>/<code>#8856ff</code> ·
+        青柠 <code>#cbff00</code> · 橙 <code>#fd7702</code> · 绿 <code>#4cd963</code> ·
+        画布 <code>#000</code> · 面 <code>#141414</code>…<code>#303030</code> ·
+        边框 <code>#ffffff12</code>/<code>#ffffff1a</code></span></li>
+        <li><i>渐变</i><span>光效是<b>横向色条</b> <code>linear-gradient(90deg,#0099ff1a 0%,#1c1c1c80 61%)</code>
+        + <code>plus-lighter</code> 叠加，不是径向光晕；
+        文字 <code>linear-gradient(173deg,#fff 32%,rgba(0,0,0,.1) 74%)</code></span></li>
+        <li><i>尺寸</i><span>nav 64px · 圆角 6/8/10/15/20/25/100/50% ·
+        hero 54px（≥1200）/ 42 / 36 · 正文 12–18 · 按钮高 29–30</span></li>
+        <li><i>冲击来源</i><span><code>#000</code> 黑底上 54px 纯白字堆成实心色块；
+        蓝光条经 plus-lighter 发亮；高饱和色块作点状破局</span></li>
+        <li><i>细节</i><span>用 <b>1px 半透明白</b>代替灰色描边；图标 20px 线性、圆角 50%；
+        <code>transition: color .2s cubic-bezier(.44,0,.56,1)</code>；
+        阴影 <code>0 40px 64px rgba(0,0,0,.2)</code> 叠 <code>0 0 0 1px</code> 内描边</span></li>
+      </ul>
+    </div>
+
+    <div class="spec full">
+      <h4>国内参考 · 飞书 / 语雀 / 掘金 / 阿里云（中文后台的真实惯例）</h4>
+      <ul style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:9px">
+        <li><i>主色</i><span>飞书 <code>#3370ff</code> · 语雀 <code>#2ed790</code> ·
+        掘金 <code>#1e80ff</code>（hover <code>#1171ee</code>）· 阿里云 <code>#ff6a00</code></span></li>
+        <li><i>画布</i><span>阿里云 <code>#f7f8fa</code> · 飞书 <code>#f8f9fa</code> ·
+        语雀 <code>#f5f5f5</code>；卡片一律 <code>#fff</code>。
+        <b>用极浅灰而非纯白，把白卡顶出层次</b></span></li>
+        <li><i>边框</i><span>阿里云 <code>#dcdee3</code> · 语雀 <code>#d9d9d9</code> ·
+        飞书 <code>rgba(grey,.08)</code>。Semi 甚至<b>反过来用阴影模拟描边</b>
+        <code>rgba(0,0,0,.04)</code></span></li>
+        <li><i>文字</i><span>阿里云 <code>#181818</code> · 飞书 <code>#1f2329</code> ·
+        语雀 <code>#262626</code>；语义 success <code>#35b34a</code>、
+        error <code>#f54a45</code>、warning <code>#ffa400</code></span></li>
+        <li><i>尺寸</i><span><b>侧栏默认 200px</b>（飞书 app 220 最常见，各家 200–240，
+        且<b>都锁死不做可拖拽</b>）· 顶栏约 56px ·
+        圆角 飞书 4/6/8、语雀 2/4、Arco 2/4/8、Semi 3/6/12 ·
+        字号主 14px（AntD 官方 14/行高 22），阿里云 ACE 则由 <b>12px 主导</b> ·
+        控件高 24/28/32/36/40、默认 32 · 表格行约 40px</span></li>
+        <li><i>唯一渐变</i><span>飞书侧栏 <code>linear-gradient(90deg,#3370ff,hsla(0,0%,100%,.2))</code>
+        —— 国内产品几乎不用装饰性渐变</span></li>
+        <li><i>冲击来源</i><span><b>降噪后只剩一个品牌色</b>。超长中文靠 12–14px + 单色系撑住密度，
+        而不是靠放大字号</span></li>
+        <li><i>细节</i><span><b>描边优先于阴影</b>（阿里云表格 1px <code>#dcdee3</code>）·
+        圆角极克制 2–4px · 线性 1px 图标 ·
+        微交互只做 hover 换底色（fill-0 .05 → fill-1 .09）</span></li>
+        <li><i>怎么不闷</i><span>单主色 + 中性灰阶 + 4 语义色；主色高饱和（约 S90 L50）；
+        中性是 <b>10 级冷灰</b> <code>#f7f8fa→#181818</code> —— 靠灰阶数量拉层次</span></li>
+      </ul>
+    </div>
+
+  </div>
+
+  <div class="spec full" style="margin-top:16px">
+    <h4>从这 11 个产品里能提炼出的、可复制的规律</h4>
+    <ul>
+      <li><i>①</i><span><b>没有任何一个高端产品靠「多色相」制造高级感。</b>
+      Linear/Supabase/Resend/Framer/Clerk/Vercel 全是单色相或近单色。
+      它们不闷的原因不是颜色多，而是<b>中性色台阶足够多</b>（4–10 级）
+      加上<b>极小面积的高饱和锚点</b>。</span></li>
+      <li><i>②</i><span><b>精致的物理来源是 alpha 台阶，不是字体。</b>
+      Linear 用 1%~25% 白的 9 档、Vercel 用 10 级灰 + 10 级 alpha、
+      Clerk 暗色用 2.5% 白 inset。前几版把「用等宽字体」当成精致，方向就错了。</span></li>
+      <li><i>③</i><span><b>冲击力来自「面积 × 对比」，不来自色相数量。</b>
+      Stripe 用整屏径向渐变、Sentry 用 88px 字、Framer 用行高=字号的实心字块、
+      Resend 用 96px 字。共同点是<b>某一样东西被允许非常大</b>。</span></li>
+      <li><i>④</i><span><b>暗色不等于黑。</b>Linear 用 4 级近黑（最亮 #191a1b）、
+      Raycast 画布蓝通道最高、Supabase 画布带 .005 彩度、Sentry 画布是紫 #1f1633。
+      <b>纯灰黑才是「闷」的直接来源。</b></span></li>
+      <li><i>⑤</i><span><b>中文必须单独一套排版参数。</b>所有产品的负字距（-0.011~-0.06em）
+      对中文都得归零；官方 label 行高 1.14–1.43 对中文必须提到 1.6–1.8；
+      字重 510/590 这类轴值中文字体无法映射。<b>这一条前几版完全没处理。</b></span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ==================================================================== A -->
+<section class="scheme" id="sA" data-scheme="A" data-m="dark">
+  <div class="scheme__head">
+    <div class="scheme__no">A</div>
+    <div>
+      <h2>蓝图 Blueprint</h2>
+      <p class="scheme__vibe">像 Linear 那样冷静精密 —— 但不是「暗色 + 蓝色」，而是「碳黑 + 亚像素结构 + 白色光源」。
+      冲击力来自纪律，不来自颜色。</p>
+    </div>
+  </div>
+  <div class="tags">
+    <span class="tag tag--key">暗色优先</span><span class="tag">三栏非对称</span>
+    <span class="tag">0.5px 发丝线</span><span class="tag">参数化光晕</span>
+    <span class="tag">1%–6% alpha 台阶</span><span class="tag">低饱和 · 单色相</span>
+  </div>
+
+  <div class="mock">
+    <div class="mock__bar"><i></i><i></i><i></i><span class="mock__url">aimanong.local/admin</span></div>
+    <div class="view v-three" style="--c-rail:88px;--c-ctx:196px">
+      <div class="v-rail">
+        <div class="v-mark" style="margin-bottom:8px">AI</div>
+        <div class="on">◧</div><div>▤</div><div>◍</div><div>⬡</div>
+      </div>
+      <div class="v-side" style="border-right:1px solid var(--c-line)">
+        <div class="v-navlabel">工作台</div>
+        <div class="v-item on"><span class="v-dot"></span>概览</div>
+        <div class="v-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>内容管理<span class="v-count">12</span></div>
+        <div class="v-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3 2.5-5 6-5s6 2 6 5"/></svg>用户</div>
+        <div class="v-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12V5a2 2 0 0 1 2-2h7l9 9-9 9z"/></svg>标签</div>
+        <div class="v-navlabel">系统</div>
+        <div class="v-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>设置</div>
+      </div>
+      <div class="v-main">
+        <div class="v-top">
+          <span class="v-crumb">控制台 / <b>概览</b></span>
+          <span class="v-search">搜索 <span class="v-kbd">⌘K</span></span>
+        </div>
+        <div class="v-actbar">▚ AI 正在生成 OrderResource.php · 第 3 项校验通过
+          <span style="margin-left:auto">进行中</span></div>
+        <div class="v-body">
+          <div>
+            <h3 class="v-hero">概览</h3>
+            <p class="v-sub">4 个模块 · 12 项权限 · 最后部署 7 分钟前</p>
+          </div>
+          <div class="v-stats">
+            <div class="v-stat"><div class="v-stat__k">MODULES</div><div class="v-stat__v">12</div></div>
+            <div class="v-stat"><div class="v-stat__k">RECORDS</div><div class="v-stat__v">8,420</div></div>
+            <div class="v-stat"><div class="v-stat__k">LATENCY</div><div class="v-stat__v">42<small>ms</small></div></div>
+            <div class="v-stat"><div class="v-stat__k">UPTIME</div><div class="v-stat__v">99.98<small>%</small></div></div>
+          </div>
+          <div class="v-table">
+            <div class="v-throw"><span style="flex:0 0 52px">ID</span><span style="flex:1">标题</span><span style="flex:0 0 92px">状态</span><span style="flex:0 0 76px;text-align:right">浏览</span></div>
+            <div class="v-tr"><span class="v-id">#1042</span><span>Laravel 12 队列深度实践</span><span><span class="v-pill"><em></em>已发布</span></span><span class="v-num">3,204</span></div>
+            <div class="v-tr"><span class="v-id">#1041</span><span>用 AI 生成后台的五个陷阱</span><span><span class="v-pill"><em></em>已发布</span></span><span class="v-num">1,876</span></div>
+            <div class="v-tr"><span class="v-id">#1040</span><span>零构建设计系统怎么做</span><span><span class="v-pill"><em></em>草稿</span></span><span class="v-num">—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="specs">
+    <div class="spec">
+      <h4>配色（暗色 / 亮色）</h4>
+      <div class="sw">
+        <figure><div class="chip" style="background:#07080a"><span>07080A</span></div><figcaption>画布</figcaption></figure>
+        <figure><div class="chip" style="background:#0e1013"><span>0E1013</span></div><figcaption>卡片</figcaption></figure>
+        <figure><div class="chip" style="background:#14171b"><span>14171B</span></div><figcaption>提亮 1</figcaption></figure>
+        <figure><div class="chip" style="background:#6e7be8"><span>6E7BE8</span></div><figcaption>强调</figcaption></figure>
+        <figure><div class="chip" style="background:#8b96ff"><span>8B96FF</span></div><figcaption>强调字</figcaption></figure>
+        <figure><div class="chip" style="background:#f2f5f8"><span>F2F5F8</span></div><figcaption>正文</figcaption></figure>
+      </div>
+      <div style="margin-top:14px">
+        <div class="grad" style="background:linear-gradient(135deg,#ffffff26 0%,#ffffff0d 25%,#ffffff05 100%)"></div>
+        <p style="font-size:12px;color:var(--g-tx3);margin:0;font-family:var(--font-mono);line-height:1.6">
+          渐变描边 / 光晕：<br>linear-gradient(135deg,#ffffff26 0%,#ffffff0d 25%) border-box<br>
+          radial 8 段 color-mix 衰减（非 blur）
+        </p>
+      </div>
+    </div>
+
+    <div class="spec">
+      <h4>尺寸</h4>
+      <div class="dims">
+        <div class="dim"><span>图标轨</span><div class="track"><div class="fill" style="width:29%"></div></div><b>88px</b></div>
+        <div class="dim"><span>上下文栏</span><div class="track"><div class="fill" style="width:65%"></div></div><b>196px</b></div>
+        <div class="dim"><span>顶栏</span><div class="track"><div class="fill" style="width:18%"></div></div><b>52px</b></div>
+        <div class="dim"><span>活动条</span><div class="track"><div class="fill" style="width:10%"></div></div><b>30px</b></div>
+        <div class="dim"><span>控件高</span><div class="track"><div class="fill" style="width:11%"></div></div><b>28/32</b></div>
+        <div class="dim"><span>表格行</span><div class="track"><div class="fill" style="width:14%"></div></div><b>40px</b></div>
+      </div>
+      <p style="font-size:12.5px;color:var(--g-tx3);margin:14px 0 0;line-height:1.7">
+        圆角 <b style="color:var(--g-tx)">4 / 6 / 8 / 12 / 16</b>　·　间距基准 <b style="color:var(--g-tx)">4px</b><br>
+        字号 11 / 12 / 13 / <b style="color:var(--g-tx)">14</b> / 16 / 20 / 27 / 34<br>
+        导航项间距 <b style="color:var(--g-tx)">2px</b>、高 29px（密度即质感）
+      </p>
+    </div>
+
+    <div class="spec">
+      <h4>视觉冲击点</h4>
+      <ul>
+        <li><i>①</i><span><b>AI 活动条</b>：顶栏下方一条 30px 的常驻带，底部 2px 渐变光条以 3.4s 循环扫过 —— 界面自己会说话，直接呼应「AI 码农」。</span></li>
+        <li><i>②</i><span><b>三栏骨架</b>：88px 图标轨 + 196px 上下文栏 + 主区。这是唯一一眼能看出「不是通用后台」的结构决策。</span></li>
+      </ul>
+    </div>
+
+    <div class="spec">
+      <h4>细节清单</h4>
+      <ul>
+        <li><i>·</i><span>边框 <b>0.5px</b>（2x 屏 = 1 物理像素）+ <code>rgba(255,255,255,.06)</code></span></li>
+        <li><i>·</i><span>光晕用 <b>8 段 color-mix 手工衰减</b>，不用 <code>filter:blur</code>（省 GPU、无边缘溢出）</span></li>
+        <li><i>·</i><span>hover 靠 <code>filter:brightness(1.08)</code>，active 靠 <code>scale(.97)</code></span></li>
+        <li><i>·</i><span>图标 16px 描边 1.5px，<code>currentColor</code></span></li>
+        <li><i>·</i><span>动效 <code>.16s cubic-bezier(.22,1,.36,1)</code>；<code>prefers-reduced-motion</code> 全关</span></li>
+      </ul>
+    </div>
+
+    <div class="spec full">
+      <h4>CSS 实现要点（零构建）</h4>
+      <ul>
+        <li><i>·</i><span>骨架 <code>grid-template-columns:88px 196px minmax(0,1fr)</code>；&lt;1280px 收起上下文栏，&lt;1024px 图标轨变 56px，&lt;768px 侧栏转抽屉。</span></li>
+        <li><i>·</i><span>光晕用 <code>@property --glow-x</code> 才能动画化；不支持时退化为静态渐变（无功能损失）。</span></li>
+        <li><i>·</i><span>0.5px 描边在 1x 屏会被抹掉 → 用 <code>@media (min-resolution:1.5dppx)</code> 给 0.5px、否则给 1px。</span></li>
+        <li><i>·</i><span>中文<strong>不用</strong>负字距（Latin 才用 -0.022em）；等宽只给数字和 ID，中文走 sans。</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================================== B -->
+<section class="scheme" id="sB" data-scheme="B" data-m="light">
+  <div class="scheme__head">
+    <div class="scheme__no">B</div>
+    <div>
+      <h2>新芽 Sprout</h2>
+      <p class="scheme__vibe">像 Stripe 那样明亮、有生命力 —— 暖白画布 + 一处高饱和渐变。
+      这是唯一「亮色是主角、暗色是配角」的方案，专治「什么都老气」。</p>
+    </div>
+  </div>
+  <div class="tags">
+    <span class="tag tag--key">亮色为主</span><span class="tag">顶栏 96px 超大型</span>
+    <span class="tag">LOGO 四色渐变条</span><span class="tag">超大字号 34px</span>
+    <span class="tag">暖白非冷灰</span><span class="tag">胶囊输入框</span>
+  </div>
+
+  <div class="mock">
+    <div class="mock__bar"><i></i><i></i><i></i><span class="mock__url">aimanong.local/admin</span></div>
+    <div class="view" style="--sb:196px;--tb:0px">
+      <div class="v-side">
+        <div class="v-brand"><span class="v-mark">AI</span>Aimanong</div>
+        <div class="v-navlabel">工作台</div>
+        <div class="v-item on">概览</div>
+        <div class="v-item">内容管理<span class="v-count">12</span></div>
+        <div class="v-item">用户</div>
+        <div class="v-item">标签</div>
+        <div class="v-navlabel">系统</div>
+        <div class="v-item">设置</div>
+      </div>
+      <div class="v-main">
+        <div style="height:4px;background:linear-gradient(90deg,#e0503c,#e8a840,#70d070,#205098);flex-shrink:0"></div>
+        <div style="height:96px;display:flex;align-items:center;gap:16px;padding:0 26px;background:var(--c-top);border-bottom:1px solid var(--c-line);flex-shrink:0">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:21px;font-weight:780;letter-spacing:-.03em">概览</div>
+            <div style="font-size:12.5px;color:var(--c-tx2);margin-top:2px">4 个模块 · 12 项权限</div>
+          </div>
+          <span class="v-search" style="margin:0;border-radius:999px">搜索模块…</span>
+          <span style="background:linear-gradient(135deg,#5b4be8,#8b3fd8);color:#fff;font-size:12.5px;font-weight:700;padding:8px 16px;border-radius:999px;box-shadow:0 6px 16px -6px rgba(91,75,232,.7)">+ 新建</span>
+        </div>
+        <div class="v-body">
+          <div class="v-stats">
+            <div class="v-stat"><div class="v-stat__k">MODULES</div><div class="v-stat__v" style="color:var(--c-num-a)">12</div></div>
+            <div class="v-stat"><div class="v-stat__k">RECORDS</div><div class="v-stat__v">8,420</div></div>
+            <div class="v-stat"><div class="v-stat__k">LATENCY</div><div class="v-stat__v" style="color:var(--c-num-b)">42<small>ms</small></div></div>
+            <div class="v-stat"><div class="v-stat__k">UPTIME</div><div class="v-stat__v">99.98<small>%</small></div></div>
+          </div>
+          <div class="v-table" style="border-radius:14px">
+            <div class="v-throw"><span style="flex:0 0 52px">ID</span><span style="flex:1">标题</span><span style="flex:0 0 92px">状态</span><span style="flex:0 0 76px;text-align:right">浏览</span></div>
+            <div class="v-tr"><span class="v-id">#1042</span><span>Laravel 12 队列深度实践</span><span><span class="v-pill"><em></em>已发布</span></span><span class="v-num">3,204</span></div>
+            <div class="v-tr"><span class="v-id">#1041</span><span>用 AI 生成后台的五个陷阱</span><span><span class="v-pill"><em></em>已发布</span></span><span class="v-num">1,876</span></div>
+            <div class="v-tr"><span class="v-id">#1040</span><span>零构建设计系统怎么做</span><span><span class="v-pill"><em></em>草稿</span></span><span class="v-num">—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="specs">
+    <div class="spec">
+      <h4>配色（亮色为主）</h4>
+      <div class="sw">
+        <figure><div class="chip" style="background:#f7f6f3"><span>F7F6F3</span></div><figcaption>画布 暖白</figcaption></figure>
+        <figure><div class="chip" style="background:#ffffff"><span>FFFFFF</span></div><figcaption>卡片</figcaption></figure>
+        <figure><div class="chip" style="background:#5b4be8"><span>5B4BE8</span></div><figcaption>强调</figcaption></figure>
+        <figure><div class="chip" style="background:#e0503c"><span>E0503C</span></div><figcaption>LOGO 橙红</figcaption></figure>
+        <figure><div class="chip" style="background:#e8a840"><span>E8A840</span></div><figcaption>LOGO 橙黄</figcaption></figure>
+        <figure><div class="chip" style="background:#12a150"><span>12A150</span></div><figcaption>LOGO 绿</figcaption></figure>
+      </div>
+      <div style="margin-top:14px">
+        <div class="grad" style="background:linear-gradient(90deg,#e0503c 0%,#e8a840 33%,#70d070 66%,#205098 100%)"></div>
+        <p style="font-size:12px;color:var(--g-tx3);margin:0;font-family:var(--font-mono);line-height:1.6">
+          品牌条（LOGO 四色，唯一用满四色相的地方）<br>
+          linear-gradient(90deg,#e0503c,#e8a840,#70d070,#205098)
+        </p>
+        <div class="grad" style="background:linear-gradient(135deg,#5b4be8 0%,#8b3fd8 100%)"></div>
+        <p style="font-size:12px;color:var(--g-tx3);margin:0;font-family:var(--font-mono);line-height:1.6">
+          CTA：linear-gradient(135deg,#5b4be8,#8b3fd8)
+        </p>
+      </div>
+    </div>
+
+    <div class="spec">
+      <h4>尺寸 · 哪里不常规</h4>
+      <div class="dims">
+        <div class="dim"><span>顶栏</span><div class="track"><div class="fill" style="width:100%"></div></div><b>96px</b></div>
+        <div class="dim"><span>品牌条</span><div class="track"><div class="fill" style="width:12%"></div></div><b>4px</b></div>
+        <div class="dim"><span>侧栏</span><div class="track"><div class="fill" style="width:65%"></div></div><b>196px</b></div>
+        <div class="dim"><span>统计数字</span><div class="track"><div class="fill" style="width:38%"></div></div><b>34px</b></div>
+        <div class="dim"><span>控件高</span><div class="track"><div class="fill" style="width:13%"></div></div><b>34/40</b></div>
+        <div class="dim"><span>表格行</span><div class="track"><div class="fill" style="width:16%"></div></div><b>46px</b></div>
+      </div>
+      <p style="font-size:12.5px;color:var(--g-tx3);margin:14px 0 0;line-height:1.7">
+        圆角 <b style="color:var(--g-tx)">8 / 10 / 14 / 20 / 胶囊</b>　·　间距基准 <b style="color:var(--g-tx)">4px</b><br>
+        字号 12 / 13 / <b style="color:var(--g-tx)">14</b> / 15 / 21 / 27 / 34 / 44<br>
+        <b style="color:var(--g-tx)">不常规</b>：顶栏 96px 里放标题 + 搜索 + CTA 三层信息，而不是一条面包屑。
+      </p>
+    </div>
+
+    <div class="spec">
+      <h4>视觉冲击点</h4>
+      <ul>
+        <li><i>①</i><span><b>顶部 4px 品牌渐变条</b>：把 LOGO 的四个色相按顺序拉成一条通栏线。全站只此一处用满四色 —— 克制才有力。</span></li>
+        <li><i>②</i><span><b>34px 彩色统计数字</b>：数字最大、且分别给强调色 / 绿 / 黑，形成三个彩色锚点，打破「一片灰」。</span></li>
+      </ul>
+    </div>
+
+    <div class="spec">
+      <h4>细节清单</h4>
+      <ul>
+        <li><i>·</i><span>画布用<b>暖白</b> <code>#f7f6f3</code>（不是冷灰 <code>#f5f5f5</code>）—— 暖冷之差就是「老气」与「有气质」的分界</span></li>
+        <li><i>·</i><span>卡片阴影双层：<code>0 1px 3px</code> 贴地 + <code>0 8px 22px -14px</code> 环境光</span></li>
+        <li><i>·</i><span>输入框与 CTA 用<b>胶囊圆角</b>，与卡片的 14px 形成对比</span></li>
+        <li><i>·</i><span>CTA 带同色投影 <code>rgba(91,75,232,.7)</code>，产生「发光按钮」而非「贴纸按钮」</span></li>
+      </ul>
+    </div>
+
+    <div class="spec full">
+      <h4>CSS 实现要点（零构建）</h4>
+      <ul>
+        <li><i>·</i><span>暗色模式不是把亮色取反：画布换<b>暖黑</b> <code>#131210</code>，保持色温一致，否则会「白天暖、晚上冷」。</span></li>
+        <li><i>·</i><span>品牌渐变条 <code>background:linear-gradient(...)</code> 一行；窄屏把它从 4px 降到 3px 即可，不需要媒体查询重构。</span></li>
+        <li><i>·</i><span>34px 数字用 <code>font-variant-numeric:tabular-nums</code> 保证跳动不抖。</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================================== C -->
+<section class="scheme" id="sC" data-scheme="C" data-m="light">
+  <div class="scheme__head">
+    <div class="scheme__no">C</div>
+    <div>
+      <h2>纯白 Pure</h2>
+      <p class="scheme__vibe">像 Vercel / Geist 那样绝对克制 —— 全站只有一个强调色，
+      冲击力来自 44px 负字距大字与 0.5px 发丝描边。极简但极精致。</p>
+    </div>
+  </div>
+  <div class="tags">
+    <span class="tag tag--key">极简但精致</span><span class="tag">无常驻侧栏</span>
+    <span class="tag">单一强调色</span><span class="tag">44px 大字</span>
+    <span class="tag">0 0 0 1px 描边</span><span class="tag">纯黑画布</span>
+  </div>
+
+  <div class="mock">
+    <div class="mock__bar"><i></i><i></i><i></i><span class="mock__url">aimanong.local/admin</span></div>
+    <div class="view v-noside" style="--sb:0px">
+      <div class="v-main v-rel">
+        <div class="v-top" style="border-bottom:1px solid var(--c-line)">
+          <span class="v-mark" style="width:24px;height:24px">AI</span>
+          <span style="font-weight:650;font-size:13.5px">Aimanong</span>
+          <span class="v-crumb" style="margin-left:8px">/ 概览</span>
+          <span class="v-search">搜索 <span class="v-kbd">⌘K</span></span>
+          <span style="font-size:12.5px;font-weight:600;border:1px solid var(--c-line);border-radius:6px;padding:5px 12px;background:var(--c-tx1);color:var(--c-canvas)">新建</span>
+        </div>
+        <div class="v-body v-center">
+          <div style="padding:14px 0 4px">
+            <div style="font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;color:var(--c-tx3);text-transform:uppercase">Workspace</div>
+            <h3 class="v-hero" style="font-size:44px;margin-top:8px">今天有 <span style="color:var(--c-tx3)">3</span> 项<br>等待审阅</h3>
+            <p class="v-sub" style="font-size:14px;max-width:56ch">12 个模块 · 8,420 条记录 · 由 AI 生成的资源声明已全部通过校验。</p>
+          </div>
+          <div class="v-stats">
+            <div class="v-stat"><div class="v-stat__k">MODULES</div><div class="v-stat__v" style="font-size:38px">12</div></div>
+            <div class="v-stat"><div class="v-stat__k">RECORDS</div><div class="v-stat__v" style="font-size:38px">8,420</div></div>
+            <div class="v-stat"><div class="v-stat__k">LATENCY</div><div class="v-stat__v" style="font-size:38px">42<small>ms</small></div></div>
+            <div class="v-stat"><div class="v-stat__k">UPTIME</div><div class="v-stat__v" style="font-size:38px">99.98<small>%</small></div></div>
+          </div>
+          <div class="v-table">
+            <div class="v-throw"><span style="flex:0 0 52px">ID</span><span style="flex:1">标题</span><span style="flex:0 0 92px">状态</span><span style="flex:0 0 76px;text-align:right">浏览</span></div>
+            <div class="v-tr"><span class="v-id">#1042</span><span>Laravel 12 队列深度实践</span><span><span class="v-pill"><em></em>已发布</span></span><span class="v-num">3,204</span></div>
+            <div class="v-tr"><span class="v-id">#1041</span><span>用 AI 生成后台的五个陷阱</span><span><span class="v-pill"><em></em>已发布</span></span><span class="v-num">1,876</span></div>
+            <div class="v-tr"><span class="v-id">#1040</span><span>零构建设计系统怎么做</span><span><span class="v-pill"><em></em>草稿</span></span><span class="v-num">—</span></div>
+          </div>
+        </div>
+        <div class="v-fab">◧</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="specs">
+    <div class="spec">
+      <h4>配色（黑 / 白，仅一个彩色）</h4>
+      <div class="sw">
+        <figure><div class="chip" style="background:#ffffff"><span>FFFFFF</span></div><figcaption>亮 画布</figcaption></figure>
+        <figure><div class="chip" style="background:#000000"><span>000000</span></div><figcaption>暗 画布</figcaption></figure>
+        <figure><div class="chip" style="background:#0a0a0a"><span>0A0A0A</span></div><figcaption>暗 卡片</figcaption></figure>
+        <figure><div class="chip" style="background:#171717"><span>171717</span></div><figcaption>亮 文字</figcaption></figure>
+        <figure><div class="chip" style="background:#ededed"><span>EDEDED</span></div><figcaption>暗 文字</figcaption></figure>
+        <figure><div class="chip" style="background:#12a150"><span>12A150</span></div><figcaption>唯一强调</figcaption></figure>
+      </div>
+      <p style="font-size:12px;color:var(--g-tx3);margin:14px 0 0;font-family:var(--font-mono);line-height:1.7">
+        边框不用 border，用阴影环：<br>
+        亮 <b style="color:var(--g-tx)">0 0 0 1px rgba(0,0,0,.075)</b><br>
+        暗 <b style="color:var(--g-tx)">0 0 0 1px rgba(255,255,255,.14)</b><br>
+        → 描边能贴合任意圆角，消除圆角处的取整毛刺
+      </p>
+    </div>
+
+    <div class="spec">
+      <h4>尺寸 · 哪里不常规</h4>
+      <div class="dims">
+        <div class="dim"><span>常驻侧栏</span><div class="track"><div class="fill" style="width:2%"></div></div><b>无</b></div>
+        <div class="dim"><span>内容最大宽</span><div class="track"><div class="fill" style="width:78%"></div></div><b>1000px</b></div>
+        <div class="dim"><span>顶栏</span><div class="track"><div class="fill" style="width:18%"></div></div><b>52px</b></div>
+        <div class="dim"><span>页面标题</span><div class="track"><div class="fill" style="width:50%"></div></div><b>44px</b></div>
+        <div class="dim"><span>控件高</span><div class="track"><div class="fill" style="width:11%"></div></div><b>28/32</b></div>
+        <div class="dim"><span>表格行</span><div class="track"><div class="fill" style="width:14%"></div></div><b>40px</b></div>
+      </div>
+      <p style="font-size:12.5px;color:var(--g-tx3);margin:14px 0 0;line-height:1.7">
+        圆角 <b style="color:var(--g-tx)">6 / 8 / 12 / 16</b>　·　间距基准 <b style="color:var(--g-tx)">4px</b><br>
+        字号 12 / 13 / 14 / 16 / 20 / 26 / <b style="color:var(--g-tx)">44</b><br>
+        <b style="color:var(--g-tx)">不常规</b>：没有常驻侧栏，导航收成一枚 44px 悬浮圆钮（抽屉式）。
+      </p>
+    </div>
+
+    <div class="spec">
+      <h4>视觉冲击点</h4>
+      <ul>
+        <li><i>①</i><span><b>44px 大标题 + 灰色大数字</b>：靠字号与字重（680）而非颜色制造焦点，<code>letter-spacing:-.035em</code>。</span></li>
+        <li><i>②</i><span><b>纯黑 + 反转层级</b>：暗色下页面是纯黑 <code>#000</code>、卡片反而更亮 <code>#0a0a0a</code>。绝大多数后台是反过来的。</span></li>
+      </ul>
+    </div>
+
+    <div class="spec">
+      <h4>细节清单</h4>
+      <ul>
+        <li><i>·</i><span>全站<b>只有 1 种边框粗细</b>，且是阴影环而非 border</span></li>
+        <li><i>·</i><span>hover 用 <code>filter:brightness()</code> 或背景 5% 洗色，不用换色</span></li>
+        <li><i>·</i><span>focus 环两层：<code>0 0 0 2px 底色, 0 0 0 4px 蓝色</code>（先留白再描边）</span></li>
+        <li><i>·</i><span>字重只用 400 / 500 / 600 / 680 四档，禁用 700</span></li>
+        <li><i>·</i><span>按钮<b>永不投影</b>（flat），只有浮层才有阴影</span></li>
+      </ul>
+    </div>
+
+    <div class="spec full">
+      <h4>CSS 实现要点（零构建）</h4>
+      <ul>
+        <li><i>·</i><span><b>最容易做</b>的方案：色值最少（约 14 个），令牌表最短，暗色模式只需换 6 个值。</span></li>
+        <li><i>·</i><span>唯一风险：44px 大字的负字距<b>必须对中文归零</b>，否则汉字笔画会撞在一起。用 <code>:lang(zh) { letter-spacing:0 }</code> 隔离。</span></li>
+        <li><i>·</i><span>无侧栏布局在 1024–1280px 表现最好；超宽屏（2560px）要加 <code>max-width:1000px</code> 居中，避免表格被拉散。</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================================== D -->
+<section class="scheme" id="sD" data-scheme="D" data-m="dark">
+  <div class="scheme__head">
+    <div class="scheme__no">D</div>
+    <div>
+      <h2>双轨 Duotone</h2>
+      <p class="scheme__vibe">像 Sentry 的渐变那样有情绪 —— 近黑紫画布 + 一块 200px 的通栏渐变 Hero。
+      颜色本身就是主角，内容被切成有边界的「瓦片」。</p>
+    </div>
+  </div>
+  <div class="tags">
+    <span class="tag tag--key">强烈渐变 / 彩色</span><span class="tag">通栏渐变 Hero</span>
+    <span class="tag">卡片式分区</span><span class="tag">46px 巨型数字</span>
+    <span class="tag">大圆角 18–20px</span><span class="tag">四色渐变</span>
+  </div>
+
+  <div class="mock">
+    <div class="mock__bar"><i></i><i></i><i></i><span class="mock__url">aimanong.local/admin</span></div>
+    <div class="view" style="--sb:190px;--tb:0px">
+      <div class="v-side">
+        <div class="v-brand"><span class="v-mark">AI</span>Aimanong</div>
+        <div class="v-navlabel">工作台</div>
+        <div class="v-item on">概览</div>
+        <div class="v-item">内容管理<span class="v-count">12</span></div>
+        <div class="v-item">用户</div>
+        <div class="v-item">标签</div>
+        <div class="v-navlabel">系统</div>
+        <div class="v-item">设置</div>
+      </div>
+      <div class="v-main">
+        <div style="height:4px;background:linear-gradient(90deg,#6366f1,#a855f7,#ec4899,#22d3ee);flex-shrink:0"></div>
+        <div class="v-top" style="border-bottom:1px solid var(--c-line)">
+          <span class="v-crumb">控制台 / <b>概览</b></span>
+          <span class="v-search">搜索 <span class="v-kbd">⌘K</span></span>
+        </div>
+        <div class="v-body">
+          <div class="v-gradhero">
+            <div style="font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.8;color:#fff">Workspace Overview</div>
+            <div class="v-herobig">8,420</div>
+            <p class="v-sub" style="margin-top:8px">条记录由 AI 生成的声明驱动 · 12 个模块全部通过校验</p>
+          </div>
+          <div class="v-tiles">
+            <div class="v-tile">
+              <h5>内容管理</h5>
+              <p>12 个字段 · 3 项校验规则 · 最近更新 7 分钟前</p>
+            </div>
+            <div class="v-tile">
+              <h5>用户与权限</h5>
+              <p>4 个角色 · 12 项权限 · RBAC 已启用</p>
+            </div>
+          </div>
+          <div class="v-table">
+            <div class="v-throw"><span style="flex:0 0 52px">ID</span><span style="flex:1">标题</span><span style="flex:0 0 92px">状态</span><span style="flex:0 0 76px;text-align:right">浏览</span></div>
+            <div class="v-tr"><span class="v-id">#1042</span><span>Laravel 12 队列深度实践</span><span><span class="v-pill"><em></em>已发布</span></span><span class="v-num">3,204</span></div>
+            <div class="v-tr"><span class="v-id">#1041</span><span>用 AI 生成后台的五个陷阱</span><span><span class="v-pill"><em></em>已发布</span></span><span class="v-num">1,876</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="specs">
+    <div class="spec">
+      <h4>配色 · 渐变是主角</h4>
+      <div class="sw">
+        <figure><div class="chip" style="background:#0b0a14"><span>0B0A14</span></div><figcaption>画布 近黑紫</figcaption></figure>
+        <figure><div class="chip" style="background:#16142a"><span>16142A</span></div><figcaption>卡片</figcaption></figure>
+        <figure><div class="chip" style="background:#6366f1"><span>6366F1</span></div><figcaption>渐变起</figcaption></figure>
+        <figure><div class="chip" style="background:#a855f7"><span>A855F7</span></div><figcaption>渐变中</figcaption></figure>
+        <figure><div class="chip" style="background:#ec4899"><span>EC4899</span></div><figcaption>渐变止</figcaption></figure>
+        <figure><div class="chip" style="background:#22d3ee"><span>22D3EE</span></div><figcaption>数据强调</figcaption></figure>
+      </div>
+      <div style="margin-top:14px">
+        <div class="grad" style="background:linear-gradient(135deg,#4f46e5 0%,#9333ea 46%,#db2777 100%)"></div>
+        <p style="font-size:12px;color:var(--g-tx3);margin:0;font-family:var(--font-mono);line-height:1.6">
+          Hero：linear-gradient(135deg,#4f46e5 0%,#9333ea 46%,#db2777 100%)<br>
+          数据轨：linear-gradient(90deg,#6366f1,#a855f7,#ec4899)
+        </p>
+      </div>
+    </div>
+
+    <div class="spec">
+      <h4>尺寸 · 哪里不常规</h4>
+      <div class="dims">
+        <div class="dim"><span>Hero 高</span><div class="track"><div class="fill" style="width:78%"></div></div><b>≈200px</b></div>
+        <div class="dim"><span>侧栏</span><div class="track"><div class="fill" style="width:63%"></div></div><b>190px</b></div>
+        <div class="dim"><span>顶栏</span><div class="track"><div class="fill" style="width:18%"></div></div><b>52px</b></div>
+        <div class="dim"><span>巨型数字</span><div class="track"><div class="fill" style="width:52%"></div></div><b>46px</b></div>
+        <div class="dim"><span>卡片圆角</span><div class="track"><div class="fill" style="width:22%"></div></div><b>18px</b></div>
+        <div class="dim"><span>表格行</span><div class="track"><div class="fill" style="width:14%"></div></div><b>40px</b></div>
+      </div>
+      <p style="font-size:12.5px;color:var(--g-tx3);margin:14px 0 0;line-height:1.7">
+        圆角 <b style="color:var(--g-tx)">8 / 10 / 14 / 18 / 20</b>（比 A 大一整档，形成体感差异）<br>
+        字号 12 / 13 / <b style="color:var(--g-tx)">14</b> / 20 / 30 / 46<br>
+        <b style="color:var(--g-tx)">不常规</b>：内容区不是一张大白纸，而是若干条 2px 渐变描边的独立瓦片。
+      </p>
+    </div>
+
+    <div class="spec">
+      <h4>视觉冲击点</h4>
+      <ul>
+        <li><i>①</i><span><b>通栏 200px 渐变 Hero</b>：全屏宽、三色 135° 渐变、内含 46px 等宽巨字。这是整个界面唯一的大面积高饱和区域，也是「一眼记住」的来源。</span></li>
+        <li><i>②</i><span><b>每张卡片顶部 2px 渐变轨</b>：用同一条渐变切段给不同卡片，形成色彩节奏而非随机配色。</span></li>
+      </ul>
+    </div>
+
+    <div class="spec">
+      <h4>细节清单</h4>
+      <ul>
+        <li><i>·</i><span>卡片边框用 <code>rgba(255,255,255,.1)</code>，比 A 更明显（A 是 .075）</span></li>
+        <li><i>·</i><span>激活态整个菜单项填充渐变（不是淡色底）</span></li>
+        <li><i>·</i><span>缓动带轻微回弹 <code>cubic-bezier(.34,1.3,.5,1)</code>，呼应「有情绪」</span></li>
+        <li><i>·</i><span>Hero 内文字用纯白 + 82% 白两级，不用灰</span></li>
+      </ul>
+    </div>
+
+    <div class="spec full">
+      <h4>CSS 实现要点（零构建）</h4>
+      <ul>
+        <li><i>·</i><span>渐变全部是 <code>linear-gradient</code>，零额外成本；注意暗色下渐变要<b>略降亮度</b>，否则在近黑底上会「发光过度」。</span></li>
+        <li><i>·</i><span><b>亮色模式必须实测</b>：三色渐变在白底上对比度会掉，Hero 内文字要用 <code>#fff</code> 且加 <code>text-shadow:0 1px 2px rgba(0,0,0,.25)</code> 兜底。</span></li>
+        <li><i>·</i><span>渐变打印会糊 → 加 <code>@media print</code> 回退纯色。</span></li>
+        <li><i>·</i><span>「瓦片式」分区靠 <code>grid</code> + <code>gap</code>，不需要额外 DOM。</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================================== E -->
+<section class="scheme" id="sE" data-scheme="E" data-m="light">
+  <div class="scheme__head">
+    <div class="scheme__no">E</div>
+    <div>
+      <h2>集市 Bazaar</h2>
+      <p class="scheme__vibe">像 PostHog 那样大胆、有幽默感 —— 纸感米色 + 2px 黑描边 + 4px 硬阴影。
+      拒绝「企业级性冷淡」，用颜色和直角明确表态。</p>
+    </div>
+  </div>
+  <div class="tags">
+    <span class="tag tag--key">大胆用色</span><span class="tag">硬阴影 · 新粗野</span>
+    <span class="tag">彩色卡片导航</span><span class="tag">直角为主</span>
+    <span class="tag">纸感暖底</span><span class="tag">四色品牌</span>
+  </div>
+
+  <div class="mock">
+    <div class="mock__bar"><i></i><i></i><i></i><span class="mock__url">aimanong.local/admin</span></div>
+    <div class="view v-bazaar v-three" style="--c-rail:0px;--c-ctx:212px;grid-template-columns:212px minmax(0,1fr)">
+      <div class="v-side" style="padding:14px">
+        <div class="v-brand"><span class="v-mark">AI</span>Aimanong</div>
+        <div class="v-cards">
+          <div class="v-navcard on"><b></b>概览</div>
+          <div class="v-navcard"><b style="background:#1d4aff"></b>内容管理</div>
+          <div class="v-navcard"><b style="background:#f9bd2b"></b>用户</div>
+          <div class="v-navcard"><b style="background:#12a150"></b>标签</div>
+          <div class="v-navcard"><b style="background:#f54e00"></b>设置</div>
+        </div>
+      </div>
+      <div class="v-main">
+        <div style="height:5px;background:linear-gradient(90deg,#f54e00,#f9bd2b,#1d4aff,#12a150);flex-shrink:0"></div>
+        <div class="v-top" style="border-bottom:2px solid var(--c-line);background:var(--c-top)">
+          <span style="font-size:20px;font-weight:800;letter-spacing:-.022em">概览</span>
+          <span class="v-search" style="border:2px solid var(--c-line);border-radius:4px">搜索模块…</span>
+          <span style="font-size:12.5px;font-weight:700;background:#f54e00;color:#1a1a1a;padding:7px 14px;border-radius:4px;border:2px solid var(--c-line);box-shadow:3px 3px 0 var(--c-line)">+ 新建</span>
+        </div>
+        <div class="v-body">
+          <div class="v-stats">
+            <div class="v-stat v-hard"><div class="v-stat__k">MODULES</div><div class="v-stat__v" style="color:var(--c-num-a)">12</div></div>
+            <div class="v-stat v-hard" style="background:#f9bd2b"><div class="v-stat__k" style="color:#1a1a1a">RECORDS</div><div class="v-stat__v">8,420</div></div>
+            <div class="v-stat v-hard"><div class="v-stat__k">LATENCY</div><div class="v-stat__v" style="color:var(--c-num-b)">42<small>ms</small></div></div>
+            <div class="v-stat v-hard" style="background:#1d4aff;--c-stat-tx:#fff"><div class="v-stat__k" style="color:rgba(255,255,255,.75)">UPTIME</div><div class="v-stat__v" style="color:#fff">99.98<small>%</small></div></div>
+          </div>
+          <div class="v-table v-hard">
+            <div class="v-throw" style="background:#f9bd2b;color:#1a1a1a;font-weight:700"><span style="flex:0 0 52px">ID</span><span style="flex:1">标题</span><span style="flex:0 0 92px">状态</span><span style="flex:0 0 76px;text-align:right">浏览</span></div>
+            <div class="v-tr"><span class="v-id">#1042</span><span>Laravel 12 队列深度实践</span><span><span class="v-pill"><em></em>已发布</span></span><span class="v-num">3,204</span></div>
+            <div class="v-tr"><span class="v-id">#1041</span><span>用 AI 生成后台的五个陷阱</span><span><span class="v-pill"><em></em>已发布</span></span><span class="v-num">1,876</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="specs">
+    <div class="spec">
+      <h4>配色 · 四个色相全开</h4>
+      <div class="sw">
+        <figure><div class="chip" style="background:#f5f0e8"><span>F5F0E8</span></div><figcaption>纸感米底</figcaption></figure>
+        <figure><div class="chip" style="background:#1a1a1a"><span>1A1A1A</span></div><figcaption>描边黑</figcaption></figure>
+        <figure><div class="chip" style="background:#f9bd2b"><span>F9BD2B</span></div><figcaption>黄</figcaption></figure>
+        <figure><div class="chip" style="background:#1d4aff"><span>1D4AFF</span></div><figcaption>蓝</figcaption></figure>
+        <figure><div class="chip" style="background:#f54e00"><span>F54E00</span></div><figcaption>橙红</figcaption></figure>
+        <figure><div class="chip" style="background:#12a150"><span>12A150</span></div><figcaption>绿</figcaption></figure>
+      </div>
+      <div style="margin-top:14px">
+        <div class="grad" style="background:linear-gradient(90deg,#f54e00,#f9bd2b,#1d4aff,#12a150)"></div>
+        <p style="font-size:12px;color:var(--g-tx3);margin:0;font-family:var(--font-mono);line-height:1.6">
+          顶部条：linear-gradient(90deg,#f54e00,#f9bd2b,#1d4aff,#12a150)<br>
+          硬阴影：box-shadow:4px 4px 0 #1a1a1a
+        </p>
+      </div>
+    </div>
+
+    <div class="spec">
+      <h4>尺寸 · 哪里不常规</h4>
+      <div class="dims">
+        <div class="dim"><span>侧栏</span><div class="track"><div class="fill" style="width:70%"></div></div><b>212px</b></div>
+        <div class="dim"><span>菜单项高</span><div class="track"><div class="fill" style="width:22%"></div></div><b>36px 卡片</b></div>
+        <div class="dim"><span>描边</span><div class="track"><div class="fill" style="width:100%"></div></div><b>2px</b></div>
+        <div class="dim"><span>硬阴影</span><div class="track"><div class="fill" style="width:60%"></div></div><b>4px 4px 0</b></div>
+        <div class="dim"><span>统计数字</span><div class="track"><div class="fill" style="width:40%"></div></div><b>36px</b></div>
+        <div class="dim"><span>表格行</span><div class="track"><div class="fill" style="width:17%"></div></div><b>48px</b></div>
+      </div>
+      <p style="font-size:12.5px;color:var(--g-tx3);margin:14px 0 0;line-height:1.7">
+        圆角 <b style="color:var(--g-tx)">0 / 4 / 6 / 8</b>（几乎直角 —— 与 A/B/C/D 的圆润形成最大反差）<br>
+        字号 12 / 13 / <b style="color:var(--g-tx)">14</b> / 15 / 20 / 33<br>
+        <b style="color:var(--g-tx)">不常规</b>：导航不是列表，是一叠带硬阴影的彩色卡片；表格表头直接铺黄底。
+      </p>
+    </div>
+
+    <div class="spec">
+      <h4>视觉冲击点</h4>
+      <ul>
+        <li><i>①</i><span><b>彩色卡片导航</b>：每个菜单项是一张 2px 黑描边 + 3px 硬阴影的白卡片，激活项整块变黄。侧栏第一次成为视觉主角。</span></li>
+        <li><i>②</i><span><b>大面积色块统计卡</b>：一张黄、一张蓝满铺，配合其余白卡。这是五个方案里唯一「色块本身就是版式」的做法。</span></li>
+      </ul>
+    </div>
+
+    <div class="spec">
+      <h4>细节清单</h4>
+      <ul>
+        <li><i>·</i><span>所有描边统一 <b>2px 纯黑</b>（不用 1px、不用灰色）</span></li>
+        <li><i>·</i><span>阴影一律 <b>硬阴影</b>（0 blur），营造「贴纸」质感</span></li>
+        <li><i>·</i><span>hover 时元素位移 <code>translate(-1px,-1px)</code> 且阴影加到 5px，产生「抬起」错觉</span></li>
+        <li><i>·</i><span>表头黄底 + 黑字，是唯一用「满铺色」的表头方案</span></li>
+        <li><i>·</i><span>缓动强回弹 <code>cubic-bezier(.34,1.45,.5,1)</code>，动效要「弹」</span></li>
+      </ul>
+    </div>
+
+    <div class="spec full">
+      <h4>CSS 实现要点（零构建）</h4>
+      <ul>
+        <li><i>·</i><span><b>最省 CSS</b>：硬阴影是 <code>box-shadow</code> 一个值，无需模糊，渲染成本最低。</span></li>
+        <li><i>·</i><span><b>暗色模式最难</b>：2px 白描边 + 硬阴影在暗底上会「脏」。建议暗色下保留米色纸底的反相版 <code>#171310</code>，描边换 <code>#f7f2ea</code>，并<b>把阴影色跟随描边色</b>。</span></li>
+        <li><i>·</i><span>直角布局在 320px 下最不容易挤，因为不需要为圆角留内边距补偿。</span></li>
+        <li><i>·</i><span>风险：饱和黄/蓝大面积铺开，<b>必须逐个校验对比度</b>（黄底黑字 12.4:1 ✅、蓝底白字 5.9:1 ✅）。</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== 可行性总表 -->
+<section class="scheme" id="feas">
+  <div class="scheme__head">
+    <div class="scheme__no">✳</div>
+    <div>
+      <h2>可行性总表（实测数据，非记忆）</h2>
+      <p class="scheme__vibe">下面每个版本号都来自 caniuse 与 MDN 的实际抓取，抓取日期 2026 年。
+      注意最后一列的「QQ 浏览器 14.9」—— 国内后台必须考虑它。</p>
+    </div>
+  </div>
+
+  <div class="spec full" style="overflow-x:auto">
+    <h4>CSS 特性支持（决定哪个方案能上）</h4>
+    <table class="feas">
+      <thead><tr><th>特性</th><th>Chrome</th><th>Safari</th><th>Firefox</th><th>全球覆盖</th><th>结论</th></tr></thead>
+      <tbody>
+        <tr><td><b>backdrop-filter</b></td><td>76</td><td>9（需 -webkit- 前缀）</td><td>103</td><td>97.08%</td><td><span class="ok">可放心用</span>，但要配不透明兜底</td></tr>
+        <tr><td><b>oklch()</b></td><td>111</td><td>15.4</td><td>113</td><td>95.12%</td><td><span class="mid">建议</span>只用于推导，产物写 hex</td></tr>
+        <tr><td><b>color-mix()</b></td><td>111</td><td>16.2</td><td>113</td><td>94.79%</td><td><span class="mid">可用</span>，关键色写死回退</td></tr>
+        <tr><td><b>mask / mask-image</b></td><td>120</td><td>15.4</td><td>53</td><td>97.27%</td><td><span class="ok">可放心用</span>，Safari 需 -webkit-</td></tr>
+        <tr><td><b>@property</b></td><td>85</td><td>16.4</td><td>128</td><td>96.13%</td><td><span class="ok">可放心用</span>（Firefox 最晚，2024）</td></tr>
+        <tr><td><b>容器查询 @container</b></td><td>106</td><td>16.0</td><td>110</td><td>95.89%</td><td><span class="mid">建议用</span>，配视口查询兜底</td></tr>
+        <tr><td><b>light-dark()</b></td><td>123</td><td>17.5</td><td>120</td><td>91.28%</td><td><span class="no">不要依赖</span>，用现有 data-mode 方案</td></tr>
+        <tr><td><b>QQ 浏览器 14.9</b></td><td colspan="3" style="text-align:center">oklch ❌ · color-mix ❌ · 容器查询 ❌ · backdrop-filter ❌</td><td>—</td><td><span class="no">必须留兜底</span></td></tr>
+      </tbody>
+    </table>
+    <p class="note">结论：<b>backdrop-filter / mask / @property / 渐变</b> 都可以放心用；
+    <b>oklch / color-mix</b> 用来生成色阶但不要作为运行时唯一依赖 —— 所有令牌仍写最终 hex。
+    这与现有 <code>themes.css</code> 的做法一致，不需要改架构。</p>
+  </div>
+
+  <div class="spec full" style="overflow-x:auto;margin-top:16px">
+    <h4>五方案工作量与风险</h4>
+    <table class="feas">
+      <thead><tr><th>方案</th><th>纯 CSS 可行性</th><th>中文排版风险</th><th>暗色难度</th><th>响应式难度</th><th>工作量</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>A 蓝图</b></td>
+          <td><span class="ok">高</span> 光晕/mask/0.5px 全可做</td>
+          <td><span class="ok">低</span> 中文不用负字距</td>
+          <td><span class="ok">低</span> 本来就暗色优先</td>
+          <td><span class="mid">中</span> 三栏要设计 3 个断点</td>
+          <td><b>2.5–3 人日</b></td>
+        </tr>
+        <tr>
+          <td><b>B 新芽</b></td>
+          <td><span class="ok">高</span> 渐变/胶囊/多层阴影</td>
+          <td><span class="ok">低</span></td>
+          <td><span class="mid">中</span> 要重调色温，不能取反</td>
+          <td><span class="ok">低</span> 顶栏 96px 内部弹性好</td>
+          <td><b>2–2.5 人日</b></td>
+        </tr>
+        <tr>
+          <td><b>C 纯白</b></td>
+          <td><span class="ok">很高</span> 色值最少</td>
+          <td><span class="mid">中</span> 44px 负字距必须对中文归零</td>
+          <td><span class="ok">很低</span> 只换 6 个值</td>
+          <td><span class="ok">低</span> 单列居中天然自适应</td>
+          <td><b>1.5–2 人日</b></td>
+        </tr>
+        <tr>
+          <td><b>D 双轨</b></td>
+          <td><span class="ok">高</span> 纯 linear-gradient</td>
+          <td><span class="ok">低</span></td>
+          <td><span class="mid">中</span> 渐变需按模式调亮度</td>
+          <td><span class="mid">中</span> Hero 内巨字要 clamp()</td>
+          <td><b>2–2.5 人日</b></td>
+        </tr>
+        <tr>
+          <td><b>E 集市</b></td>
+          <td><span class="ok">很高</span> 硬阴影成本最低</td>
+          <td><span class="ok">低</span></td>
+          <td><span class="no">高</span> 硬阴影 + 白描边在暗底易脏</td>
+          <td><span class="ok">低</span> 直角不需圆角补偿</td>
+          <td><b>2–2.5 人日</b></td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="note" style="border-color:#3fb950">
+    <b>对比度实测（已程序化校验，非估算）</b>：五方案的强调色/数字色共 27 组配对被逐一计算（终验 0 组不达标），
+    修复了 5 组不达标项 —— B 暗色数字紫 <code>2.93</code>→<code>6.18</code>、
+    B 暗色数字绿 <code>3.13</code>→<code>11.01</code>、E 暗色数字蓝 <code>2.79</code>→<code>7.53</code>、
+    E 亮色数字绿 <code>3.37</code>→<code>5.42</code>、E 主按钮白字 <code>3.52</code>→改黑字 <code>4.95</code>。
+    结论：<b>同一套强调色不能跨亮暗复用</b>，必须各给一档（页面里的 <code>--c-num-a/b</code> 就是这两档）。
+    这正是前几版容易漏掉、而验收时会暴露的地方。</p>
+
+    <p class="note">共同前置工作（五方案共用，只做一次）：把 <code>design-system.css</code> 里 212 个
+    <code>.am-*</code> 类名保持不变，只替换 token 层 → 迁移成本极低，无需改 Blade 模板。
+    真正的工作量在<b>每个方案的表格响应式策略</b>（320px 到 2560px）。</p>
+  </div>
+</section>
+
+<!-- ================================================================ 推荐 -->
+<div class="verdict">
+  <h2>我的推荐：A 蓝图（暗色为主） + B 新芽（亮色主题）</h2>
+  <p>如果只能选一个：<b>A 蓝图</b>。如果用户还想要「亮色也能看」，就 <b>A 为默认 + C 为亮色模式</b>。</p>
+
+  <h3>为什么是 A，而不是颜色更炸的 D / E</h3>
+  <ul>
+    <li><b>它解决了「闷」的真正病因。</b> 用户的四轮否决里，「闷」的根因是单色相 + 低饱和 + 大面积中性。
+    A 的解法不是加饱和，而是<b>把中性色本身做出 4 级近黑台阶 + 1%–6% 的 alpha 台阶</b>，
+    再用<b>一处高饱和强调色</b>做锚点。这是 Linear 被验证过的路径，也是唯一「既高级又不老气」的路径。</li>
+    <li><b>它解决了「布局太普通」而不用赌。</b> 88px 图标轨 + 196px 上下文栏的三栏结构，
+    在 1440px 上是「专业工具」，在 1024px 下降级为两栏，在 768px 下变抽屉 —— 每一档都有明确形态，
+    不像单列布局在宽屏上会显得空。</li>
+    <li><b>它天生扣住品牌。</b> 「蓝图 / 代码 / 终端」的气质与 LOGO 的蓝色圆环 + 二进制数字直接同源，
+    但<b>不再被蓝色绑死</b>：橙红/橙黄/亮绿降级为语义色（danger/warning/success），
+    这恰好就是 LOGO 里它们的原始角色 —— 有据可依，不是我硬凑的。</li>
+    <li><b>风险最低。</b> 暗色优先意味着「暗色好看」是免费的；反过来做（亮色优先）则暗色要重调一遍。
+    而且它不需要任何浏览器新特性，QQ 浏览器 14.9 也能完整渲染。</li>
+  </ul>
+
+  <h3>如果你判断用户就是嫌不够炸 —— 换 B</h3>
+  <p>用户说「缺少视觉冲击」时，最直接的解药是<b>面积</b>，不是色相数量。B 提供了五个方案里
+  唯一一块会让人「哇」的东西：96px 顶栏 + 34px 彩色数字 + 顶部四色渐变条。
+  而且它是<b>亮色为主</b> —— 如果用户的审美偏好其实是「明亮、干净、不压抑」，
+  A 的暗色反而会再次被判「闷」。<b>这是我能给出的最重要的判断分歧点。</b></p>
+
+  <h3>诚实的工作量与风险</h3>
+  <ul>
+    <li><b>总工作量</b>：选定一个方案 → 1.5–3 人日；做「默认 + 亮色主题」两套 → 再 +0.5 人日。
+    五个方案全部做成可切换主题是 <b>6–8 人日</b>，但<b>不建议</b>：五个方案是审美选择，不是产品功能。</li>
+    <li><b>最大风险是「又一次审美否决」</b>，而不是技术。技术上这些都在纯 CSS 能力内，零构建、零 CDN。
+    建议的做法：<b>先只做一个方案的一屏</b>（列表页，含表格），截图给用户看，确认方向再铺开。
+    这次不要再一次性做完三套主题了。</li>
+    <li><b>已知技术坑</b>（每个方案单独标注在「CSS 实现要点」里）：0.5px 描边在 1x 屏会消失、
+    中文负字距会撞笔画、暗色硬阴影易脏、渐变在白底对比度不足。这四个都有成熟解法，不构成阻断。</li>
+    <li><b>不推荐的做法</b>：不要试图把五个方案「融合」成一个。它们的差异来自骨架和圆角/描边的
+    <b>体系性选择</b>，混搭会立刻退回「安全但平庸」——那正是被否决四次的根源。</li>
+  </ul>
+</div>
+
+<p class="note" style="margin-top:28px">
+  说明：本页所有产品的色值、尺寸均来自对其生产环境 CSS / 官方品牌页 / 设计系统文档的实际抓取，
+  浏览器支持数据来自 caniuse 与 MDN 的实际页面；LOGO 色相分布为对 <code>logo.png</code> 的逐像素统计。
+  估算值已在原报告中标注。
+</p>
+
+</div>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  function setAll(m){
+    document.querySelectorAll('[data-scheme]').forEach(function(s){ s.dataset.m=m; });
+  }
+  document.getElementById('modeBtn').onclick=function(){
+    root.dataset.mode = root.dataset.mode==='dark' ? 'light' : 'dark';
+    this.textContent = root.dataset.mode==='dark' ? '切换亮 / 暗' : '切换亮 / 暗（当前亮色）';
+  };
+  var SIG={A:'dark',B:'light',C:'light',D:'dark',E:'light'};
+  function setSig(){
+    document.querySelectorAll('[data-scheme]').forEach(function(s){
+      s.dataset.m = SIG[s.dataset.scheme] || 'dark';
+    });
+  }
+  document.getElementById('allMode').onclick=function(){ setAll('light'); };
+  document.getElementById('allDark').onclick=function(){ setAll('dark'); };
+  document.getElementById('allSig').onclick=setSig;
+  // 展厅页自身的亮暗跟随「当前正在展示的主方案」——默认按签名模式
+  setSig();
+})();
+</script>
+</body>
+</html>

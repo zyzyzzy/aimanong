@@ -1,0 +1,272 @@
+<!DOCTYPE html><html lang="zh-CN" data-mode="dark"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>方案 5 · 二进制极简</title>
+<style>
+/* ══════════════════════════════════════════════════════════
+   方案 5 · 二进制极简（Binary Mono）
+   基底：Supabase 的「近单色 + 唯一强调色」
+   手法：几乎全部无彩色，只让「数据」和「LOGO 几何」带颜色。
+        LOGO 的圆环 + 二进制数字成为装饰语言。
+   ══════════════════════════════════════════════════════════ */
+:root{
+  /* 唯一强调色 —— LOGO 亮绿，且只用在"活着的数据"上 */
+  --acc:#5ec46a; --acc-dim:#3a7a42;
+  --bg:#0a0a0b; --bg2:#101012; --bg3:#17171a; --bg4:#1f1f23;
+  --line:#1e1e22; --line2:#2a2a30;
+  --t1:#f0f0f2; --t2:#a0a0a8; --t3:#6c6c76; --t4:#4a4a52;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Noto Sans SC",sans-serif;
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:14px;
+     line-height:1.65;-webkit-font-smoothing:antialiased}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ── 布局：极窄侧栏 + 大内容区 ── */
+.shell{display:grid;grid-template-columns:200px minmax(0,1fr);min-height:100vh}
+.side{background:var(--bg2);border-right:1px solid var(--line);
+      display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.sb{padding:18px 16px;border-bottom:1px solid var(--line)}
+/* LOGO 的圆环 + 二进制 = 品牌符号 */
+.brand{display:flex;align-items:center;gap:10px}
+.brand-ring{width:30px;height:30px;flex-shrink:0;position:relative;display:grid;place-items:center}
+.brand-ring svg{position:absolute;inset:0}
+.brand-ring span{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--acc)}
+.brand-t{font-size:13.5px;font-weight:640;letter-spacing:-.01em}
+.brand-s{font-family:var(--mono);font-size:9.5px;color:var(--t4);letter-spacing:.05em}
+/* 二进制底纹（LOGO 环绕数字的抽象） */
+.bin{font-family:var(--mono);font-size:8px;color:var(--t4);letter-spacing:.18em;
+     opacity:.45;margin-top:10px;line-height:1.5;word-break:break-all}
+.nav{padding:8px;flex:1}
+.ng{padding:13px 9px 5px;font-family:var(--mono);font-size:9.5px;color:var(--t4);
+    text-transform:uppercase;letter-spacing:.12em}
+.ni{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:6px;
+    font-size:13px;color:var(--t2);transition:all .13s var(--ease);cursor:pointer}
+.ni:hover{background:var(--bg3);color:var(--t1)}
+.ni.on{background:var(--bg4);color:var(--t1);font-weight:540}
+.ni.on svg{color:var(--acc)}
+.ni svg{width:14px;height:14px;flex-shrink:0;opacity:.7}
+.ni .c{margin-left:auto;font-family:var(--mono);font-size:9.5px;color:var(--t4)}
+
+.main{min-width:0;display:flex;flex-direction:column}
+.top{height:52px;display:flex;align-items:center;gap:12px;padding:0 22px;
+     border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:30}
+.crumb{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11.5px;color:var(--t4)}
+.crumb b{color:var(--t2);font-weight:500}
+.top-r{margin-left:auto;display:flex;align-items:center;gap:8px}
+.body{padding:26px 28px;flex:1;max-width:1320px}
+
+/* ── 页头：极简，一行说完 ── */
+.ph{display:flex;align-items:flex-end;gap:18px;margin-bottom:26px;flex-wrap:wrap}
+.ph h1{font-size:32px;font-weight:680;letter-spacing:-.035em;line-height:1.1}
+.ph .m{display:flex;gap:16px;margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--t4)}
+.ph .m b{color:var(--t2);font-weight:500}
+.ph .a{margin-left:auto;display:flex;gap:8px}
+
+.b{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:6px;
+   border:1px solid var(--line2);background:transparent;color:var(--t2);font-size:13px;
+   font-weight:500;cursor:pointer;transition:all .14s var(--ease);white-space:nowrap}
+.b:hover{border-color:var(--t4);color:var(--t1);background:var(--bg3)}
+/* 主按钮：**不用彩色**，用高对比黑/白 —— Supabase 的做法 */
+.b.p{background:var(--t1);border-color:var(--t1);color:var(--bg)}
+.b.p:hover{background:#fff}
+
+/* ── 统计：无卡片，只有数字 + 一行说明，靠间距分组 ── */
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;
+       border-top:1px solid var(--line2);border-bottom:1px solid var(--line2);margin-bottom:30px}
+.st{padding:20px 20px 20px 0;border-right:1px solid var(--line);min-width:0}
+.st:last-child{border-right:none}
+.st .k{font-family:var(--mono);font-size:9.5px;color:var(--t4);text-transform:uppercase;letter-spacing:.14em}
+.st .v{font-family:var(--mono);font-size:32px;font-weight:680;letter-spacing:-.045em;
+       margin-top:7px;line-height:1}
+.st .d{font-size:11px;color:var(--t3);margin-top:5px}
+/* 唯一带颜色的数字：正在变化/需要注意的 */
+.st .v.acc{color:var(--acc)}
+
+/* ── 表格：极简线条，只有状态用色 ── */
+.card{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg2)}
+.ch{display:flex;align-items:center;gap:11px;padding:13px 18px;border-bottom:1px solid var(--line)}
+.ch h2{font-size:13.5px;font-weight:620}
+.ch .s{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--t4)}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px;min-width:960px}
+th{text-align:left;padding:10px 18px;font-family:var(--mono);font-size:9.5px;font-weight:500;
+   color:var(--t4);text-transform:uppercase;letter-spacing:.13em;border-bottom:1px solid var(--line2);
+   white-space:nowrap;background:var(--bg2);position:sticky;top:0;z-index:2}
+td{padding:14px 18px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr{transition:background .1s}
+tbody tr:hover{background:var(--bg3)}
+tbody tr:last-child td{border-bottom:none}
+.id{font-family:var(--mono);color:var(--t4);font-size:12px}
+.num{font-family:var(--mono);text-align:right}
+/* 状态：唯一有色处（无底色的极简 chip） */
+.sx{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;
+    font-weight:560;white-space:nowrap}
+.sx i{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+.sx.ok{color:var(--acc)} .sx.re{color:var(--t2)} .sx.dr{color:var(--t3)}
+td.act,th.act{text-align:right;position:sticky;right:0;background:var(--bg2)}
+thead th.act{z-index:3}
+tbody tr:hover td.act{background:var(--bg3)}
+/* 空状态：用二进制装饰 */
+.empty{border:1px solid var(--line);border-radius:8px;margin-top:22px;padding:56px 24px;
+       text-align:center;position:relative;overflow:hidden;background:var(--bg2)}
+.empty .bg{position:absolute;inset:0;font-family:var(--mono);font-size:10px;color:var(--t4);
+  opacity:.16;line-height:1.9;letter-spacing:.4em;word-break:break-all;
+  padding:14px;mask-image:radial-gradient(50% 50% at 50% 50%,transparent 20%,#000 75%)}
+.empty .in{position:relative}
+.empty h3{font-size:15px;font-weight:620}
+.empty p{font-size:12.5px;color:var(--t3);margin-top:7px;line-height:1.8}
+.empty .a{margin-top:18px;display:flex;gap:8px;justify-content:center}
+
+@media (max-width:1120px){ .shell{grid-template-columns:56px minmax(0,1fr)}
+  .brand-t,.brand-s,.bin,.ng,.ni span:not(.c),.ni .c{display:none}
+  .ni{justify-content:center;padding:9px} .sb{display:grid;place-items:center;padding:14px 6px}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .st:nth-child(2){border-right:none}
+  .st:nth-child(1),.st:nth-child(2){border-bottom:1px solid var(--line)} }
+@media (max-width:820px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .side{position:fixed;left:0;top:0;z-index:70;width:210px;transform:translateX(-100%);
+        transition:transform .24s var(--ease)}
+  .side.open{transform:none;box-shadow:0 0 0 100vmax rgba(0,0,0,.6)}
+  .brand-t,.brand-s,.bin,.ng,.ni span:not(.c),.ni .c{display:block}
+  .ni{justify-content:flex-start;padding:7px 9px} .sb{display:block;padding:16px}
+  .mbtn{display:grid!important}
+  .body{padding:18px}
+  .ph h1{font-size:25px} }
+@media (max-width:600px){
+  .body{padding:14px}
+  .top{padding:0 14px;gap:8px;flex-wrap:nowrap}
+  .crumb a,.crumb .sep{display:none}
+  .crumb{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .top-r .hide-s{display:none}
+  .ph h1{font-size:21px}
+  .ph .a{width:100%;margin-left:0} .ph .a .b{flex:1;justify-content:center}
+  .st .v{font-size:22px} .st{padding:14px 14px 14px 0}
+  thead{display:none} table{min-width:0}
+  tbody tr{display:block;padding:14px 16px;border-bottom:1px solid var(--line2)}
+  tbody td{display:flex;justify-content:space-between;gap:14px;padding:5px 0;border:none;text-align:right}
+  tbody td::before{content:attr(data-l);font-family:var(--mono);font-size:9.5px;
+    color:var(--t4);text-transform:uppercase;letter-spacing:.1em;flex-shrink:0}
+  td.act{position:static;padding-top:11px} td.act::before{content:''}
+  .empty{padding:40px 18px} .empty .bg{display:none} }
+.mbtn{display:none;width:32px;height:32px;border-radius:6px;border:1px solid var(--line2);
+      background:transparent;place-items:center;cursor:pointer;flex-shrink:0}
+.mbtn svg{width:15px;height:15px}
+</style></head><body>
+<div class="shell">
+  <aside class="side" id="side">
+    <div class="sb">
+      <div class="brand">
+        <div class="brand-ring">
+          <svg viewBox="0 0 30 30">
+            <circle cx="15" cy="15" r="13" fill="none" stroke="var(--acc-dim)" stroke-width="1.2"/>
+            <circle cx="15" cy="15" r="13" fill="none" stroke="var(--acc)" stroke-width="1.2"
+                    stroke-dasharray="4 78" stroke-linecap="round"/>
+          </svg>
+          <span>AI</span>
+        </div>
+        <div><div class="brand-t">Aimanong</div><div class="brand-s">AI 码农</div></div>
+      </div>
+      <div class="bin">01101001 01101101 01100001 01101110 01101111 01101110 01100111</div>
+    </div>
+    <nav class="nav">
+      <div class="ng">内容</div>
+      <div class="ni on">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+        <span>文章</span><span class="c">12</span></div>
+      <div class="ni">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span>栏目</span></div>
+      <div class="ni">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg>
+        <span>作者</span></div>
+      <div class="ng">系统</div>
+      <div class="ni">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>
+        <span>角色</span></div>
+      <div class="ni">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="8" cy="14" r="4"/><path d="M11 11l8-8 2 2-2 2 2 2-2 2-2-2-2 2"/></svg>
+        <span>权限节点</span><span class="c">132</span></div>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <header class="top">
+      <button class="mbtn" onclick="document.getElementById('side').classList.toggle('open')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      <div class="crumb"><a href="#">控制台</a><span class="sep">/</span><b>文章</b></div>
+      <div class="top-r"><button class="b hide-s">退出</button></div>
+    </header>
+
+    <div class="body">
+      <div class="ph">
+        <div>
+          <h1>文章管理</h1>
+          <div class="m"><span>cms-articles</span><span>11 字段</span><span>12 记录</span></div>
+        </div>
+        <div class="a"><button class="b">导出</button><button class="b p">新增</button></div>
+      </div>
+
+      <div class="stats">
+        <div class="st"><div class="k">总记录</div><div class="v acc">12</div><div class="d">本周 +3</div></div>
+        <div class="st"><div class="k">已发布</div><div class="v">8</div><div class="d">66.7%</div></div>
+        <div class="st"><div class="k">总浏览</div><div class="v">96,208</div><div class="d">↑ 12.4%</div></div>
+        <div class="st"><div class="k">待审核</div><div class="v">1</div><div class="d">需处理</div></div>
+      </div>
+
+      <div class="card">
+        <div class="ch"><h2>文章列表</h2><span class="s">schema v1 · 自动生成</span></div>
+        <div class="tw"><table>
+          <thead><tr>
+            <th style="width:54px">ID</th><th style="min-width:168px">Slug</th>
+            <th style="min-width:228px">标题</th><th style="min-width:112px">状态</th>
+            <th class="num" style="min-width:98px">浏览量</th><th style="min-width:88px">发布</th>
+            <th class="act" style="width:68px"></th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="id" data-l="ID">01</td>
+              <td class="mono" style="color:var(--t2);font-size:12.5px" data-l="Slug">laravel-12-queue</td>
+              <td data-l="标题">Laravel 12 队列深度实践</td>
+              <td data-l="状态"><span class="sx ok"><i></i>published</span></td>
+              <td class="num" data-l="浏览量">23,000</td>
+              <td class="mono" style="color:var(--t3);font-size:12.5px" data-l="发布">08-30</td>
+              <td class="act" data-l=""><button class="b" style="height:26px;padding:0 8px;font-size:12px">编辑</button></td></tr>
+            <tr><td class="id" data-l="ID">02</td>
+              <td class="mono" style="color:var(--t2);font-size:12.5px" data-l="Slug">vue3-patterns</td>
+              <td data-l="标题">Vue 3 组合式 API 的 7 个模式</td>
+              <td data-l="状态"><span class="sx re"><i></i>review</span></td>
+              <td class="num" data-l="浏览量">10,450</td>
+              <td class="mono" style="color:var(--t3);font-size:12.5px" data-l="发布">09-09</td>
+              <td class="act" data-l=""><button class="b" style="height:26px;padding:0 8px;font-size:12px">编辑</button></td></tr>
+            <tr><td class="id" data-l="ID">03</td>
+              <td class="mono" style="color:var(--t2);font-size:12.5px" data-l="Slug">mysql-index</td>
+              <td data-l="标题">MySQL 索引失效的 12 种场景</td>
+              <td data-l="状态"><span class="sx dr"><i></i>draft</span></td>
+              <td class="num" data-l="浏览量">8</td>
+              <td class="mono" style="color:var(--t3);font-size:12.5px" data-l="发布">—</td>
+              <td class="act" data-l=""><button class="b" style="height:26px;padding:0 8px;font-size:12px">编辑</button></td></tr>
+            <tr><td class="id" data-l="ID">04</td>
+              <td class="mono" style="color:var(--t2);font-size:12.5px" data-l="Slug">ai-agent-flow</td>
+              <td data-l="标题">AI Agent 在内容生产中的落地</td>
+              <td data-l="状态"><span class="sx ok"><i></i>published</span></td>
+              <td class="num" data-l="浏览量">15,600</td>
+              <td class="mono" style="color:var(--t3);font-size:12.5px" data-l="发布">09-19</td>
+              <td class="act" data-l=""><button class="b" style="height:26px;padding:0 8px;font-size:12px">编辑</button></td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <div class="empty">
+        <div class="bg">01101001 01101101 01100001 01101110 01101111 01101110 01100111 00100000 01100001 01101001 00100000 01101101 01100001 00100000 01101110 01101111 01101110 01100111</div>
+        <div class="in">
+          <h3>还没有 Agent 任务</h3>
+          <p>AI 生成资源声明后，任务会出现在这里。<br>你只需审阅与合并。</p>
+          <div class="a"><button class="b p">新建资源</button><button class="b">查看文档</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>

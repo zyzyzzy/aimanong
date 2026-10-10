@@ -1,0 +1,200 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>方案 3 · 亮色精密</title>
+<style>
+/* ══════════════════════════════════════════════════
+   方案 3 · 亮色精密（Precision Light）
+   基底：Vercel Geist 的极简层级 + Linear 的精密排版
+   手法：不用色块，靠「超大字号 + 极细线条 + 精密留白」制造高级感
+   ══════════════════════════════════════════════════ */
+:root{
+  --blue:#2e5ba0; --blue-h:#4071bb;
+  --red:#c33d2b; --amber:#a86a10; --green:#2f7d3d;
+  --bg:#fcfcfd; --surface:#fff; --sunken:#f6f7f9; --hover:#f4f6f9;
+  --line:#eceef1; --line2:#e0e3e8; --line3:#cdd2da;
+  --t1:#0b0f14; --t2:#4a5460; --t3:#78828f; --t4:#a3abb6;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Noto Sans SC",sans-serif;
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:14px;
+     line-height:1.65;-webkit-font-smoothing:antialiased;letter-spacing:-.006em}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:0}
+.wrap{max-width:1240px;margin:0 auto;padding:36px 40px 80px}
+
+/* ── 顶部：一条极细的顶栏，对比"厚重侧栏" ── */
+.top{display:flex;align-items:center;gap:22px;padding-bottom:18px;
+     border-bottom:1px solid var(--line2);margin-bottom:44px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:640;font-size:15px;letter-spacing:-.02em}
+.logo-mark{width:26px;height:26px;border-radius:7px;position:relative;flex-shrink:0;
+  background:linear-gradient(135deg,var(--blue-h),var(--blue));
+  box-shadow:0 1px 3px rgba(46,91,160,.3),inset 0 1px 0 rgba(255,255,255,.25)}
+.logo-mark::after{content:'';position:absolute;inset:7px;border:1.5px solid rgba(255,255,255,.55);border-radius:50%}
+.nav{display:flex;gap:4px;margin-left:8px}
+.nav a{padding:6px 11px;border-radius:7px;font-size:13.5px;color:var(--t2);
+       transition:all .14s var(--ease)}
+.nav a:hover{background:var(--hover);color:var(--t1)}
+.nav a.on{background:var(--sunken);color:var(--t1);font-weight:550;
+          box-shadow:inset 0 0 0 1px var(--line2)}
+.top-r{margin-left:auto;display:flex;align-items:center;gap:10px}
+
+/* ── 页头：超大字号，这是"高级感"的主要来源 ── */
+.head{margin-bottom:36px}
+.head .eyebrow{font-family:var(--mono);font-size:11px;color:var(--t3);
+  text-transform:uppercase;letter-spacing:.14em;margin-bottom:10px}
+.head h1{font-size:52px;font-weight:680;letter-spacing:-.045em;line-height:1.02}
+.head .lede{margin-top:14px;font-size:15px;color:var(--t2);max-width:52ch;line-height:1.7}
+.head .acts{display:flex;gap:8px;margin-top:24px}
+
+/* ── 按钮：精密 ── */
+.b{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;
+   border-radius:8px;border:1px solid var(--line2);background:var(--surface);
+   color:var(--t2);font-size:13.5px;font-weight:520;cursor:pointer;
+   transition:all .14s var(--ease);white-space:nowrap;
+   box-shadow:0 1px 2px rgba(11,15,20,.04)}
+.b:hover{border-color:var(--line3);color:var(--t1);box-shadow:0 3px 8px rgba(11,15,20,.07);transform:translateY(-1px)}
+.b:active{transform:translateY(0)}
+.b.p{background:var(--t1);border-color:var(--t1);color:#fff;box-shadow:0 1px 3px rgba(11,15,20,.2)}
+.b.p:hover{background:#1d242e;border-color:#1d242e}
+
+/* ── 数据条：不用卡片，用一条极细的分隔线 + 大数字 ── */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line2);
+         border-bottom:1px solid var(--line2);margin-bottom:40px}
+.m{padding:22px 0;border-right:1px solid var(--line)}
+.m:last-child{border-right:none}
+.m .k{font-family:var(--mono);font-size:10.5px;color:var(--t3);
+      text-transform:uppercase;letter-spacing:.12em}
+.m .v{font-family:var(--mono);font-size:34px;font-weight:660;letter-spacing:-.04em;
+      margin-top:8px;line-height:1}
+.m .d{font-size:12px;color:var(--t3);margin-top:6px}
+.m .v.blue{color:var(--blue)} .m .v.green{color:var(--green)}
+.m .v.amber{color:var(--amber)} .m .v.red{color:var(--red)}
+
+/* ── 表格：极细线条，无卡片边框 ── */
+.sec-h{display:flex;align-items:baseline;gap:12px;margin-bottom:14px}
+.sec-h h2{font-size:17px;font-weight:620;letter-spacing:-.02em}
+.sec-h .s{font-family:var(--mono);font-size:11.5px;color:var(--t3);margin-left:auto}
+.tw{overflow-x:auto;border-top:1px solid var(--line2)}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px;min-width:980px}
+th{text-align:left;padding:11px 16px;font-family:var(--mono);font-size:10.5px;font-weight:500;
+   color:var(--t3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--line2);
+   white-space:nowrap;background:var(--bg);position:sticky;top:0;z-index:2}
+td{padding:15px 16px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr{transition:background .1s}
+tbody tr:hover{background:var(--hover)}
+.id{font-family:var(--mono);color:var(--t3);font-size:12px}
+.num{font-family:var(--mono);text-align:right}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:6px;
+      font-family:var(--mono);font-size:11px;font-weight:560;white-space:nowrap;
+      box-shadow:inset 0 0 0 1px currentColor}
+.chip.ok{color:var(--green);background:#f0f9f2}
+.chip.w{color:var(--amber);background:#fdf8ee}
+.chip.b{color:var(--blue);background:#f0f5fc}
+.dot{width:4px;height:4px;border-radius:50%;background:currentColor}
+/* 操作列 */
+td.act,th.act{text-align:right;position:sticky;right:0;background:var(--bg)}
+tbody tr:hover td.act{background:var(--hover)}
+thead th.act{background:var(--bg);z-index:3}
+
+@media (max-width:900px){
+  .wrap{padding:24px 20px 60px}
+  .head h1{font-size:36px}
+  .metrics{grid-template-columns:repeat(2,1fr)}
+  .m{border-bottom:1px solid var(--line);padding:16px 0}
+  .m:nth-child(2n){border-right:none}
+  .nav{display:none}
+}
+@media (max-width:600px){
+  .wrap{padding:18px 14px 48px}
+  .head h1{font-size:28px}
+  .head .lede{font-size:13.5px}
+  .head .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .head .acts .b{justify-content:center}
+  .m .v{font-size:24px}
+  .top{gap:10px;margin-bottom:26px}
+  .top-r .b:first-child{display:none}
+  thead{display:none}
+  .tw{border-top:none}
+  table{min-width:0}
+  tbody tr{display:block;padding:16px;border-bottom:1px solid var(--line2)}
+  tbody td{display:flex;justify-content:space-between;gap:16px;padding:5px 0;border:none;text-align:right}
+  tbody td::before{content:attr(data-l);font-family:var(--mono);font-size:10.5px;
+    color:var(--t3);text-transform:uppercase;letter-spacing:.08em;flex-shrink:0}
+  td.act{position:static;padding-top:12px}
+  td.act::before{content:''}
+}
+</style></head><body>
+<div class="wrap">
+
+  <div class="top">
+    <div class="logo"><span class="logo-mark"></span>Aimanong</div>
+    <nav class="nav">
+      <a class="on" href="#">文章</a><a href="#">栏目</a><a href="#">作者</a>
+      <a href="#">角色</a><a href="#">权限</a>
+    </nav>
+    <div class="top-r">
+      <button class="b">搜索</button>
+      <span class="mono" style="font-size:11.5px;color:var(--t3)">⌘K</span>
+    </div>
+  </div>
+
+  <div class="head">
+    <div class="eyebrow">RESOURCE · cms-articles</div>
+    <h1>文章管理</h1>
+    <p class="lede">这份界面由一份 PHP 声明编译而成 —— schema、接口、类型与文档同源，永不漂移。</p>
+    <div class="acts">
+      <button class="b">刷新</button>
+      <button class="b">导出</button>
+      <button class="b p">新增文章</button>
+    </div>
+  </div>
+
+  <div class="metrics">
+    <div class="m"><div class="k">总记录</div><div class="v blue">12</div><div class="d">本周 +3</div></div>
+    <div class="m"><div class="k">已发布</div><div class="v green">8</div><div class="d">占比 66.7%</div></div>
+    <div class="m"><div class="k">总浏览</div><div class="v amber">96,208</div><div class="d">↑ 12.4%</div></div>
+    <div class="m"><div class="k">待审核</div><div class="v red">1</div><div class="d">需要处理</div></div>
+  </div>
+
+  <div class="sec-h"><h2>文章列表</h2><span class="s">schema v1 · 自动生成</span></div>
+  <div class="tw"><table>
+    <thead><tr>
+      <th style="width:56px">ID</th><th style="min-width:170px">Slug</th>
+      <th style="min-width:240px">标题</th><th style="min-width:120px">状态</th>
+      <th class="num" style="min-width:100px">浏览量</th><th style="min-width:90px">发布</th>
+      <th class="act" style="width:80px"></th>
+    </tr></thead>
+    <tbody>
+      <tr><td class="id" data-l="ID">01</td>
+        <td class="mono" style="color:var(--t2);font-size:12.5px" data-l="Slug">laravel-12-queue</td>
+        <td data-l="标题">Laravel 12 队列深度实践</td>
+        <td data-l="状态"><span class="chip ok"><i class="dot"></i>published</span></td>
+        <td class="num" data-l="浏览量">23,000</td>
+        <td class="mono" style="color:var(--t3);font-size:12.5px" data-l="发布">08-30</td>
+        <td class="act" data-l=""><button class="b" style="height:28px;padding:0 9px;font-size:12.5px">编辑</button></td></tr>
+      <tr><td class="id" data-l="ID">02</td>
+        <td class="mono" style="color:var(--t2);font-size:12.5px" data-l="Slug">vue3-patterns</td>
+        <td data-l="标题">Vue 3 组合式 API 的 7 个模式</td>
+        <td data-l="状态"><span class="chip b"><i class="dot"></i>review</span></td>
+        <td class="num" data-l="浏览量">10,450</td>
+        <td class="mono" style="color:var(--t3);font-size:12.5px" data-l="发布">09-09</td>
+        <td class="act" data-l=""><button class="b" style="height:28px;padding:0 9px;font-size:12.5px">编辑</button></td></tr>
+      <tr><td class="id" data-l="ID">03</td>
+        <td class="mono" style="color:var(--t2);font-size:12.5px" data-l="Slug">mysql-index</td>
+        <td data-l="标题">MySQL 索引失效的 12 种场景</td>
+        <td data-l="状态"><span class="chip w"><i class="dot"></i>draft</span></td>
+        <td class="num" style="color:var(--amber)" data-l="浏览量">8</td>
+        <td class="mono" style="color:var(--t3);font-size:12.5px" data-l="发布">—</td>
+        <td class="act" data-l=""><button class="b" style="height:28px;padding:0 9px;font-size:12.5px">编辑</button></td></tr>
+      <tr><td class="id" data-l="ID">04</td>
+        <td class="mono" style="color:var(--t2);font-size:12.5px" data-l="Slug">ai-agent-flow</td>
+        <td data-l="标题">AI Agent 在内容生产中的落地</td>
+        <td data-l="状态"><span class="chip ok"><i class="dot"></i>published</span></td>
+        <td class="num" data-l="浏览量">15,600</td>
+        <td class="mono" style="color:var(--t3);font-size:12.5px" data-l="发布">09-19</td>
+        <td class="act" data-l=""><button class="b" style="height:28px;padding:0 9px;font-size:12.5px">编辑</button></td></tr>
+    </tbody>
+  </table></div>
+</div>
+</body></html>

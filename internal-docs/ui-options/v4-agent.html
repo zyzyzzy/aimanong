@@ -1,0 +1,357 @@
+<!DOCTYPE html><html lang="zh-CN" data-mode="dark"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>方案 4 · Agent 中心</title>
+<style>
+/* ══════════════════════════════════════════════════════════
+   方案 4 · Agent 中心（Agent-Centric）
+   ──────────────────────────────────────────────────────────
+   核心主张：这不是"人在操作的后台"，而是"AI 在干活、人在审阅"的控制台。
+   所以界面必须回答一个普通后台不回答的问题：**AI 现在在做什么？**
+
+   三个别人不会做的决策：
+     1. 顶栏常驻「Agent 活动」指示（呼吸环 + 当前动作 + 队列数）
+     2. 表格行左侧有「正在被 AI 写入」的流动扫描线
+     3. 空状态写的是「还没有 Agent 任务 / 你只需审阅与合并」
+   ══════════════════════════════════════════════════════════ */
+:root{
+  --blue:#4071bb; --blue-l:#6e9fea; --blue-d:#2d5ca4;
+  --red:#e05040; --amber:#e8a840; --green:#70d070;
+  --bg:#080b11; --bg2:#0d1119; --bg3:#141a24; --bg4:#1c232f;
+  --line:#1b2230; --line2:#252d3d;
+  --t1:#e9eef6; --t2:#9aa7ba; --t3:#6b7789; --t4:#4a5464;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Noto Sans SC",sans-serif;
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:14px;
+     line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ── 布局 ── */
+.shell{display:grid;grid-template-columns:224px minmax(0,1fr);min-height:100vh}
+.side{background:var(--bg2);border-right:1px solid var(--line);
+      display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.side-b{display:flex;align-items:center;gap:10px;padding:16px;
+        border-bottom:1px solid var(--line)}
+/* 品牌：LOGO 的圆环 + 呼吸 */
+.ring{position:relative;width:30px;height:30px;flex-shrink:0;display:grid;place-items:center}
+.ring svg{position:absolute;inset:0;animation:spin 36s linear infinite}
+.ring b{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--blue-l);
+        width:21px;height:21px;border-radius:50%;display:grid;place-items:center;
+        background:linear-gradient(135deg,var(--blue-d),#0f2d5c);
+        box-shadow:0 0 12px rgba(64,113,187,.45)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.side-n{font-size:14px;font-weight:640;letter-spacing:-.015em}
+.side-v{font-family:var(--mono);font-size:10px;color:var(--t4)}
+.side-nav{padding:10px;flex:1;overflow-y:auto}
+.ng{padding:14px 10px 5px;font-family:var(--mono);font-size:10px;color:var(--t4);
+    text-transform:uppercase;letter-spacing:.1em}
+.ni{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:7px;
+    font-size:13.5px;color:var(--t2);transition:all .13s var(--ease);position:relative;cursor:pointer}
+.ni:hover{background:var(--bg3);color:var(--t1)}
+.ni.on{background:linear-gradient(90deg,rgba(64,113,187,.18),rgba(64,113,187,.02));
+       color:var(--blue-l);font-weight:550}
+/* 选中态：左侧一道环弧（不是整块换底色） */
+.ni.on::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);
+  width:2px;height:15px;border-radius:2px;background:var(--blue);
+  box-shadow:0 0 8px var(--blue)}
+.ni svg{width:14px;height:14px;flex-shrink:0;opacity:.75}
+.ni.on svg{opacity:1}
+.ni .c{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--t4);
+       background:var(--bg4);padding:1px 5px;border-radius:4px}
+/* 有 Agent 活动的菜单项 */
+.ni.agent::after{content:'';width:5px;height:5px;border-radius:50%;background:var(--blue-l);
+  margin-left:auto;box-shadow:0 0 6px var(--blue-l);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+
+.main{min-width:0;display:flex;flex-direction:column}
+
+/* ══ 决策 1：顶栏常驻 Agent 活动指示 ══ */
+.top{height:54px;display:flex;align-items:center;gap:14px;padding:0 20px;
+     border-bottom:1px solid var(--line);background:rgba(13,17,25,.85);
+     backdrop-filter:blur(12px);position:sticky;top:0;z-index:30}
+.crumb{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12px;color:var(--t4)}
+.crumb b{color:var(--t2);font-weight:500}
+.top-r{margin-left:auto;display:flex;align-items:center;gap:9px}
+/* Agent 指示器 */
+.agent{display:flex;align-items:center;gap:8px;padding:5px 11px 5px 8px;border-radius:99px;
+       background:linear-gradient(90deg,rgba(64,113,187,.16),rgba(64,113,187,.05));
+       border:1px solid rgba(64,113,187,.3);cursor:pointer;transition:all .16s var(--ease)}
+.agent:hover{border-color:rgba(64,113,187,.55);box-shadow:0 0 16px rgba(64,113,187,.2)}
+.agent-ring{width:14px;height:14px;border-radius:50%;flex-shrink:0;position:relative;
+  border:1.5px solid rgba(110,159,234,.35);border-top-color:var(--blue-l);
+  animation:spin 1.6s linear infinite}
+.agent-t{font-family:var(--mono);font-size:11.5px;color:var(--blue-l);white-space:nowrap}
+.agent-n{font-family:var(--mono);font-size:10.5px;color:var(--bg);
+  background:var(--blue-l);padding:0 5px;border-radius:99px;font-weight:700}
+
+.body{padding:22px 24px;flex:1}
+
+/* ── 页头 ── */
+.ph{display:flex;align-items:flex-end;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.ph h1{font-size:30px;font-weight:680;letter-spacing:-.03em;line-height:1.15}
+.ph .sub{display:flex;gap:14px;margin-top:7px;font-family:var(--mono);font-size:11.5px;
+         color:var(--t3);flex-wrap:wrap}
+.ph .sub b{color:var(--t2);font-weight:500}
+.ph .a{margin-left:auto;display:flex;gap:8px}
+
+/* ── 按钮 ── */
+.b{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:7px;
+   border:1px solid var(--line2);background:var(--bg3);color:var(--t2);font-size:13px;
+   font-weight:500;cursor:pointer;transition:all .14s var(--ease);white-space:nowrap}
+.b:hover{border-color:var(--t4);color:var(--t1);background:var(--bg4)}
+.b.p{background:var(--blue-d);border-color:var(--blue);color:#fff;
+     box-shadow:0 0 0 1px rgba(64,113,187,.4),0 4px 14px rgba(64,113,187,.3)}
+.b.p:hover{background:var(--blue)}
+
+/* ══ 决策 2：Agent 任务队列（本方案独有）══ */
+.queue{background:linear-gradient(135deg,rgba(64,113,187,.10),transparent 60%),var(--bg2);
+       border:1px solid rgba(64,113,187,.22);border-radius:12px;padding:16px 18px;margin-bottom:20px;
+       position:relative;overflow:hidden}
+.queue::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--blue-l),transparent);opacity:.7}
+.q-h{display:flex;align-items:center;gap:9px;margin-bottom:13px}
+.q-h .t{font-size:13.5px;font-weight:620}
+.q-h .s{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--t3)}
+.q-item{display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid var(--line)}
+.q-item:first-of-type{border-top:none;padding-top:0}
+.q-ico{width:24px;height:24px;border-radius:6px;flex-shrink:0;display:grid;place-items:center;
+       font-family:var(--mono);font-size:10px;font-weight:600}
+.q-ico.run{background:rgba(64,113,187,.2);color:var(--blue-l);border:1px solid rgba(64,113,187,.35)}
+.q-ico.done{background:rgba(112,208,112,.15);color:var(--green);border:1px solid rgba(112,208,112,.3)}
+.q-ico.wait{background:var(--bg4);color:var(--t4);border:1px solid var(--line2)}
+.q-txt{font-size:13px;min-width:0}
+.q-txt .n{font-family:var(--mono);color:var(--t1)}
+.q-txt .d{font-size:11.5px;color:var(--t3);margin-top:1px}
+.q-bar{margin-left:auto;width:72px;height:3px;border-radius:2px;background:var(--bg4);overflow:hidden;flex-shrink:0}
+.q-bar i{display:block;height:100%;background:var(--blue-l);border-radius:inherit;
+  box-shadow:0 0 8px var(--blue-l)}
+
+/* ── 统计 ── */
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px}
+.st{background:var(--bg2);border:1px solid var(--line);border-radius:11px;padding:15px 16px;
+    position:relative;overflow:hidden;min-width:0}
+.st::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--c,transparent)}
+.st .k{font-family:var(--mono);font-size:10.5px;color:var(--t4);text-transform:uppercase;letter-spacing:.1em}
+.st .v{font-family:var(--mono);font-size:27px;font-weight:660;letter-spacing:-.04em;margin-top:5px;line-height:1.05}
+.st .d{font-size:11px;color:var(--t3);margin-top:4px}
+.st.b{--c:var(--blue)} .st.b .v{color:var(--blue-l)}
+.st.g{--c:var(--green)} .st.g .v{color:var(--green)}
+.st.a{--c:var(--amber)} .st.a .v{color:var(--amber)}
+.st.r{--c:var(--red)} .st.r .v{color:var(--red)}
+
+/* ── 表格：带 Agent 写入扫描线 ── */
+.card{background:var(--bg2);border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.ch{display:flex;align-items:center;gap:11px;padding:13px 17px;border-bottom:1px solid var(--line)}
+.ch h2{font-size:14px;font-weight:620}
+.ch .s{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--t4)}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px;min-width:980px}
+th{text-align:left;padding:10px 17px;font-family:var(--mono);font-size:10px;font-weight:500;
+   color:var(--t4);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--line2);
+   white-space:nowrap;background:var(--bg2);position:sticky;top:0;z-index:2}
+td{padding:13px 17px;border-bottom:1px solid var(--line);vertical-align:middle;position:relative}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:var(--bg3)}
+/* ⚠️ Agent 正在写入的行：左侧流动扫描线 */
+tbody tr.writing{background:linear-gradient(90deg,rgba(64,113,187,.10),transparent 40%)}
+tbody tr.writing td:first-child::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:2px;
+  background:linear-gradient(180deg,transparent,var(--blue-l),transparent);
+  background-size:100% 220%;animation:scan 1.9s ease-in-out infinite}
+@keyframes scan{0%{background-position:0 -110%}100%{background-position:0 110%}}
+.id{font-family:var(--mono);color:var(--blue);font-size:12px;font-weight:600}
+.num{font-family:var(--mono);text-align:right}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:5px;
+      font-family:var(--mono);font-size:11px;font-weight:600;white-space:nowrap}
+.chip.ok{background:rgba(112,208,112,.14);color:var(--green);box-shadow:inset 0 0 0 1px rgba(112,208,112,.28)}
+.chip.b{background:rgba(64,113,187,.16);color:var(--blue-l);box-shadow:inset 0 0 0 1px rgba(64,113,187,.32)}
+.chip.w{background:rgba(232,168,64,.14);color:var(--amber);box-shadow:inset 0 0 0 1px rgba(232,168,64,.28)}
+.chip.ag{background:rgba(110,159,234,.14);color:var(--blue-l);box-shadow:inset 0 0 0 1px rgba(110,159,234,.3)}
+.dot{width:4px;height:4px;border-radius:50%;background:currentColor}
+td.act,th.act{text-align:right;position:sticky;right:0;background:var(--bg2)}
+thead th.act{background:var(--bg2);z-index:3}
+tbody tr:hover td.act{background:var(--bg3)}
+
+/* 响应式 */
+@media (max-width:1180px){ .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .shell{grid-template-columns:64px minmax(0,1fr)}
+  .side-n,.side-v,.ng,.ni span:not(.c),.ni .c{display:none}
+  .ni{justify-content:center;padding:10px} .side-b{justify-content:center;padding:14px 8px} }
+@media (max-width:860px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .side{position:fixed;left:0;top:0;z-index:70;width:232px;transform:translateX(-100%);
+        transition:transform .24s var(--ease)}
+  .side.open{transform:none;box-shadow:0 0 0 100vmax rgba(0,0,0,.55)}
+  .side-n,.side-v,.ng,.ni span:not(.c),.ni .c{display:block}
+  .ni{justify-content:flex-start;padding:8px 10px}
+  .side-b{justify-content:flex-start;padding:16px}
+  .mbtn{display:grid!important}
+  .body{padding:16px}
+  .ph h1{font-size:24px}
+  .agent-t{display:none}
+}
+@media (max-width:600px){
+  .body{padding:12px}
+  .top{padding:0 12px;gap:9px;flex-wrap:nowrap}
+  .crumb a,.crumb .sep{display:none}
+  .crumb{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .top-r .b.hide-s{display:none}
+  .ph h1{font-size:21px}
+  .ph .a{width:100%;margin-left:0}
+  .ph .a .b{flex:1;justify-content:center}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .st .v{font-size:21px}
+  .q-txt .d{display:none}
+  thead{display:none}
+  table{min-width:0}
+  tbody tr{display:block;padding:14px 16px;border-bottom:1px solid var(--line2)}
+  tbody td{display:flex;justify-content:space-between;gap:14px;padding:5px 0;border:none;text-align:right}
+  tbody td::before{content:attr(data-l);font-family:var(--mono);font-size:10px;
+    color:var(--t4);text-transform:uppercase;letter-spacing:.08em;flex-shrink:0}
+  td.act{position:static;padding-top:11px}
+  td.act::before{content:''}
+  tbody tr.writing td:first-child::before{display:none}
+}
+.mbtn{display:none;width:32px;height:32px;border-radius:7px;border:1px solid var(--line2);
+      background:var(--bg3);place-items:center;cursor:pointer;flex-shrink:0}
+.mbtn svg{width:15px;height:15px}
+</style></head><body>
+<div class="shell">
+  <aside class="side" id="side">
+    <div class="side-b">
+      <div class="ring">
+        <svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="none" stroke="#2d5ca4"
+          stroke-width="1.6" stroke-dasharray="6 5" stroke-linecap="round"/></svg>
+        <b>AI</b>
+      </div>
+      <div><div class="side-n">Aimanong</div><div class="side-v">v1.4.1</div></div>
+    </div>
+    <nav class="side-nav">
+      <div class="ng">内容管理</div>
+      <div class="ni on agent">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+        <span>文章</span><span class="c">12</span></div>
+      <div class="ni">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span>栏目</span></div>
+      <div class="ni">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg>
+        <span>作者</span></div>
+      <div class="ng">系统</div>
+      <div class="ni">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>
+        <span>角色</span></div>
+      <div class="ni">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="14" r="4"/><path d="M11 11l8-8 2 2-2 2 2 2-2 2-2-2-2 2"/></svg>
+        <span>权限节点</span><span class="c">132</span></div>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <header class="top">
+      <button class="mbtn" onclick="document.getElementById('side').classList.toggle('open')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      <div class="crumb"><a href="#">控制台</a><span class="sep">/</span><b>文章</b></div>
+      <div class="top-r">
+        <!-- 决策1：Agent 活动指示 -->
+        <div class="agent" title="AI Agent 正在处理 2 个任务">
+          <span class="agent-ring"></span>
+          <span class="agent-t">agent · 写入中</span>
+          <span class="agent-n">2</span>
+        </div>
+        <button class="b hide-s">超级管理员</button>
+      </div>
+    </header>
+
+    <div class="body">
+      <div class="ph">
+        <div>
+          <h1>文章管理</h1>
+          <div class="sub"><span>RESOURCE <b>cms-articles</b></span><span>FIELDS <b>11</b></span><span>ROWS <b>12</b></span></div>
+        </div>
+        <div class="a"><button class="b">导出</button><button class="b p">新增文章</button></div>
+      </div>
+
+      <!-- 决策2：Agent 任务队列 -->
+      <div class="queue">
+        <div class="q-h">
+          <span class="t">Agent 任务</span>
+          <span class="s">3 个 · 1 完成 · 1 进行中 · 1 排队</span>
+        </div>
+        <div class="q-item">
+          <span class="q-ico run">⋯</span>
+          <div class="q-txt"><div>正在写入 <span class="n">cms-articles</span> 的 2 行</div>
+            <div class="d">来自 scaffold_resource · 12 秒前开始</div></div>
+          <span class="q-bar"><i style="width:62%"></i></span>
+        </div>
+        <div class="q-item">
+          <span class="q-ico wait">◦</span>
+          <div class="q-txt"><div>排队中 <span class="n">product-reviews</span> 声明校验</div>
+            <div class="d">等待当前任务完成</div></div>
+          <span class="q-bar"><i style="width:0%"></i></span>
+        </div>
+        <div class="q-item">
+          <span class="q-ico done">✓</span>
+          <div class="q-txt"><div>已合并 <span class="n">shop-coupons</span> 的声明</div>
+            <div class="d">31 秒前 · 12 个字段 · 无冲突</div></div>
+          <span class="q-bar"><i style="width:100%;background:var(--green);box-shadow:0 0 8px var(--green)"></i></span>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="st b"><div class="k">总记录</div><div class="v">12</div><div class="d">本周 +3</div></div>
+        <div class="st g"><div class="k">已发布</div><div class="v">8</div><div class="d">66.7%</div></div>
+        <div class="st a"><div class="k">总浏览</div><div class="v">96,208</div><div class="d">↑ 12.4%</div></div>
+        <div class="st r"><div class="k">待审核</div><div class="v">1</div><div class="d">需处理</div></div>
+      </div>
+
+      <div class="card">
+        <div class="ch"><h2>文章列表</h2><span class="s">schema v1 · 自动生成</span></div>
+        <div class="tw"><table>
+          <thead><tr>
+            <th style="width:56px">ID</th><th style="min-width:170px">Slug</th>
+            <th style="min-width:230px">标题</th><th style="min-width:128px">状态</th>
+            <th class="num" style="min-width:100px">浏览量</th><th style="min-width:92px">发布</th>
+            <th class="act" style="width:72px"></th>
+          </tr></thead>
+          <tbody>
+            <!-- 决策3：这一行正在被 Agent 写入 -->
+            <tr class="writing">
+              <td class="id" data-l="ID">01</td>
+              <td class="mono" style="color:var(--t2);font-size:12.5px" data-l="Slug">laravel-12-queue</td>
+              <td data-l="标题">Laravel 12 队列深度实践</td>
+              <td data-l="状态"><span class="chip ag"><i class="dot"></i>agent 写入中</span></td>
+              <td class="num" data-l="浏览量">23,000</td>
+              <td class="mono" style="color:var(--t3);font-size:12.5px" data-l="发布">08-30</td>
+              <td class="act" data-l=""><button class="b" style="height:26px;padding:0 8px;font-size:12px">审阅</button></td>
+            </tr>
+            <tr><td class="id" data-l="ID">02</td>
+              <td class="mono" style="color:var(--t2);font-size:12.5px" data-l="Slug">vue3-patterns</td>
+              <td data-l="标题">Vue 3 组合式 API 的 7 个模式</td>
+              <td data-l="状态"><span class="chip b"><i class="dot"></i>review</span></td>
+              <td class="num" data-l="浏览量">10,450</td>
+              <td class="mono" style="color:var(--t3);font-size:12.5px" data-l="发布">09-09</td>
+              <td class="act" data-l=""><button class="b" style="height:26px;padding:0 8px;font-size:12px">编辑</button></td></tr>
+            <tr><td class="id" data-l="ID">03</td>
+              <td class="mono" style="color:var(--t2);font-size:12.5px" data-l="Slug">mysql-index</td>
+              <td data-l="标题">MySQL 索引失效的 12 种场景</td>
+              <td data-l="状态"><span class="chip w"><i class="dot"></i>draft</span></td>
+              <td class="num" style="color:var(--amber)" data-l="浏览量">8</td>
+              <td class="mono" style="color:var(--t3);font-size:12.5px" data-l="发布">—</td>
+              <td class="act" data-l=""><button class="b" style="height:26px;padding:0 8px;font-size:12px">编辑</button></td></tr>
+            <tr><td class="id" data-l="ID">04</td>
+              <td class="mono" style="color:var(--t2);font-size:12.5px" data-l="Slug">ai-agent-flow</td>
+              <td data-l="标题">AI Agent 在内容生产中的落地</td>
+              <td data-l="状态"><span class="chip ok"><i class="dot"></i>published</span></td>
+              <td class="num" data-l="浏览量">15,600</td>
+              <td class="mono" style="color:var(--t3);font-size:12.5px" data-l="发布">09-19</td>
+              <td class="act" data-l=""><button class="b" style="height:26px;padding:0 8px;font-size:12px">编辑</button></td></tr>
+          </tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>

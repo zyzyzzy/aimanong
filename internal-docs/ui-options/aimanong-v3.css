@@ -1,0 +1,1147 @@
+@charset "UTF-8";
+/* ============================================================================
+ * Aimanong · 终端蓝图 Terminal Blueprint   v3.0
+ * 暗色优先 / 零构建 / 纯 CSS / 离线可用
+ * ============================================================================
+ *
+ * 设计内核：AI 操作界面，人做审阅。
+ *   —— 侧栏是「工作台」，主区是「产物」，界面本身会显示 AI 正在做什么。
+ *
+ * 色相锚定：LOGO 主蓝 #205098 → OKLCH H=258.7
+ *   --accent #4071bb 即用户指定的 L=0.55 档位，白字对比 4.89:1 ✓
+ *
+ * 校验：全部令牌已程序化校验（3 主题时代结束，改为 亮/暗 两模式）
+ *   暗色 文字≥4.5 / 图形≥3.0 / 相邻画布层级≥1.03
+ *   亮色 文字≥4.5 / 主按钮白字 6.73
+ * ========================================================================= */
+
+/* ==========================================================================
+ * 1. 令牌 · 非颜色（与模式无关）
+ * ======================================================================= */
+:root {
+  /* — 间距：4px 基准，8px 节奏 — */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px; --sp-12: 48px;
+
+  /* — 圆角：4 档。比 v2 收紧一档，贴近 Linear/GitHub 的工程感 — */
+  --r-xs: 3px; --r-sm: 5px; --r-md: 7px; --r-lg: 10px; --r-xl: 14px; --r-full: 999px;
+
+  /* — 字号阶梯：14px 正文（GitHub/Linear 同档），中文行高加大 — */
+  --fs-2xs: 11px; --fs-xs: 12px; --fs-sm: 13px; --fs-base: 14px;
+  --fs-md: 15px;  --fs-lg: 17px; --fs-xl: 20px; --fs-2xl: 24px;
+  /* 中文行高：正文 1.65（英文 1.5 不够，中文方块字需要更多呼吸） */
+  --lh-tight: 1.3; --lh-base: 1.65; --lh-loose: 1.8;
+
+  /* — 字重：只保留 4 档。中文 500 在 macOS 会伪粗，慎用 — */
+  --fw-normal: 400; --fw-medium: 500; --fw-semibold: 600; --fw-bold: 700;
+
+  /* — 中文字体栈（补全 Linux 回退） — */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI",
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei",
+    "Noto Sans SC", "Source Han Sans SC", "WenQuanYi Micro Hei",
+    system-ui, sans-serif;
+
+  /* — 等宽字体栈：**本设计的一等公民**，不是代码块专用 — */
+  --font-mono:
+    ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", "Cascadia Mono",
+    "Cascadia Code", Menlo, Consolas, "Liberation Mono", "Noto Sans Mono CJK SC",
+    monospace;
+
+  /* — 布局尺寸 — */
+  --w-sidebar: 236px;      /* 中文菜单项比英文长，232→236 */
+  --w-sidebar-mini: 68px;  /* 68 而非 64：容纳 20px 图标 + 两侧 24px 内边距 */
+  --h-topbar: 52px;        /* 56→52，现代后台更紧凑 */
+  --h-control: 32px;       /* 34→32，与 GitHub 对齐 */
+  --h-control-sm: 26px;
+  --h-control-lg: 38px;
+  --h-table-row: 40px;     /* 44→40，密度是开发者的诉求 */
+  --w-content-max: 1600px; /* 宽屏利用率 */
+
+  /* — 动效：三条曲线覆盖全部场景 — */
+  --dur-instant: 90ms;
+  --dur-fast: 140ms;
+  --dur: 200ms;
+  --dur-slow: 320ms;
+  --ease-out: cubic-bezier(.22, 1, .36, 1);      /* 出现：快进慢出 */
+  --ease-in-out: cubic-bezier(.65, 0, .35, 1);   /* 双向 */
+  --ease-spring: cubic-bezier(.34, 1.4, .5, 1);  /* 轻微回弹，仅用于「活体」元素 */
+
+  /* — 层级 — */
+  --z-base: 0; --z-sticky: 50; --z-dropdown: 60; --z-drawer: 90;
+  --z-modal: 100; --z-toast: 120;
+
+  /* — 无障碍：最小可点区域（WCAG 2.2 AA 目标尺寸 24px，我们给 32） — */
+  --hit-min: 32px;
+}
+
+/* ==========================================================================
+ * 2. 令牌 · 颜色  —— 暗色优先：默认就是暗色，亮色是「另一套」而不是「默认」
+ * ======================================================================= */
+
+/* ---- 暗色（默认，无 data-mode 时生效）---- */
+:root,
+[data-mode="dark"] {
+  color-scheme: dark;
+
+  /* 画布阶梯：5 级。彩度钟形（中间最蓝），冷调但不发紫 */
+  --bg-canvas:  #070c15;   /* 最底层页面 */
+  --bg-sunken:  #03060d;   /* 凹陷：代码块、表头、输入框内陷 */
+  --bg-surface: #0f151f;   /* 侧栏 / 顶栏 */
+  --bg-raised:  #141b26;   /* 卡片 / 内容容器 */
+  --bg-overlay: #1d2531;   /* 浮层：弹窗、下拉、Toast */
+  --bg-hover:   #232b38;   /* 悬停 */
+  --bg-active:  #2c3542;   /* 激活 / 选中 */
+
+  /* 文字阶梯：4 级 */
+  --text-1: #e9edf4;       /* 正文        卡片 14.73 */
+  --text-2: #aeb8c7;       /* 次级        卡片  8.63 */
+  --text-3: #828d9e;       /* 三级/元数据  卡片  5.15 */
+  --text-4: #6b7584;       /* 禁用/占位    卡片  3.71 */
+
+  /* 边框：半透明白 —— 落在任意层级上自动协调（GitHub/Raycast 做法） */
+  --line-faint:  rgba(255,255,255,.055);  /* 表格行分隔、极细分割 */
+  --line:        rgba(255,255,255,.095);  /* 卡片边框、控件边框 */
+  --line-strong: rgba(255,255,255,.155);  /* 输入框、需要强调的边界 */
+  --line-accent: rgba(64,113,187,.55);    /* 焦点/选中边界 */
+
+  /* 品牌蓝阶（色相锁定 258.7） */
+  --accent:        #4071bb;  /* 主按钮底色，白字 4.89 ✓ */
+  --accent-hover:  #5e8dd4;
+  --accent-active: #35619f;
+  --accent-text:   #84acea;  /* 链接文字   卡片 7.47 ✓ */
+  --accent-solid:  #4071bb;
+  --on-accent:     #ffffff;  /* 主按钮文字 */
+  --accent-subtle: rgba(64,113,187,.16);  /* 选中行底色 */
+  --accent-ring:   rgba(64,113,187,.40);  /* 焦点环 */
+
+  /* 语义色：LOGO 原色 → 暗色可读档，全部 ≥4.5 */
+  --success: #7ccf73;  /* 卡片 9.08  ← LOGO 绿 #70d070 */
+  --warning: #edb24d;  /* 卡片 9.12  ← LOGO 橙黄 #e8a840 */
+  --danger:  #f0674e;  /* 卡片 5.56  ← LOGO 橙红 #e05040 */
+  --info:    #84acea;
+  --success-subtle: rgba(124,207,115,.14);
+  --warning-subtle: rgba(237,178,77,.14);
+  --danger-subtle:  rgba(240,103,78,.14);
+  --info-subtle:    rgba(132,172,234,.14);
+
+  /* 层次：**不用阴影**，用边框 + 半透明高光（Linear/GitHub 的核心取舍） */
+  --ring-inset: inset 0 1px 0 rgba(255,255,255,.045);  /* 顶部 1px 高光，替代阴影 */
+  --shadow-overlay: 0 16px 40px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
+  --shadow-focus: 0 0 0 2px var(--bg-canvas), 0 0 0 4px var(--accent-ring);
+
+  /* 光效（克制：只用于 1-2 个关键位置） */
+  --glow-accent: 0 0 0 1px var(--line-accent), 0 0 20px -4px rgba(64,113,187,.45);
+}
+
+/* ---- 亮色 ---- */
+[data-mode="light"] {
+  color-scheme: light;
+
+  --bg-canvas:  #f5f7fb;
+  --bg-sunken:  #eef1f6;
+  --bg-surface: #f8fafd;
+  --bg-raised:  #fcfdff;
+  --bg-overlay: #fcfdff;
+  --bg-hover:   #eef1f6;
+  --bg-active:  #e7ebf1;
+
+  --text-1: #1b222c;  /* 白卡片 15.73 */
+  --text-2: #515b6b;  /* 白卡片  6.75 */
+  --text-3: #646f80;  /* 白卡片  5.00 */
+  --text-4: #868e9b;  /* 白卡片  3.25（禁用态；WCAG 1.4.3 豁免，但仍给到 3:1） */
+
+  --line-faint:  rgba(11,17,32,.06);
+  --line:        rgba(11,17,32,.10);
+  --line-strong: rgba(11,17,32,.18);
+  --line-accent: rgba(46,91,160,.5);
+
+  --accent:        #2e5ba0;  /* 白字 6.73 ✓ */
+  --accent-hover:  #244a87;
+  --accent-active: #1b3a6c;
+  --accent-text:   #2e5a9c;  /* 白卡片 6.75 ✓ */
+  --accent-solid:  #2e5ba0;
+  --on-accent:     #ffffff;
+  --accent-subtle: rgba(46,91,160,.09);
+  --accent-ring:   rgba(46,91,160,.32);
+
+  --success: #297623;  /* 白卡片 5.56 */
+  --warning: #8a4c00;  /* 白卡片 6.63 */
+  --danger:  #a1281b;  /* 白卡片 7.28 */
+  --info:    #2e5a9c;
+  --success-subtle: rgba(41,118,35,.10);
+  --warning-subtle: rgba(138,76,0,.10);
+  --danger-subtle:  rgba(161,40,27,.09);
+  --info-subtle:    rgba(46,90,156,.09);
+
+  --ring-inset: inset 0 1px 0 rgba(255,255,255,.9);
+  --shadow-overlay: 0 16px 40px rgba(11,17,32,.16), 0 2px 8px rgba(11,17,32,.08);
+  --shadow-focus: 0 0 0 2px var(--bg-raised), 0 0 0 4px var(--accent-ring);
+
+  --glow-accent: 0 0 0 1px var(--line-accent), 0 0 20px -6px rgba(46,91,160,.35);
+}
+
+/* 跟随系统（用户未显式选择时） */
+@media (prefers-color-scheme: light) {
+  :root:not([data-mode]) {
+    color-scheme: light;
+    --bg-canvas: #f5f7fb; --bg-sunken: #eef1f6; --bg-surface: #f8fafd;
+    --bg-raised: #fcfdff; --bg-overlay: #fcfdff;
+    --bg-hover: #eef1f6; --bg-active: #e7ebf1;
+    --text-1: #1b222c; --text-2: #515b6b; --text-3: #646f80; --text-4: #868e9b;
+    --line-faint: rgba(11,17,32,.06); --line: rgba(11,17,32,.10);
+    --line-strong: rgba(11,17,32,.18); --line-accent: rgba(46,91,160,.5);
+    --accent: #2e5ba0; --accent-hover: #244a87; --accent-active: #1b3a6c;
+    --accent-text: #2e5a9c; --accent-solid: #2e5ba0; --on-accent: #ffffff;
+    --accent-subtle: rgba(46,91,160,.09); --accent-ring: rgba(46,91,160,.32);
+    --success: #297623; --warning: #8a4c00; --danger: #a1281b; --info: #2e5a9c;
+    --success-subtle: rgba(41,118,35,.10); --warning-subtle: rgba(138,76,0,.10);
+    --danger-subtle: rgba(161,40,27,.09); --info-subtle: rgba(46,90,156,.09);
+    --ring-inset: inset 0 1px 0 rgba(255,255,255,.9);
+    --shadow-overlay: 0 16px 40px rgba(11,17,32,.16), 0 2px 8px rgba(11,17,32,.08);
+    --shadow-focus: 0 0 0 2px var(--bg-raised), 0 0 0 4px var(--accent-ring);
+    --glow-accent: 0 0 0 1px var(--line-accent), 0 0 20px -6px rgba(46,91,160,.35);
+  }
+}
+
+/* ==========================================================================
+ * 3. 基座
+ * ======================================================================= */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  /* 锚点跳转避开吸顶栏 */
+  scroll-padding-top: calc(var(--h-topbar) + var(--sp-4));
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  line-height: var(--lh-base);
+  background: var(--bg-canvas);
+  color: var(--text-1);
+  /* 中文渲染：关闭连字，强制字形合成可控 */
+  font-kerning: normal;
+  font-variant-ligatures: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* 防止 iOS 横屏字号跳动 */
+  text-size-adjust: 100%;
+}
+
+/* 中文正文：禁用负字距。中文方块字加负字距会「顶格」，很难看。
+   只有**大字号标题**可以轻微收紧，且不超过 -0.01em。 */
+h1, h2, h3, h4, h5, h6 { margin: 0; font-weight: var(--fw-semibold); line-height: var(--lh-tight); }
+p { margin: 0; }
+
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+/* 焦点：**始终可见**，且用 outline 而非 box-shadow（不被 overflow 裁切） */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
+}
+:focus:not(:focus-visible) { outline: none; }
+
+::selection { background: var(--accent-subtle); color: var(--text-1); }
+
+/* 滚动条：细、无轨道、悬停才显色 */
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background-color: var(--line-strong);
+  border-radius: var(--r-full);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background-color: var(--text-4); background-clip: content-box; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+/* ==========================================================================
+ * 4. 等宽数据层  —— 辨识度签名之一
+ *    数字 / ID / 时间戳 / 状态码 全部等宽。GitHub 只对 SHA 这么做，我们做整层。
+ * ======================================================================= */
+.am-mono,
+.am-num,
+.am-id,
+.am-time,
+.am-code {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "zero" 1;  /* 表格数字 + 斜杠零 */
+  letter-spacing: -.01em;
+}
+.am-num { text-align: right; }
+/* 数字/ID/时间**永不折行** —— overflow-wrap:anywhere 会把 23000 断成 "2300 / 0"，
+   这是中文表格里最刺眼的破绽之一（已在实测截图中复现）。 */
+.am-num, .am-id, .am-time, .am-code { white-space: nowrap; }
+/* ID 列：弱化存在感，像编辑器行号 */
+.am-id { color: var(--text-4); font-size: var(--fs-xs); }
+.am-time { color: var(--text-3); font-size: var(--fs-xs); white-space: nowrap; }
+
+/* ==========================================================================
+ * 5. 骨架布局  —— 侧栏 + 主区
+ * ======================================================================= */
+
+/* 汉堡按钮：默认隐藏。↑ 必须写在这里（媒体查询之前），
+   否则基础规则会覆盖 <860 的媒体查询 —— 这是原框架同类 bug 的复现。 */
+.am-menu-toggle { display: none; }
+
+.am-shell {
+  display: grid;
+  grid-template-columns: var(--w-sidebar) minmax(0, 1fr);
+  min-height: 100dvh;   /* dvh 处理移动端地址栏伸缩 */
+}
+
+/* --- 侧栏 --- */
+.am-sidebar {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--line-faint);   /* 极细，不用默认边框色 */
+  overflow: hidden;
+  transition: width var(--dur) var(--ease-out);
+}
+
+.am-sidebar__brand {
+  display: flex; align-items: center; gap: var(--sp-3);
+  height: var(--h-topbar);
+  padding: 0 var(--sp-4);
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--line-faint);
+  color: var(--text-1);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-md);
+}
+.am-sidebar__brand:hover { text-decoration: none; }
+
+/* LOGO 印记：呼应 LOGO 的圆环 —— 用 conic-gradient 画一段环弧 */
+.am-sidebar__mark {
+  position: relative;
+  width: 26px; height: 26px;
+  flex-shrink: 0;
+  border-radius: var(--r-full);
+  background:
+    conic-gradient(from 200deg,
+      var(--accent) 0deg 250deg,
+      var(--success) 250deg 300deg,
+      var(--warning) 300deg 340deg,
+      var(--danger) 340deg 360deg);
+  display: grid; place-items: center;
+  font-family: var(--font-mono);
+  font-size: 10px; font-weight: var(--fw-bold);
+  letter-spacing: -.04em;
+  color: var(--on-accent);
+}
+/* 内圈挖空 → 变成圆环，直接呼应 LOGO 的环 */
+.am-sidebar__mark::before {
+  content: ""; position: absolute; inset: 3px;
+  border-radius: var(--r-full);
+  background: var(--bg-surface);
+}
+.am-sidebar__mark > * { position: relative; z-index: 1; color: var(--text-1); }
+
+.am-sidebar__nav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--sp-2) var(--sp-2) var(--sp-6);
+}
+
+/* 分组标题：**等宽 + 大写感**，像配置文件的段落名 */
+.am-nav__group {
+  padding: var(--sp-5) var(--sp-3) var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  color: var(--text-4);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.am-nav__group:first-child { padding-top: var(--sp-3); }
+
+/* 菜单项 */
+.am-nav__item {
+  position: relative;
+  display: flex; align-items: center; gap: var(--sp-3);
+  height: 34px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  white-space: nowrap;
+  transition: background-color var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out);
+}
+.am-nav__item:hover { background: var(--bg-hover); color: var(--text-1); text-decoration: none; }
+.am-nav__item:active { background: var(--bg-active); }
+
+/* 选中态：不是「换底色」，而是 左侧环弧 + 底色 + 文字提亮
+   左侧那道弧 = LOGO 圆环的片段，这是本设计的核心识别符号 */
+.am-nav__item.is-active {
+  background: var(--accent-subtle);
+  color: var(--text-1);
+  font-weight: var(--fw-medium);
+}
+.am-nav__item.is-active::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 50%;
+  width: 2px; height: 16px;
+  transform: translateY(-50%);
+  border-radius: var(--r-full);
+  background: var(--accent);
+}
+.am-nav__icon { width: 16px; height: 16px; flex-shrink: 0; color: currentColor; }
+
+/* --- 主区 --- */
+.am-main {
+  display: flex; flex-direction: column;
+  min-width: 0;                 /* 关键：允许 grid 子项收缩，否则表格撑破 */
+  background: var(--bg-canvas);
+}
+
+/* --- 顶栏 --- */
+.am-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-4);
+  height: var(--h-topbar);
+  padding: 0 var(--sp-5);
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+  backdrop-filter: blur(12px) saturate(150%);   /* 玻璃质感：仅顶栏一处 */
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border-bottom: 1px solid var(--line-faint);
+  position: sticky; top: 0;
+  z-index: var(--z-sticky);
+}
+/* 不支持 backdrop-filter 时回退为不透明（渐进增强） */
+@supports not (backdrop-filter: blur(1px)) {
+  .am-topbar { background: var(--bg-surface); }
+}
+
+.am-topbar__left, .am-topbar__right {
+  display: flex; align-items: center; gap: var(--sp-2); min-width: 0;
+}
+.am-topbar__right { gap: var(--sp-3); }
+
+/* 面包屑 */
+.am-crumb {
+  display: flex; align-items: center; gap: var(--sp-2);
+  font-size: var(--fs-sm); color: var(--text-3); min-width: 0;
+}
+.am-crumb__sep { color: var(--text-4); user-select: none; font-family: var(--font-mono); }
+.am-crumb__current { color: var(--text-1); font-weight: var(--fw-medium); }
+
+/* --- 内容区 --- */
+.am-content {
+  flex: 1;
+  padding: var(--sp-6) var(--sp-6) var(--sp-8);
+  display: flex; flex-direction: column; gap: var(--sp-5);
+  min-width: 0;
+  max-width: var(--w-content-max);
+  width: 100%;
+  margin-inline: auto;
+}
+.am-page-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: var(--sp-4); flex-wrap: wrap;
+}
+.am-page-head__title { font-size: var(--fs-xl); font-weight: var(--fw-semibold); }
+.am-page-head__desc { font-size: var(--fs-sm); color: var(--text-3); margin-top: var(--sp-1); }
+
+/* ==========================================================================
+ * 6. 卡片 —— **无阴影**，靠边框 + 顶部高光建立层次
+ * ======================================================================= */
+.am-card {
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--ring-inset);
+  overflow: hidden;
+}
+.am-card__head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--line-faint);
+  background: var(--bg-surface);
+}
+.am-card__title { font-size: var(--fs-sm); font-weight: var(--fw-semibold); }
+.am-card__body { padding: var(--sp-4); }
+
+/* ==========================================================================
+ * 7. 按钮
+ * ======================================================================= */
+.am-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: var(--sp-2);
+  height: var(--h-control);
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-strong);
+  background: var(--bg-raised);
+  color: var(--text-1);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: background-color var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              transform var(--dur-instant) var(--ease-out);
+}
+.am-btn:hover { background: var(--bg-hover); border-color: var(--line-accent); }
+.am-btn:active { transform: translateY(.5px); }
+.am-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+.am-btn--primary {
+  background: var(--accent-solid);
+  border-color: transparent;
+  color: var(--on-accent);
+  /* 主按钮是唯一带「光」的控件 */
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 60%, black),
+              0 1px 0 rgba(255,255,255,.12) inset;
+}
+.am-btn--primary:hover { background: var(--accent-hover); border-color: transparent; }
+.am-btn--primary:active { background: var(--accent-active); }
+
+.am-btn--ghost { background: transparent; border-color: transparent; color: var(--text-2); }
+.am-btn--ghost:hover { background: var(--bg-hover); color: var(--text-1); border-color: transparent; }
+
+.am-btn--danger { color: var(--danger); border-color: var(--line); background: transparent; }
+.am-btn--danger:hover { background: var(--danger-subtle); border-color: var(--danger); }
+
+.am-btn--sm { height: var(--h-control-sm); padding: 0 var(--sp-2); font-size: var(--fs-xs); }
+.am-btn--icon { width: var(--h-control); padding: 0; flex-shrink: 0; }
+.am-btn--icon.am-btn--sm { width: var(--h-control-sm); }
+
+/* ==========================================================================
+ * 8. 表单
+ * ======================================================================= */
+.am-input, .am-select, .am-textarea {
+  width: 100%;
+  height: var(--h-control);
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-strong);
+  background: var(--bg-sunken);        /* 内陷：输入框比卡片更深 */
+  color: var(--text-1);
+  font: inherit; font-size: var(--fs-sm);
+  transition: border-color var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out);
+}
+.am-input::placeholder, .am-textarea::placeholder { color: var(--text-4); }
+.am-input:focus, .am-select:focus, .am-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.am-input[aria-invalid="true"] {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-subtle);
+}
+.am-textarea { height: auto; min-height: 84px; padding: var(--sp-2) var(--sp-3); line-height: var(--lh-base); resize: vertical; }
+.am-select { appearance: none; padding-right: var(--sp-8); cursor: pointer; }
+
+/* ==========================================================================
+ * 9. 工具条
+ * ======================================================================= */
+.am-toolbar {
+  display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap;
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--line-faint);
+  background: var(--bg-surface);
+}
+.am-toolbar__spacer { flex: 1; min-width: var(--sp-2); }
+
+/* ==========================================================================
+ * 10. 表格 —— 中文后台的核心，必须撑住（本次重点修复）
+ * ======================================================================= */
+.am-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  /* 滚动时给右侧一个渐隐提示，暗示还有内容 */
+  background:
+    linear-gradient(to right, var(--bg-raised) 30%, transparent) left / 24px 100% no-repeat,
+    linear-gradient(to left,  var(--bg-raised) 30%, transparent) right / 24px 100% no-repeat,
+    radial-gradient(farthest-side at 0 50%,   rgba(0,0,0,.28), transparent) left / 12px 100% no-repeat,
+    radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,.28), transparent) right / 12px 100% no-repeat;
+  background-attachment: local, local, scroll, scroll;
+}
+
+.am-table {
+  /* ★ 关键修复：给表格一个最小宽度。
+     没有它，中文列会被压到 1 字宽 → 「后端」变竖排。这是原框架 768px 的实测故障。
+     不够时**横向滚动**，而不是把字压成竖排 ——
+     宁可滚动也不要挤，挤坏的表格比滚动条难看得多。
+
+     实测：880px 对「9 列中文」仍偏紧（列宽刚好卡在临界点，
+     短值列会被压到 3 行），因此提到 980px。
+     980 ≈ 9 列 × 平均 109px，含数字列右对齐所需宽度。 */
+  min-width: 980px;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--fs-sm);
+  background: var(--bg-raised);
+}
+
+.am-table th {
+  text-align: left;
+  padding: var(--sp-2) var(--sp-4);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--text-3);
+  background: var(--bg-sunken);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;          /* ★ 表头永不换行 */
+  position: sticky; top: 0; z-index: 1;
+}
+
+.am-table td {
+  padding: var(--sp-2) var(--sp-4);
+  height: var(--h-table-row);
+  border-bottom: 1px solid var(--line-faint);
+  vertical-align: middle;
+  color: var(--text-1);
+  /* ★ 中文断行策略：优先在词间断，长串（URL/ID）强制断，避免竖排 */
+  overflow-wrap: anywhere;
+  word-break: normal;
+  line-break: strict;
+}
+.am-table tbody tr { transition: background-color var(--dur-fast) var(--ease-out); }
+.am-table tbody tr:hover { background: var(--bg-hover); }
+.am-table tbody tr:last-child td { border-bottom: none; }
+.am-table tbody tr.is-selected { background: var(--accent-subtle); }
+
+/* 单元格内文字默认不换行（配合 min-width 使用），需要换行的加 .am-wrap */
+.am-table td.am-cell-nowrap, .am-nowrap { white-space: nowrap; }
+/* 标签/状态列不换行，否则「已发布」会折成两行 */
+.am-table td .am-badge { white-space: nowrap; }
+/* 短枚举列（状态、栏目、作者）永远单行 —— 中文双字词折行最难看 */
+.am-table td.am-short { white-space: nowrap; }
+.am-truncate {
+  display: block;
+  max-width: 26ch;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.am-table th.is-sortable { cursor: pointer; user-select: none; }
+.am-table th.is-sortable:hover { color: var(--text-1); }
+.am-table th.is-sorted { color: var(--accent-text); }
+
+/* 操作列：**吸右**，横向滚动时始终可见 */
+.am-table__actions {
+  display: flex; align-items: center; gap: var(--sp-1);
+  justify-content: flex-end; white-space: nowrap;
+}
+/*
+ * 操作列吸右。
+ *
+ * ## 两个坑（都实测踩过）
+ *
+ * 1. **双向 sticky**：th 上同时有 `top: 0`（表头吸顶）和 `right: 0`（吸右），
+ *    Chromium 只保留最后一个方向。这里让**表头 th 只管吸顶**，
+ *    横向吸右交给 td —— 表头不需要横向固定。
+ *
+ * 2. **背景高度不等于行高**：某列内容较高时 tr 会被撑高，
+ *    而 td 自身高度较小，sticky 背景只覆盖 td → 行底部露出透明，
+ *    视觉上像"被切了一刀"。
+ *    解：用 ::before 绝对定位把背景撑满整个 td 的 padding box
+ *    （td 有 padding，absolute 定位是相对 padding box 的，天然铺满）。
+ *    ⚠️ 不要用 box-shadow 补 —— 它会溢出到相邻行遮住内容。
+ */
+.am-table tbody td.am-table__actions {
+  position: sticky; right: 0;
+  background: var(--bg-raised);
+  box-shadow: -1px 0 0 var(--line-faint);
+}
+.am-table thead th.am-table__actions {
+  position: sticky; right: 0;
+  background: var(--bg-sunken);
+  box-shadow: -1px 0 0 var(--line-faint);
+  z-index: 3;
+}
+.am-table tbody tr:hover td.am-table__actions { background: var(--bg-hover); }
+
+
+/* 空值 */
+.am-empty-cell { color: var(--text-4); user-select: none; }
+
+/* ==========================================================================
+ * 11. 徽标 —— 语义色 + 极低透明度底，不用实心色块
+ * ======================================================================= */
+.am-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 20px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-xs);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  line-height: 1;
+  white-space: nowrap;
+  background: var(--bg-hover);
+  color: var(--text-2);
+  border: 1px solid var(--line-faint);
+}
+.am-badge::before {
+  content: ""; width: 5px; height: 5px; border-radius: var(--r-full);
+  background: currentColor; flex-shrink: 0; opacity: .9;
+}
+.am-badge--success { background: var(--success-subtle); color: var(--success); border-color: transparent; }
+.am-badge--warning { background: var(--warning-subtle); color: var(--warning); border-color: transparent; }
+.am-badge--danger  { background: var(--danger-subtle);  color: var(--danger);  border-color: transparent; }
+.am-badge--info    { background: var(--info-subtle);    color: var(--info);    border-color: transparent; }
+.am-badge--muted   { background: transparent; color: var(--text-3); }
+.am-badge--muted::before { opacity: .5; }
+
+/* ==========================================================================
+ * 12. ★ 辨识度签名：Agent 活动指示  ★
+ *    这是「给 AI 用的后台」独有的语言 —— 界面显示 AI 正在操作什么。
+ * ======================================================================= */
+
+/* 顶栏的 Agent 状态灯：一个呼吸的圆环 */
+.am-agent-status {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  height: var(--h-control-sm);
+  padding: 0 var(--sp-2) 0 6px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line);
+  background: var(--bg-raised);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.am-agent-status__ring {
+  position: relative;
+  width: 12px; height: 12px; flex-shrink: 0;
+  border-radius: var(--r-full);
+  border: 1.5px solid var(--line-strong);
+}
+/* 空闲：静态灰环 */
+.am-agent-status[data-state="idle"] .am-agent-status__ring { border-color: var(--text-4); }
+
+/* 工作中：环上跑一段弧 + 呼吸 */
+.am-agent-status[data-state="working"] { color: var(--accent-text); border-color: var(--line-accent); }
+.am-agent-status[data-state="working"] .am-agent-status__ring {
+  border-color: var(--line);
+  border-top-color: var(--accent);
+  border-right-color: var(--accent);
+  animation: am-spin 900ms linear infinite;
+}
+/* 完成：绿环 + 一次性脉冲 */
+.am-agent-status[data-state="done"] { color: var(--success); border-color: transparent; background: var(--success-subtle); }
+.am-agent-status[data-state="done"] .am-agent-status__ring { border-color: var(--success); animation: am-pulse-ring 600ms var(--ease-out) 1; }
+/* 出错 */
+.am-agent-status[data-state="error"] { color: var(--danger); border-color: transparent; background: var(--danger-subtle); }
+.am-agent-status[data-state="error"] .am-agent-status__ring { border-color: var(--danger); }
+
+@keyframes am-spin { to { transform: rotate(360deg); } }
+@keyframes am-pulse-ring {
+  0%   { box-shadow: 0 0 0 0 var(--success-subtle); }
+  100% { box-shadow: 0 0 0 7px transparent; }
+}
+
+/* 行级：AI 正在改这一行 —— 左侧一道流动的环弧 */
+.am-table tbody tr.is-agent-active {
+  position: relative;
+  background: var(--accent-subtle);
+}
+.am-table tbody tr.is-agent-active td:first-child::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, transparent, var(--accent), transparent);
+  background-size: 100% 200%;
+  animation: am-scan 1.6s var(--ease-in-out) infinite;
+}
+@keyframes am-scan {
+  0%   { background-position: 0 -100%; }
+  100% { background-position: 0 100%; }
+}
+
+/* 单元格级：AI 刚写入的字段，短暂高亮后淡出 */
+.am-cell--written {
+  animation: am-cell-flash 1400ms var(--ease-out) 1;
+}
+@keyframes am-cell-flash {
+  0%   { background: var(--accent-subtle); box-shadow: inset 2px 0 0 var(--accent); }
+  100% { background: transparent; box-shadow: inset 2px 0 0 transparent; }
+}
+
+/* ==========================================================================
+ * 13. ★ 辨识度签名：二进制网格底纹 ★
+ *    LOGO 的二进制环绕 → 极低对比度的网格，只有在大面积留白处才隐约可见。
+ *    纯 CSS，零资源，零请求。
+ * ======================================================================= */
+.am-grid-bg {
+  position: relative;
+}
+.am-grid-bg::before {
+  content: "";
+  position: absolute; inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: .5;
+  background-image:
+    linear-gradient(var(--line-faint) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line-faint) 1px, transparent 1px);
+  background-size: 24px 24px;
+  /* 用 mask 让网格从中心向外淡出，避免「格子布」的廉价感 */
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 0%, transparent 100%);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 0%, transparent 100%);
+}
+
+/* ==========================================================================
+ * 14. ★ 辨识度签名：渐变描边（1px，只在关键容器）★
+ *    用 mask + padding 技巧做真正的 1px 渐变边框（不是伪元素叠色块）。
+ * ======================================================================= */
+.am-ring-gradient {
+  position: relative;
+  border-radius: var(--r-lg);
+  background: var(--bg-raised);
+}
+.am-ring-gradient::before {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(160deg,
+    color-mix(in srgb, var(--accent) 70%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 12%, transparent) 40%,
+    transparent 70%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+ * 15. 分页 / 空状态 / 骨架屏
+ * ======================================================================= */
+.am-pagination {
+  display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap;
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--line-faint);
+  font-size: var(--fs-sm); color: var(--text-3);
+}
+.am-pagination__spacer { flex: 1; }
+.am-pagination__page {
+  min-width: 28px; height: 28px;
+  padding: 0 var(--sp-2);
+  display: inline-grid; place-items: center;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  background: transparent; color: var(--text-2);
+  font-family: var(--font-mono); font-size: var(--fs-xs);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.am-pagination__page:hover { background: var(--bg-hover); color: var(--text-1); }
+.am-pagination__page.is-current {
+  background: var(--accent-subtle); color: var(--accent-text);
+  border-color: var(--line-accent); font-weight: var(--fw-medium);
+}
+
+.am-empty { padding: var(--sp-12) var(--sp-6); text-align: center; }
+.am-empty__icon { width: 40px; height: 40px; margin: 0 auto var(--sp-4); color: var(--text-4); }
+.am-empty__title { font-size: var(--fs-md); font-weight: var(--fw-medium); color: var(--text-2); }
+.am-empty__desc { font-size: var(--fs-sm); color: var(--text-3); margin-top: var(--sp-2); line-height: var(--lh-base); }
+.am-empty__actions { margin-top: var(--sp-5); display: flex; gap: var(--sp-2); justify-content: center; flex-wrap: wrap; }
+
+.am-skeleton {
+  background: linear-gradient(90deg, var(--bg-hover) 25%, var(--bg-active) 37%, var(--bg-hover) 63%);
+  background-size: 400% 100%;
+  animation: am-shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--r-xs);
+}
+.am-skeleton--text { height: 11px; width: 100%; }
+@keyframes am-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+/* ==========================================================================
+ * 16. 响应式 —— 五档断点
+ *    中文比英文需要更宽：菜单标签、表格列都更长，故断点整体上移。
+ * ======================================================================= */
+
+/* ── ≥1440：完整双栏 ── */
+/* 默认样式即此档 */
+
+/* ── <1280 大屏笔记本：内容区留白收紧，侧栏略窄 ── */
+@media (max-width: 1280px) {
+  :root { --w-sidebar: 216px; }
+  .am-content { padding: var(--sp-5) var(--sp-5) var(--sp-8); }
+}
+
+/* ── <1080 小笔记本 / 平板横屏：侧栏 → mini（图标 + 悬停展开）── */
+@media (max-width: 1080px) {
+  .am-shell { grid-template-columns: var(--w-sidebar-mini) minmax(0, 1fr); }
+
+  .am-sidebar { overflow: visible; }   /* 允许悬停浮出 */
+
+  /* mini 态：文字隐藏，但**用悬停浮层展开**，而不是永远失去标签 */
+  .am-sidebar__nav { padding-inline: var(--sp-2); }
+  .am-nav__item {
+    justify-content: center; padding: 0; gap: 0;
+    height: 38px;
+  }
+  .am-nav__item > .am-nav__label { display: none; }
+  .am-nav__item.is-active::before { left: -4px; }
+
+  /* 分组标题：mini 态下变成一条细分隔线，而不是挤成竖排文字 */
+  .am-nav__group {
+    height: 1px; padding: 0; margin: var(--sp-3) var(--sp-3);
+    background: var(--line-faint);
+    font-size: 0; color: transparent; overflow: hidden;
+  }
+
+  .am-sidebar__brand { justify-content: center; padding: 0; }
+  .am-sidebar__brand > .am-brand-text { display: none; }
+
+  /* 悬停展开：把侧栏浮起来 */
+  .am-sidebar:hover,
+  .am-sidebar:focus-within {
+    width: var(--w-sidebar);
+    position: relative;
+    z-index: var(--z-dropdown);
+    box-shadow: var(--shadow-overlay);
+  }
+  .am-sidebar:hover .am-nav__item,
+  .am-sidebar:focus-within .am-nav__item {
+    justify-content: flex-start; padding: 0 var(--sp-3); gap: var(--sp-3);
+  }
+  .am-sidebar:hover .am-nav__item > .am-nav__label,
+  .am-sidebar:focus-within .am-nav__item > .am-nav__label { display: block; }
+  .am-sidebar:hover .am-nav__group,
+  .am-sidebar:focus-within .am-nav__group {
+    height: auto; margin: 0; background: none;
+    padding: var(--sp-5) var(--sp-3) var(--sp-2);
+    font-size: var(--fs-2xs);
+  }
+  .am-sidebar:hover .am-sidebar__brand,
+  .am-sidebar:focus-within .am-sidebar__brand {
+    justify-content: flex-start; padding: 0 var(--sp-4);
+  }
+  .am-sidebar:hover .am-brand-text,
+  .am-sidebar:focus-within .am-brand-text { display: inline; }
+}
+
+/* ── <860 平板竖屏 / 大手机：侧栏 → 抽屉；表格降级 ── */
+@media (max-width: 860px) {
+  .am-shell { grid-template-columns: minmax(0, 1fr); }
+
+  /* 抽屉：默认移出视口，.is-nav-open 时滑入 */
+  .am-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(280px, 84vw);      /* 不再固定 232px，窄屏自动收 */
+    z-index: var(--z-drawer);
+    transform: translateX(-100%);
+    transition: transform var(--dur) var(--ease-out);
+    box-shadow: var(--shadow-overlay);
+    overflow: hidden;
+  }
+  .am-shell.is-nav-open .am-sidebar { transform: none; }
+
+  /* 抽屉内的菜单项**永远显示文字**（覆盖 mini 规则） */
+  .am-nav__item { justify-content: flex-start; padding: 0 var(--sp-3); gap: var(--sp-3); height: 40px; }
+  .am-nav__item > .am-nav__label { display: block; }
+  .am-nav__group {
+    height: auto; margin: 0; background: none;
+    padding: var(--sp-5) var(--sp-3) var(--sp-2);
+    font-size: var(--fs-2xs); color: var(--text-4);
+  }
+  .am-sidebar__brand { justify-content: flex-start; padding: 0 var(--sp-4); }
+  .am-brand-text { display: inline; }
+
+  /* 抽屉遮罩 */
+  .am-scrim {
+    position: fixed; inset: 0;
+    z-index: calc(var(--z-drawer) - 1);
+    background: rgba(0,0,0,.5);
+    backdrop-filter: blur(2px);
+    opacity: 0; visibility: hidden;
+    transition: opacity var(--dur) var(--ease-out), visibility var(--dur);
+  }
+  .am-shell.is-nav-open .am-scrim { opacity: 1; visibility: visible; }
+
+  /* 顶栏：出现汉堡按钮 */
+  .am-menu-toggle { display: inline-flex; }
+
+  .am-content { padding: var(--sp-4); gap: var(--sp-4); }
+  .am-topbar { padding: 0 var(--sp-3); }
+  .am-page-head { flex-direction: column; align-items: stretch; }
+
+  /*
+   * 表格：横向滚动。
+   *
+   * ⚠️ min-width 必须**大于**该区间内容区的实际可用宽度，
+   * 否则不触发滚动、字被压扁（实测踩过：640 在 700px 视口下不滚）。
+   * 该区间视口 600–860，减去侧栏 mini 68 / 内边距，可用宽度约 500–780，
+   * 因此保持 900 以确保中文字不竖排；同时靠隐藏次要列降低"需要多宽"。
+   */
+  .am-table { min-width: 900px; }
+  /* 次要列：该区间隐藏，减少挤压力（列是否可隐藏由 Resource 声明 hideOn） */
+  .am-col--md-hide { display: none; }
+}
+
+/* ── <600 手机：卡片化 ── */
+@media (max-width: 600px) {
+  :root { --h-table-row: 38px; }
+
+  /* 顶栏防挤压：面包屑只剩末级、Agent 徽标只留圆环、用户名隐藏。
+     窄屏顶栏必须**单行不换行**，否则内容区被顶下去半屏。 */
+  .am-topbar { flex-wrap: nowrap; gap: var(--sp-2); }
+  .am-crumb { flex-wrap: nowrap; overflow: hidden; }
+  .am-crumb > a, .am-crumb__sep { display: none; }   /* 只留当前页名 */
+  .am-crumb__current { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .am-agent-status { padding: 0 6px; }
+  .am-agent-status__text { display: none; }            /* 只留状态环 */
+  .am-topbar__right { gap: var(--sp-2); flex-shrink: 0; }
+  .am-user-name { display: none; }
+
+  .am-content { padding: var(--sp-3); gap: var(--sp-3); }
+
+  /* 表格 → 卡片列表。用 data-label 把表头带到每个单元格前面 */
+  .am-table-wrap--stack .am-table { min-width: 0; }
+  .am-table-wrap--stack .am-table thead { display: none; }
+  .am-table-wrap--stack .am-table,
+  .am-table-wrap--stack .am-table tbody,
+  .am-table-wrap--stack .am-table tr,
+  .am-table-wrap--stack .am-table td { display: block; width: 100%; }
+
+  .am-table-wrap--stack .am-table tr {
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--bg-raised);
+    margin-bottom: var(--sp-3);
+    padding: var(--sp-2) var(--sp-3);
+    position: relative;
+    overflow: hidden;      /* 裁掉行级扫描线，避免溢到相邻卡片 */
+  }
+  /* 卡片化后，行级 Agent 扫描线改为顶部横向。
+     ⚠ 必须挂在 tr::after 上 —— 若挂在 td:first-child::before，
+     会与上面「data-label 生成键」的 ::before 抢同一个伪元素，
+     导致首个单元格的标签消失（已踩过）。 */
+  .am-table-wrap--stack .am-table tr.is-agent-active { background: var(--accent-subtle); }
+  .am-table-wrap--stack .am-table tr.is-agent-active::after {
+    content: "";
+    position: absolute; left: 0; right: 0; top: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    background-size: 200% 100%;
+    animation: am-scan-x 1.6s var(--ease-in-out) infinite;
+    pointer-events: none;
+  }
+  @keyframes am-scan-x {
+    0%   { background-position: -100% 0; }
+    100% { background-position: 100% 0; }
+  }
+  /* 卡片化后不需要左侧竖线（那是宽屏表格的形态） */
+  .am-table-wrap--stack .am-table tr.is-agent-active td:first-child::before {
+    content: attr(data-label);
+    position: static; width: auto; height: auto;
+    background: none; animation: none; transform: none; border-radius: 0;
+  }
+  .am-table-wrap--stack .am-table td {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: var(--sp-3);
+    height: auto; min-height: 30px;
+    padding: var(--sp-1) 0;
+    border-bottom: 1px solid var(--line-faint);
+    text-align: left !important;
+  }
+  .am-table-wrap--stack .am-table td:last-child { border-bottom: none; }
+  /* 用 data-label 生成「键」 */
+  .am-table-wrap--stack .am-table td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    min-width: 72px;
+    font-size: var(--fs-xs);
+    color: var(--text-3);
+    font-weight: var(--fw-normal);
+  }
+  .am-table-wrap--stack .am-table td.am-table__actions {
+    position: static; box-shadow: none;
+    justify-content: flex-end; padding-top: var(--sp-2);
+  }
+  .am-table-wrap--stack .am-table td.am-table__actions::before { display: none; }
+
+  /* 工具条：搜索独占一行 */
+  .am-toolbar { padding: var(--sp-2) var(--sp-3); }
+  .am-toolbar .am-input { width: 100% !important; }
+
+  /* 分页简化 */
+  .am-pagination { justify-content: center; }
+  .am-pagination__spacer { display: none; }
+}
+
+/* ── <400 小手机 ── */
+@media (max-width: 400px) {
+  .am-topbar__right .am-user-name { display: none; }
+  .am-btn--sm { padding: 0 var(--sp-2); }
+}
+
+/* 触屏优化：命中区不足时用伪元素外扩（不改变视觉尺寸） */
+@media (pointer: coarse) {
+  .am-btn, .am-nav__item, .am-pagination__page, .am-icon-btn { position: relative; }
+  .am-btn::after, .am-nav__item::after, .am-pagination__page::after {
+    content: ""; position: absolute; inset: -4px;
+  }
+}
+
+/* ==========================================================================
+ * 17. 动效偏好 / 对比度偏好
+ * ======================================================================= */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Agent 指示器不转，但用颜色保持语义 */
+  .am-agent-status[data-state="working"] .am-agent-status__ring {
+    border-color: var(--accent); animation: none;
+  }
+  .am-table tbody tr.is-agent-active td:first-child::before { animation: none; opacity: .8; }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --text-3: var(--text-2);
+    --text-4: var(--text-3);
+    --line-faint: var(--line);
+    --line: var(--line-strong);
+  }
+}
+
+/* 打印：去掉一切装饰 */
+@media print {
+  .am-sidebar, .am-topbar, .am-toolbar, .am-pagination, .am-footer { display: none !important; }
+  .am-shell { grid-template-columns: 1fr; }
+  .am-card { border-color: #999; box-shadow: none; }
+}
+
+/* ==========================================================================
+ * 18. 窄屏隐藏次要列的工具类（配合资源声明的 priority）
+ * ======================================================================= */
+@media (max-width: 1080px) { .am-col-md-hide { display: none; } }
+@media (max-width: 860px)  { .am-col-sm-hide { display: none; } }
+@media (max-width: 600px)  { .am-col-xs-hide { display: none; } }

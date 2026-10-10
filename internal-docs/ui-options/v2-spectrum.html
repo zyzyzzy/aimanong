@@ -1,0 +1,179 @@
+<!DOCTYPE html><html lang="zh-CN" data-mode="dark"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>方案 1 · 色彩铺开</title>
+<style>
+/* ════ LOGO 完整色盘（终于全用上）════ */
+:root{
+  --blue-400:#6e9fea; --blue-500:#5486d6; --blue-600:#4071bb; --blue-700:#2d5ca4; --blue-900:#184588;
+  --red:#e05040; --amber:#e8a840; --green:#70d070;
+  /* 暗色画布：更深的"墨"，让彩色能跳出来 */
+  --bg-0:#07090d; --bg-1:#0b0e14; --bg-2:#111620; --bg-3:#1a2130;
+  --line:#1e2635;
+  --tx-1:#eef2f8; --tx-2:#94a3b8; --tx-3:#64748b;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Noto Sans SC",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg-1);color:var(--tx-1);font-family:var(--sans);font-size:14px;
+     line-height:1.6;-webkit-font-smoothing:antialiased;padding:24px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ══════════════════════════════════════════════
+   核心手法 1：全宽渐变头图
+   颜色铺开的第一招 —— 顶部一大块彩色区域
+   ══════════════════════════════════════════════ */
+.hero{
+  position:relative;border-radius:16px;overflow:hidden;padding:26px 28px;margin-bottom:20px;
+  background:
+    radial-gradient(120% 140% at 8% 0%, rgba(64,113,187,.55), transparent 55%),
+    radial-gradient(90% 120% at 42% 10%, rgba(224,80,64,.28), transparent 60%),
+    radial-gradient(80% 110% at 78% 0%, rgba(232,168,64,.22), transparent 60%),
+    radial-gradient(70% 100% at 100% 40%, rgba(112,208,112,.16), transparent 60%),
+    linear-gradient(160deg, #131a26, #0d1219);
+  border:1px solid rgba(110,159,234,.22);
+}
+/* 头图上的网格纹理 */
+.hero::before{
+  content:'';position:absolute;inset:0;pointer-events:none;opacity:.4;
+  background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);
+  background-size:38px 38px;
+  mask-image:radial-gradient(90% 90% at 20% 0%,#000,transparent 75%);
+}
+.hero h1{position:relative;font-size:34px;font-weight:700;letter-spacing:-.03em;line-height:1.2}
+.hero h1 em{font-style:normal;background:linear-gradient(100deg,var(--blue-400),var(--green) 60%,var(--amber));
+            -webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{position:relative;color:var(--tx-2);margin-top:8px;font-size:13.5px;max-width:56ch}
+.hero .meta{position:relative;display:flex;gap:18px;margin-top:18px;flex-wrap:wrap;
+  font-family:var(--mono);font-size:12px;color:var(--tx-3)}
+.hero .meta b{color:var(--tx-1);font-weight:600}
+
+/* ══════════════════════════════════════════════
+   核心手法 2：彩色统计卡（每张一个颜色）
+   而不是"全是灰卡片，数字有颜色"
+   ══════════════════════════════════════════════ */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:20px}
+.sc{position:relative;border-radius:14px;padding:18px;overflow:hidden;
+    border:1px solid var(--line);background:var(--bg-2)}
+/* 每张卡有自己的色相 —— 这是"颜色铺开"的关键 */
+.sc::before{content:'';position:absolute;inset:0;opacity:.5;
+  background:radial-gradient(100% 100% at 100% 0%, var(--c), transparent 65%)}
+.sc::after{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--c);opacity:.9}
+.sc>*{position:relative}
+.sc .k{font-family:var(--mono);font-size:11px;color:var(--tx-2);text-transform:uppercase;letter-spacing:.08em}
+.sc .v{font-family:var(--mono);font-size:30px;font-weight:700;letter-spacing:-.04em;margin-top:6px}
+.sc .d{font-size:11.5px;margin-top:4px;color:var(--tx-3)}
+.sc.b{--c:rgba(64,113,187,.5)} .sc.b .v{color:var(--blue-400)}
+.sc.g{--c:rgba(112,208,112,.4)} .sc.g .v{color:var(--green)}
+.sc.a{--c:rgba(232,168,64,.4)} .sc.a .v{color:var(--amber)}
+.sc.r{--c:rgba(224,80,64,.4)} .sc.r .v{color:var(--red)}
+
+/* ══════════════════════════════════════════════
+   核心手法 3：表格也用色 —— 状态、数字、ID
+   ══════════════════════════════════════════════ */
+.card{background:var(--bg-2);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.card-h{display:flex;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid var(--line)}
+.card-h h2{font-size:15px;font-weight:650}
+.card-h .s{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--tx-3)}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px}
+th{text-align:left;padding:11px 18px;font-family:var(--mono);font-size:10.5px;font-weight:500;
+   color:var(--tx-3);text-transform:uppercase;letter-spacing:.08em;
+   border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.045);vertical-align:middle}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:var(--bg-3)}
+tbody tr:last-child td{border-bottom:none}
+.id{font-family:var(--mono);color:var(--blue-400);font-size:12px;font-weight:600}
+.num{font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+/* 状态 chip：用真实颜色，不是灰底 */
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:6px;
+      font-family:var(--mono);font-size:11.5px;font-weight:600;white-space:nowrap}
+.chip.ok{background:rgba(112,208,112,.16);color:var(--green);box-shadow:inset 0 0 0 1px rgba(112,208,112,.3)}
+.chip.w{background:rgba(232,168,64,.16);color:var(--amber);box-shadow:inset 0 0 0 1px rgba(232,168,64,.3)}
+.chip.b{background:rgba(64,113,187,.18);color:var(--blue-400);box-shadow:inset 0 0 0 1px rgba(64,113,187,.35)}
+.dot{width:5px;height:5px;border-radius:50%;background:currentColor;box-shadow:0 0 6px currentColor}
+
+/* 布局：为演示，简单包一层 */
+.wrap{max-width:1200px;margin:0 auto}
+@media (max-width:700px){
+  body{padding:14px}
+  .hero h1{font-size:24px}
+  .hero{padding:20px}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .sc .v{font-size:23px}
+  thead{display:none}
+  tbody tr{display:block;padding:14px;border-bottom:1px solid var(--line)}
+  tbody td{display:flex;justify-content:space-between;padding:5px 0;border:none}
+  tbody td::before{content:attr(data-l);font-family:var(--mono);font-size:11px;color:var(--tx-3);
+    text-transform:uppercase;letter-spacing:.06em}
+}
+</style></head><body>
+<div class="wrap">
+
+  <!-- 手法1：全宽渐变头图 -->
+  <div class="hero">
+    <h1>文章管理<br><em>11 个字段 · 12 条记录</em></h1>
+    <p>这份界面由一份 PHP 声明编译而成 —— schema、接口、类型、文档同源，不漂移。</p>
+    <div class="meta">
+      <span>RESOURCE <b>cms-articles</b></span>
+      <span>MODEL <b>CmsArticle</b></span>
+      <span>导出 <b>已开启</b></span>
+    </div>
+  </div>
+
+  <!-- 手法2：彩色统计卡 -->
+  <div class="stats">
+    <div class="sc b"><div class="k">总记录</div><div class="v">12</div><div class="d">本周 +3</div></div>
+    <div class="sc g"><div class="k">已发布</div><div class="v">8</div><div class="d">占比 66.7%</div></div>
+    <div class="sc a"><div class="k">总浏览</div><div class="v">96,208</div><div class="d">↑ 12.4%</div></div>
+    <div class="sc r"><div class="k">待审核</div><div class="v">1</div><div class="d">需要处理</div></div>
+  </div>
+
+  <!-- 手法3：表格用色 -->
+  <div class="card">
+    <div class="card-h"><h2>文章列表</h2><span class="s">schema v1 · 自动生成</span></div>
+    <div class="tw"><table>
+      <thead><tr>
+        <th style="width:54px">ID</th><th style="min-width:150px">SLUG</th>
+        <th style="min-width:220px">标题</th><th style="min-width:110px">状态</th>
+        <th class="num" style="min-width:96px">浏览量</th><th style="min-width:84px">发布</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td class="id" data-l="ID">01</td>
+          <td class="mono" style="color:var(--tx-2);font-size:12.5px" data-l="SLUG">laravel-12-queue</td>
+          <td data-l="标题">Laravel 12 队列深度实践</td>
+          <td data-l="状态"><span class="chip ok"><i class="dot"></i>published</span></td>
+          <td class="num" data-l="浏览量">23,000</td>
+          <td class="mono" style="color:var(--tx-3);font-size:12.5px" data-l="发布">08-30</td>
+        </tr>
+        <tr>
+          <td class="id" data-l="ID">02</td>
+          <td class="mono" style="color:var(--tx-2);font-size:12.5px" data-l="SLUG">vue3-patterns</td>
+          <td data-l="标题">Vue 3 组合式 API 的 7 个模式</td>
+          <td data-l="状态"><span class="chip b"><i class="dot"></i>review</span></td>
+          <td class="num" data-l="浏览量">10,450</td>
+          <td class="mono" style="color:var(--tx-3);font-size:12.5px" data-l="发布">09-09</td>
+        </tr>
+        <tr>
+          <td class="id" data-l="ID">03</td>
+          <td class="mono" style="color:var(--tx-2);font-size:12.5px" data-l="SLUG">mysql-index</td>
+          <td data-l="标题">MySQL 索引失效的 12 种场景</td>
+          <td data-l="状态"><span class="chip w"><i class="dot"></i>draft</span></td>
+          <td class="num" style="color:var(--amber)" data-l="浏览量">8</td>
+          <td class="mono" style="color:var(--tx-3);font-size:12.5px" data-l="发布">—</td>
+        </tr>
+        <tr>
+          <td class="id" data-l="ID">04</td>
+          <td class="mono" style="color:var(--tx-2);font-size:12.5px" data-l="SLUG">ai-agent-flow</td>
+          <td data-l="标题">AI Agent 在内容生产中的落地</td>
+          <td data-l="状态"><span class="chip ok"><i class="dot"></i>published</span></td>
+          <td class="num" data-l="浏览量">15,600</td>
+          <td class="mono" style="color:var(--tx-3);font-size:12.5px" data-l="发布">09-19</td>
+        </tr>
+      </tbody>
+    </table></div>
+  </div>
+</div>
+</body></html>

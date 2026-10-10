@@ -57,9 +57,19 @@
           $isActive = $activeGroup === $item['label'];
         @endphp
         {{-- 分组：可点击折叠 --}}
+        @php
+          // 缩窄态下分组只用图标表示，取该组第一个子项的图标作代表
+          $groupIcon = 'folder';
+          foreach ($item['children'] as $c) {
+              if (! empty($c['icon'])) { $groupIcon = $c['icon']; break; }
+          }
+        @endphp
         <div class="am-nav__groupwrap {{ $isActive ? 'is-open' : '' }}" data-group="{{ $gid }}">
           <button type="button" class="am-nav__group" aria-expanded="{{ $isActive ? 'true' : 'false' }}"
                   title="{{ $item['label'] }}">
+            <span class="am-nav__groupicon" aria-hidden="true">
+              @include('aimanong::partials.icon', ['name' => $groupIcon, 'size' => 16])
+            </span>
             <span class="am-truncate am-nav__grouplabel">{{ $item['label'] }}</span>
             <svg class="am-nav__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                  stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
@@ -114,6 +124,9 @@
 
 /* ── 分组折叠 ── */
 .am-nav__groupwrap { margin-bottom: 2px; }
+/* 分组图标默认不显示 —— 展开态用文字标题即可；
+   只有缩窄态才用图标代表一级菜单。 */
+.am-nav__groupicon { display: none; place-items: center; flex-shrink: 0; }
 .am-nav__group {
   display: flex; align-items: center; gap: var(--sp-2); width: 100%;
   padding: var(--sp-2) var(--sp-3);
@@ -142,54 +155,78 @@
 .am-nav__groupwrap.is-open .am-nav__children { grid-template-rows: 1fr; }
 .am-nav__inner { overflow: hidden; min-height: 0; }
 
-/* ── 缩窄态：图标条 64px ── */
-.am-shell.is-collapsed { grid-template-columns: var(--w-sidebar-mini) minmax(0, 1fr); }
-.am-shell.is-collapsed .am-sidebar { padding-inline: var(--sp-2); }
-.am-shell.is-collapsed .am-sidebar__brandtext,
-.am-shell.is-collapsed .am-nav__grouplabel,
-.am-shell.is-collapsed .am-nav__chev,
-.am-shell.is-collapsed .am-nav__label { display: none; }
-.am-shell.is-collapsed .am-sidebar__brand {
-  /* 缩窄时品牌行改为纵向：logo 在上、开关在下并居中。
-     横排放不下（64px 减 padding 只剩 ~48px，logo 就占 34px）。 */
-  flex-direction: column; gap: var(--sp-1); padding-inline: 0; justify-content: center;
-}
-.am-shell.is-collapsed .am-sidebar__toggle { transform: rotate(180deg); margin-left: 0; }
-.am-shell.is-collapsed .am-nav__item { justify-content: center; padding-inline: 0; }
-.am-shell.is-collapsed .am-nav__group { display: none; }
-/* 缩窄时分组一律展开 —— 否则只剩图标、无从点开分组 */
-.am-shell.is-collapsed .am-nav__children { grid-template-rows: 1fr; }
+/* ══════════════════════════════════════════════════════════
+   缩窄态（仅桌面 ≥961px）
+   ══════════════════════════════════════════════════════════
 
-/* ── 缩窄 + 悬停：浮层临时展开全文 ──
- * 这样「收窄省空间」与「随时看文字」两者兼得，
- * 比"缩窄后永远只剩图标"更好用。 */
+   ⚠️ 两个**踩过的严重坑**，改动前务必读：
+
+   【坑 1】悬停展开**不能**把侧栏改成 position: absolute。
+     侧栏脱离 grid 流后第一列空出，后面的 .am-main **被自动放进
+     那个 64px 窄列** —— 主内容区塌成 64px（表格/顶栏/卡片全废）。
+     ✅ 正确：侧栏保持 position: relative 留在流里；宽度 64px 正常显示，
+        悬停加宽到 196px 时**溢出到主区上方**（overflow:visible + z-index）。
+        主区布局不变，内容零位移。
+
+   【坑 2】缩窄时**不能把子菜单全部强制展开、也不能隐藏分组标题**。
+     用户反馈「缩窄后所有菜单都展开了、且没有一级菜单」——
+     旧做法 `grid-template-rows: 1fr` + `.am-nav__group{display:none}` 正是如此。
+     ✅ 正确：缩窄时**显示一级（分组图标）**、子项收起；
+        悬停时展开全文并显示二级。 */
+
 @media (min-width: 961px) {
-  /*
-   * 悬停临时展开必须是**浮层**，不能撑开 grid 列 ——
-   * 否则会把主内容区挤走，用户视线里的表格会突然位移。
-   * 做法：侧栏脱离文档流（absolute），主区由 grid 的第一列占位保持稳定。
-   */
-  .am-shell.is-collapsed { position: relative; }
+  /* 缩窄 = grid 第一列收窄。这一条不能少 ——
+     少了它侧栏变窄但主区不会跟着变宽。 */
+  .am-shell.is-collapsed { grid-template-columns: var(--w-sidebar-mini) minmax(0, 1fr); }
+
   .am-shell.is-collapsed .am-sidebar {
-    position: absolute; left: 0; top: 0; bottom: 0;
+    position: relative;        /* ← 关键：留在文档流，绝不用 absolute */
+    z-index: 60;               /* 悬停溢出时叠在主区之上 */
     width: var(--w-sidebar-mini);
-    transition: width var(--dur-slow) var(--ease), box-shadow var(--dur) var(--ease);
+    overflow: visible;         /* 允许悬停时溢出到列外 */
+    padding-inline: var(--sp-1);
   }
+
+  /* ── 缩窄且未悬停：只显示一级 ── */
+  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-nav__children { grid-template-rows: 0fr; }
+  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-nav__grouplabel,
+  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-nav__chev,
+  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-nav__label,
+  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-sidebar__brandtext { display: none; }
+
+  /* 一级：用分组图标表示，可点、有 hover 反馈 */
+  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-nav__groupicon { display: grid; }
+  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-nav__group {
+    justify-content: center; gap: 0; padding-inline: 0;
+    height: 34px; border-radius: var(--r-sm); margin-bottom: 2px;
+    text-transform: none; letter-spacing: 0;
+  }
+  /* 图标不拦截点击，整块按钮可点 */
+  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-nav__group > * { pointer-events: none; }
+  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-nav__item { justify-content: center; padding-inline: 0; }
+  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-sidebar__brand {
+    flex-direction: column; gap: 6px; padding-inline: 0; justify-content: center;
+  }
+  .am-shell.is-collapsed .am-sidebar:not(:hover) .am-sidebar__toggle { margin-left: 0; }
+
+  /* ── 缩窄且悬停：临时展开全文（浮层，不改布局）── */
   .am-shell.is-collapsed .am-sidebar:hover {
     width: var(--w-sidebar);
     box-shadow: var(--shadow-lg);
-    z-index: 80;
+    padding-inline: var(--sp-2);
   }
-  .am-shell.is-collapsed .am-sidebar:hover .am-sidebar__brandtext,
-  .am-shell.is-collapsed .am-sidebar:hover .am-nav__grouplabel,
-  .am-shell.is-collapsed .am-sidebar:hover .am-nav__chev,
-  .am-shell.is-collapsed .am-sidebar:hover .am-nav__label { display: block; }
-  .am-shell.is-collapsed .am-sidebar:hover .am-nav__chev { display: inline-block; }
   .am-shell.is-collapsed .am-sidebar:hover .am-sidebar__brand {
     flex-direction: row; justify-content: flex-start; padding-inline: var(--sp-3);
   }
   .am-shell.is-collapsed .am-sidebar:hover .am-sidebar__toggle { margin-left: auto; }
-  .am-shell.is-collapsed .am-sidebar:hover .am-nav__item { justify-content: flex-start; padding-inline: var(--sp-3); }
+  .am-shell.is-collapsed .am-sidebar:hover .am-nav__item {
+    justify-content: flex-start; padding-inline: var(--sp-3);
+  }
+  .am-shell.is-collapsed .am-sidebar:hover .am-nav__group {
+    justify-content: flex-start; padding-inline: var(--sp-3);
+    height: auto; text-transform: uppercase; letter-spacing: .07em;
+  }
+  .am-shell.is-collapsed .am-sidebar:hover .am-nav__groupicon { display: none; }
 }
 
 /* ── 窄屏（抽屉模式）：不显示缩窄开关，分组正常显示 ── */

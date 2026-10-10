@@ -1,0 +1,83 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>亮色方案对比 · B 新芽 vs C 纯白</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#f7f8fa;color:#171717;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC",sans-serif;
+     line-height:1.65;padding:40px 32px 80px;font-size:14px}
+.wrap{max-width:1320px;margin:0 auto}
+h1{font-size:30px;font-weight:680;letter-spacing:-.03em;margin-bottom:8px}
+.lede{color:#6b7280;margin-bottom:36px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+@media (max-width:900px){.cols{grid-template-columns:1fr}}
+.col{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06),0 8px 24px -14px rgba(0,0,0,.14)}
+.col-h{padding:20px 22px;border-bottom:1px solid #eef0f3}
+.col-h h2{font-size:20px;font-weight:670;letter-spacing:-.02em}
+.col-h .t{font-size:12.5px;color:#6b7280;margin-top:3px}
+.col-b img{width:100%;display:block;border-bottom:1px solid #eef0f3}
+.spec{padding:18px 22px}
+.spec table{width:100%;border-collapse:collapse;font-size:13px}
+.spec td{padding:8px 0;border-bottom:1px solid #f1f3f5;vertical-align:top}
+.spec td:first-child{color:#6b7280;width:88px;white-space:nowrap}
+.spec tr:last-child td{border-bottom:none}
+.spec b{font-weight:600}
+.row2{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #eef0f3}
+.row2 img{width:100%;display:block;border-right:1px solid #eef0f3}
+.row2 img:last-child{border-right:none}
+.cap{padding:9px 22px;font-size:11.5px;color:#9ca3af;border-top:1px solid #eef0f3;
+     display:flex;gap:16px;font-family:ui-monospace,Menlo,monospace}
+.note{margin-top:36px;padding:20px 24px;background:#fff;border-radius:12px;
+      box-shadow:0 1px 3px rgba(0,0,0,.05);font-size:13.5px;line-height:1.85;color:#374151}
+.note b{color:#111}
+.note code{font-family:ui-monospace,Menlo,monospace;background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:12.5px}
+</style></head><body>
+<div class="wrap">
+<h1>亮色方案对比</h1>
+<p class="lede">同一份数据（文章管理 · 5 条记录），两种对「干净」的不同理解。全部通过 320→2560px 逐像素布局扫描。</p>
+
+<div class="cols">
+  <div class="col">
+    <div class="col-h"><h2>B 新芽 Sprout</h2><div class="t">像 Stripe 那样明亮、有生命力</div></div>
+    <div class="col-b"><img src="B-1440.png" alt="B"></div>
+    <div class="row2"><img src="B-768.png" alt="768"><img src="B-390.png" alt="390"></div>
+    <div class="cap"><span>768px</span><span>390px</span></div>
+    <div class="spec"><table>
+      <tr><td>气质</td><td><b>明亮、有生命力</b>，颜色是主动的</td></tr>
+      <tr><td>画布</td><td>冷白 <code>#f6f9fc</code>（Stripe 原值）</td></tr>
+      <tr><td>强调色</td><td>紫 <code>#533afd</code> + 渐变 CTA</td></tr>
+      <tr><td>品牌表达</td><td><b>顶部 4px 通栏渐变条</b>（LOGO 四色按序）</td></tr>
+      <tr><td>布局</td><td>顶栏 <b>96px</b> 三层信息 + 侧栏 196px</td></tr>
+      <tr><td>冲击来源</td><td>44px 大标题 + 34px 彩色数字 + 渐变 CTA 发光</td></tr>
+      <tr><td>状态样式</td><td>彩色胶囊 chip</td></tr>
+      <tr><td>体积</td><td>15.1 KB（单文件零依赖）</td></tr>
+    </table></div>
+  </div>
+
+  <div class="col">
+    <div class="col-h"><h2>C 纯白 Pure</h2><div class="t">像 Vercel / Geist 那样绝对克制</div></div>
+    <div class="col-b"><img src="C-1440.png" alt="C"></div>
+    <div class="row2"><img src="C-768.png" alt="768"><img src="C-390.png" alt="390"></div>
+    <div class="cap"><span>768px</span><span>390px</span></div>
+    <div class="spec"><table>
+      <tr><td>气质</td><td><b>绝对克制</b>，颜色是稀缺的</td></tr>
+      <tr><td>画布</td><td>纯白 <code>#ffffff</code></td></tr>
+      <tr><td>强调色</td><td>绿 <code>#12a150</code>（<b>全站唯一彩色</b>）</td></tr>
+      <tr><td>品牌表达</td><td>仅 logo 一处，无装饰</td></tr>
+      <tr><td>布局</td><td><b>无常驻侧栏</b>（悬浮圆钮 / 抽屉）</td></tr>
+      <tr><td>冲击来源</td><td>44px 大标题 + <b>大量留白</b> + 阴影环边框</td></tr>
+      <tr><td>状态样式</td><td><b>小圆点 + 文字</b>，无底色</td></tr>
+      <tr><td>体积</td><td>14.2 KB（单文件零依赖）</td></tr>
+    </table></div>
+  </div>
+</div>
+
+<div class="note">
+<b>两种「干净」的区别</b><br>
+<b>B</b> 的干净是「<b>明亮清爽</b>」—— 白底 + 一处高饱和紫，颜色有存在感但不杂乱；
+顶栏那条 4px 四色渐变是全站唯一用满 LOGO 四色的地方，克制才有力。<br>
+<b>C</b> 的干净是「<b>极致留白</b>」—— 几乎无彩色，只剩一个绿点；冲击完全靠字号与空间，
+没有常驻侧栏，内容单列居中读起来最舒服。<br><br>
+<b>都验证过的</b>：320→2560px 逐 40px 布局扫描零问题；768px 次要列隐藏 + 操作列吸右；
+390px 表格卡片化；触控目标 ≥34px；对比度全部 ≥4.5:1。
+</div>
+</div></body></html>

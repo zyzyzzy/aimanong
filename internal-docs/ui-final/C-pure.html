@@ -1,0 +1,254 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>C 纯白 · 文章管理</title>
+<style>
+/* ══════════════════════════════════════════════════════════════
+   方案 C · 纯白 Pure —— 像 Vercel / Geist 那样绝对克制
+   ──────────────────────────────────────────────────────────────
+   无常驻侧栏（44px 悬浮圆钮）· 纯白画布 · 全站唯一强调色 · 44px 大标题
+   冲击力来自「字号 + 字重 + 留白」，不来自颜色
+   ══════════════════════════════════════════════════════════════ */
+:root{
+  --canvas:#ffffff; --card:#ffffff;
+  --ring:0 0 0 1px rgba(0,0,0,.08);       /* 用阴影环代替 border */
+  --ring-h:0 0 0 1px rgba(0,0,0,.16);
+  --t1:#171717; --t2:#4c4c4c; --t3:#8f8f8f;
+  --acc:#12a150;                            /* 全站唯一彩色 */
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Noto Sans SC",sans-serif;
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--canvas);color:var(--t1);font-family:var(--sans);
+     font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ── 顶栏：极窄，只有品牌 + 搜索 ── */
+.top{height:52px;display:flex;align-items:center;gap:16px;padding:0 24px;
+     position:sticky;top:0;background:rgba(255,255,255,.85);backdrop-filter:blur(10px);z-index:40}
+.brand{display:flex;align-items:center;gap:9px;font-size:14.5px;font-weight:650;letter-spacing:-.02em}
+.mark{width:22px;height:22px;border-radius:6px;flex-shrink:0;position:relative;
+  background:#171717}
+.mark::after{content:'';position:absolute;inset:6px;border:1.4px solid rgba(255,255,255,.8);border-radius:50%}
+.top .r{margin-left:auto;display:flex;align-items:center;gap:12px}
+.kbd{font-family:var(--mono);font-size:11px;color:var(--t3);box-shadow:var(--ring);
+     border-radius:5px;padding:2px 6px}
+
+/* ── 内容：单列居中，最大 1000px ── */
+.wrap{max-width:1000px;margin:0 auto;padding:56px 24px 100px}
+
+/* ── 页头：44px 大标题，冲击来自字号 ── */
+.head{margin-bottom:44px}
+.head .lab{font-family:var(--mono);font-size:11.5px;color:var(--t3);
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px}
+.head h1{font-size:44px;font-weight:680;letter-spacing:-.035em;line-height:1.04}
+.head p{font-size:15px;color:var(--t2);margin-top:16px;max-width:56ch;line-height:1.75}
+.head .a{display:flex;gap:10px;margin-top:26px;flex-wrap:wrap}
+
+/* ── 按钮：永不投影 ── */
+.b{height:34px;padding:0 15px;border-radius:8px;border:none;background:#fff;
+   box-shadow:var(--ring);color:var(--t1);font-size:13.5px;font-weight:520;
+   cursor:pointer;font-family:inherit;transition:all .15s var(--ease);white-space:nowrap}
+.b:hover{box-shadow:var(--ring-h);background:#fafafa}
+.b.p{background:#171717;color:#fff;box-shadow:none}
+.b.p:hover{background:#000}
+.b.sm{height:30px;padding:0 12px;font-size:13px}
+
+/* ── 统计：无卡片，只有数字 + 说明，靠间距分组 ── */
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;
+       box-shadow:var(--ring);border-radius:12px;overflow:hidden;margin-bottom:52px}
+.st{padding:24px;border-right:1px solid rgba(0,0,0,.06);min-width:0}
+.st:last-child{border-right:none}
+.st .k{font-family:var(--mono);font-size:10.5px;color:var(--t3);
+  text-transform:uppercase;letter-spacing:.11em}
+.st .v{font-family:var(--mono);font-size:38px;font-weight:680;letter-spacing:-.045em;
+       margin-top:10px;line-height:1;color:var(--t1)}
+.st .v.a{color:var(--acc)}          /* 唯一用彩色的数字 */
+.st .d{font-size:12px;color:var(--t3);margin-top:8px}
+
+/* ── 表格：全站只有一种边框粗细，且是「阴影环」 ── */
+.sec{display:flex;align-items:baseline;gap:12px;margin-bottom:18px}
+.sec h2{font-size:19px;font-weight:640;letter-spacing:-.025em}
+.sec .s{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--t3)}
+.card{border-radius:12px;box-shadow:var(--ring);overflow:hidden;background:#fff}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px;min-width:900px}
+th{text-align:left;padding:12px 20px;font-size:11px;font-weight:600;color:var(--t3);
+   text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid rgba(0,0,0,.06);
+   white-space:nowrap;background:#fff;position:sticky;top:0;z-index:2}
+td{padding:0 20px;height:52px;border-bottom:1px solid rgba(0,0,0,.045);vertical-align:middle}
+tbody tr{transition:background .1s}
+tbody tr:hover{background:#fafafa}
+tbody tr:last-child td{border-bottom:none}
+.id{font-family:var(--mono);color:var(--t3);font-size:12.5px}
+.num{font-family:var(--mono);text-align:right;font-weight:520}
+/* 状态：不用底色 chip，只用一个小圆点 + 文字（更克制） */
+.sx{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:520;white-space:nowrap}
+.sx i{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+.sx.ok{color:var(--acc)} .sx.re{color:var(--t2)} .sx.dr{color:var(--t3)}
+td.act,th.act{text-align:right;position:sticky;right:0;background:#fff}
+thead th.act{z-index:3}
+tbody tr:hover td.act{background:#fafafa}
+
+/* ── 44px 悬浮圆钮（替代常驻侧栏）── */
+.fab{position:fixed;left:22px;bottom:22px;z-index:60;width:44px;height:44px;border-radius:50%;
+     background:#171717;color:#fff;border:none;cursor:pointer;display:grid;place-items:center;
+     box-shadow:0 4px 16px rgba(0,0,0,.2);transition:all .2s var(--ease)}
+.fab:hover{transform:scale(1.06);box-shadow:0 6px 24px rgba(0,0,0,.28)}
+.fab svg{width:18px;height:18px}
+/* 抽屉 */
+.drawer{position:fixed;left:0;top:0;bottom:0;width:260px;background:#fff;z-index:70;
+        transform:translateX(-100%);transition:transform .26s var(--ease);
+        box-shadow:1px 0 0 rgba(0,0,0,.08);padding:22px 14px;overflow-y:auto}
+.drawer.open{transform:none}
+.drawer .dh{display:flex;align-items:center;gap:9px;padding:0 10px 20px;font-weight:650;font-size:14.5px}
+.ng{padding:14px 10px 6px;font-family:var(--mono);font-size:10.5px;color:var(--t3);
+    text-transform:uppercase;letter-spacing:.1em}
+.ni{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;
+    font-size:13.5px;color:var(--t2);cursor:pointer;transition:all .13s}
+.ni:hover{background:#f5f5f5;color:var(--t1)}
+.ni.on{background:#f0f0f0;color:var(--t1);font-weight:600}
+.ni svg{width:15px;height:15px;flex-shrink:0}
+.ni .c{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--t3)}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.28);z-index:65;opacity:0;
+       pointer-events:none;transition:opacity .24s}
+.scrim.on{opacity:1;pointer-events:auto}
+
+@media (max-width:900px){
+  .wrap{padding:40px 20px 88px}
+  .head h1{font-size:36px}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .st{border-bottom:1px solid rgba(0,0,0,.06)}
+  .st:nth-child(2){border-right:none}
+  .st:nth-child(3),.st:nth-child(4){border-bottom:none}
+}
+@media (max-width:600px){
+  .wrap{padding:30px 16px 84px}
+  .head h1{font-size:29px}
+  .head p{font-size:14px}
+  .head .a{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .head .a .b{justify-content:center}
+  .st{padding:16px} .st .v{font-size:26px}
+  .top{padding:0 16px;gap:10px}
+  .top .kbd{display:none}
+  thead{display:none} table{min-width:0}
+  tbody tr{display:block;padding:16px 18px;border-bottom:1px solid rgba(0,0,0,.06)}
+  tbody td{display:flex;justify-content:space-between;gap:16px;padding:6px 0;height:auto;border:none;text-align:right}
+  tbody td::before{content:attr(data-l);font-family:var(--mono);font-size:10.5px;color:var(--t3);
+    text-transform:uppercase;letter-spacing:.08em;flex-shrink:0}
+  td.act{position:static;padding-top:12px} td.act::before{content:''}
+}
+</style></head><body>
+
+<header class="top">
+  <div class="brand"><span class="mark"></span>Aimanong</div>
+  <div class="r">
+    <span class="kbd">⌘K</span>
+    <button class="b sm">退出</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="head">
+    <div class="lab">RESOURCE · CMS-ARTICLES</div>
+    <h1>文章管理</h1>
+    <p>这份界面由一份 PHP 声明编译而成 —— schema、接口、类型与文档同源，永不漂移。</p>
+    <div class="a">
+      <button class="b p">新增文章</button>
+      <button class="b">导出</button>
+      <button class="b">刷新</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="st"><div class="k">总记录</div><div class="v a">12</div><div class="d">本周 +3</div></div>
+    <div class="st"><div class="k">已发布</div><div class="v">8</div><div class="d">占比 66.7%</div></div>
+    <div class="st"><div class="k">总浏览</div><div class="v">96,208</div><div class="d">↑ 12.4%</div></div>
+    <div class="st"><div class="k">待审核</div><div class="v">1</div><div class="d">需要处理</div></div>
+  </div>
+
+  <div class="sec"><h2>文章列表</h2><span class="s">schema v1 · 自动生成</span></div>
+  <div class="card">
+    <div class="tw"><table>
+      <thead><tr>
+        <th style="width:56px">ID</th><th style="min-width:164px">Slug</th>
+        <th style="min-width:226px">标题</th><th style="min-width:118px">状态</th>
+        <th class="num" style="min-width:98px">浏览量</th><th style="min-width:88px">发布</th>
+        <th class="act" style="width:76px"></th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="id" data-l="ID">01</td>
+          <td class="mono" style="color:var(--t2);font-size:13px" data-l="Slug">laravel-12-queue</td>
+          <td data-l="标题">Laravel 12 队列深度实践</td>
+          <td data-l="状态"><span class="sx ok"><i></i>已发布</span></td>
+          <td class="num" data-l="浏览量">23,000</td>
+          <td class="mono" style="color:var(--t3);font-size:12.5px" data-l="发布">08-30</td>
+          <td class="act" data-l=""><button class="b sm">编辑</button></td></tr>
+        <tr><td class="id" data-l="ID">02</td>
+          <td class="mono" style="color:var(--t2);font-size:13px" data-l="Slug">vue3-patterns</td>
+          <td data-l="标题">Vue 3 组合式 API 的 7 个模式</td>
+          <td data-l="状态"><span class="sx re"><i></i>待审核</span></td>
+          <td class="num" data-l="浏览量">10,450</td>
+          <td class="mono" style="color:var(--t3);font-size:12.5px" data-l="发布">09-09</td>
+          <td class="act" data-l=""><button class="b sm">编辑</button></td></tr>
+        <tr><td class="id" data-l="ID">03</td>
+          <td class="mono" style="color:var(--t2);font-size:13px" data-l="Slug">mysql-index</td>
+          <td data-l="标题">MySQL 索引失效的 12 种场景</td>
+          <td data-l="状态"><span class="sx dr"><i></i>草稿</span></td>
+          <td class="num" data-l="浏览量">8</td>
+          <td class="mono" style="color:var(--t3);font-size:12.5px" data-l="发布">—</td>
+          <td class="act" data-l=""><button class="b sm">编辑</button></td></tr>
+        <tr><td class="id" data-l="ID">04</td>
+          <td class="mono" style="color:var(--t2);font-size:13px" data-l="Slug">ai-agent-flow</td>
+          <td data-l="标题">AI Agent 在内容生产中的落地</td>
+          <td data-l="状态"><span class="sx ok"><i></i>已发布</span></td>
+          <td class="num" data-l="浏览量">15,600</td>
+          <td class="mono" style="color:var(--t3);font-size:12.5px" data-l="发布">09-19</td>
+          <td class="act" data-l=""><button class="b sm">编辑</button></td></tr>
+        <tr><td class="id" data-l="ID">05</td>
+          <td class="mono" style="color:var(--t2);font-size:13px" data-l="Slug">zero-build-css</td>
+          <td data-l="标题">零构建设计系统怎么做</td>
+          <td data-l="状态"><span class="sx ok"><i></i>已发布</span></td>
+          <td class="num" data-l="浏览量">3,204</td>
+          <td class="mono" style="color:var(--t3);font-size:12.5px" data-l="发布">09-24</td>
+          <td class="act" data-l=""><button class="b sm">编辑</button></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</main>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer">
+  <div class="dh"><span class="mark"></span>Aimanong</div>
+  <div class="ng">内容管理</div>
+  <div class="ni on">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+    <span>文章</span><span class="c">12</span></div>
+  <div class="ni">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+    <span>栏目</span></div>
+  <div class="ni">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg>
+    <span>作者</span></div>
+  <div class="ng">系统</div>
+  <div class="ni">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>
+    <span>角色</span></div>
+  <div class="ni">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="8" cy="14" r="4"/><path d="M11 11l8-8 2 2-2 2 2 2-2 2-2-2-2 2"/></svg>
+    <span>权限节点</span><span class="c">132</span></div>
+</aside>
+
+<button class="fab" id="fab" aria-label="打开导航">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+</button>
+<script>
+(function(){
+  var f=document.getElementById('fab'),d=document.getElementById('drawer'),s=document.getElementById('scrim');
+  function t(o){d.classList.toggle('open',o);s.classList.toggle('on',o);}
+  f.onclick=function(){t(!d.classList.contains('open'))};
+  s.onclick=function(){t(false)};
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')t(false)});
+})();
+</script>
+</body></html>

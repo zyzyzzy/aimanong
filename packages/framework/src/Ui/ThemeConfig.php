@@ -32,20 +32,6 @@ class ThemeConfig
     public static function options(): array
     {
         return [
-            'style' => [
-                'label' => '界面风格',
-                'type' => 'style-picker',
-                'default' => 'ink',
-                'choices' => [
-                    // 名称与 themes.css 的 data-theme 值一一对应
-                    // 色值取自 LOGO 品牌色盘（主蓝 #205098 衍生）
-                    'ink' => ['label' => '墨玉', 'desc' => 'LOGO 正蓝', 'swatch' => ['#3363ac', '#f2f6fd']],
-                    'deep' => ['label' => '深空', 'desc' => '靛蓝沉静', 'swatch' => ['#4861a2', '#f3f6fc']],
-                    'aurora' => ['label' => '极光', 'desc' => '青蓝明亮', 'swatch' => ['#006dae', '#f0f7fd']],
-                ],
-                'help' => '风格决定配色与质感；默认「墨玉」最耐看',
-            ],
-
             'primary' => [
                 'label' => '主题色',
                 'type' => 'color',
@@ -168,7 +154,7 @@ class ThemeConfig
 
             $out[$key] = match ($type) {
                 'switch' => (bool) $value,
-                'radio', 'style-picker' => is_string($value) && isset($opt['choices'][$value])
+                'radio' => is_string($value) && isset($opt['choices'][$value])
                     ? $value
                     : $opt['default'],
                 'color' => self::normalizeColor($value),

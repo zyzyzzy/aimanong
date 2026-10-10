@@ -24,23 +24,6 @@ class ThemeConfigTest extends TestCase
         }
     }
 
-    /**
-     * 风格名必须与 themes.css 的 data-theme 值一致 ——
-     * 不一致会导致切换无效（已踩过一次）。
-     */
-    public function test_style_names_match_css(): void
-    {
-        $css = (string) file_get_contents(dirname(__DIR__, 2).'/resources/assets/css/themes.css');
-
-        foreach (array_keys(ThemeConfig::options()['style']['choices']) as $name) {
-            $this->assertStringContainsString(
-                "[data-theme=\"{$name}\"]",
-                $css,
-                "风格 {$name} 在 themes.css 里没有对应规则"
-            );
-        }
-    }
-
     public function test_defaults_cover_all_options(): void
     {
         $defaults = ThemeConfig::defaults();
@@ -54,17 +37,41 @@ class ThemeConfigTest extends TestCase
 
     public function test_normalize_falls_back_on_invalid_choice(): void
     {
-        $out = ThemeConfig::normalize(['style' => 'not-a-theme']);
+        $out = ThemeConfig::normalize(['dark' => 'not-a-mode']);
 
-        $this->assertSame('ink', $out['style'], '非法风格应回退到默认值');
+        $this->assertSame('auto', $out['dark'], '非法深色模式应回退到默认值');
     }
 
     public function test_normalize_accepts_valid_choice(): void
     {
-        $out = ThemeConfig::normalize(['style' => 'aurora', 'dark' => 'dark']);
+        $out = ThemeConfig::normalize(['dark' => 'dark', 'layout' => 'top']);
 
-        $this->assertSame('aurora', $out['style']);
         $this->assertSame('dark', $out['dark']);
+        $this->assertSame('top', $out['layout']);
+    }
+
+    /**
+     * 回归：v3 收敛为「亮/暗双模式」，不再有 style 项。
+     *
+     * v2 的三套主题色相实测为 216.2° / 223.3° / 202.4° ——
+     * 全是蓝色、肉眼分不出。三倍维护成本零辨识度，故移除。
+     */
+    public function test_no_style_option_anymore(): void
+    {
+        $this->assertArrayNotHasKey('style', ThemeConfig::options(),
+            '风格概念已移除（三套蓝收敛为亮/暗双模式）');
+    }
+
+    /**
+     * 亮/暗两套令牌必须都存在且完整。
+     */
+    public function test_themes_css_has_both_modes(): void
+    {
+        $css = (string) file_get_contents(dirname(__DIR__, 2).'/resources/assets/css/themes.css');
+
+        $this->assertStringContainsString('[data-mode="light"]', $css);
+        $this->assertStringContainsString('[data-mode="dark"]', $css);
+        $this->assertStringContainsString('prefers-color-scheme: dark', $css, '需支持跟随系统');
     }
 
     public function test_normalize_color_validation(): void

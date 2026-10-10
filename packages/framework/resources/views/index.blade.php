@@ -33,21 +33,25 @@
 
 {{-- 统计卡 --}}
 <div class="am-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-bottom:var(--sp-5)">
-  <div class="am-stat">
+  <div class="am-stat am-stat--accent">
     <div class="am-stat__label">可访问模块</div>
     <div class="am-stat__value">{{ count($quickLinks) }}</div>
+    <div class="am-stat__delta">按你的权限显示</div>
   </div>
-  <div class="am-stat">
+  <div class="am-stat am-stat--success">
     <div class="am-stat__label">我的权限</div>
     <div class="am-stat__value">{{ $isSuper ? '全部' : $permCount }}</div>
+    <div class="am-stat__delta">{{ $isSuper ? '超级管理员' : '已分配' }}</div>
   </div>
   <div class="am-stat">
     <div class="am-stat__label">已注册模块</div>
     <div class="am-stat__value">{{ $resourceCount }}</div>
+    <div class="am-stat__delta">框架已加载</div>
   </div>
-  <div class="am-stat">
+  <div class="am-stat am-stat--info">
     <div class="am-stat__label">后台账号</div>
     <div class="am-stat__value">{{ $userCount }}</div>
+    <div class="am-stat__delta">可登录用户</div>
   </div>
 </div>
 

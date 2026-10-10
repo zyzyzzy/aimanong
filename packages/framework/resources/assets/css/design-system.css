@@ -36,10 +36,10 @@
 
   /* --- 圆角：3 档 + 全圆，用乘数统一缩放 --- */
   --radius-scale: 1;         /* sm: .75 | md: 1 | lg: 1.35 */
-  --r-sm: calc(6px * var(--radius-scale));    /* 控件：按钮/输入框/标签 */
-  --r-md: calc(8px * var(--radius-scale));    /* 小卡片/下拉面板 */
-  --r-lg: calc(12px * var(--radius-scale));   /* 主卡片/弹窗 */
-  --r-xl: calc(16px * var(--radius-scale));   /* 登录卡/大容器 */
+  --r-sm: calc(8px * var(--radius-scale));    /* 控件：按钮/输入框/标签 */
+  --r-md: calc(10px * var(--radius-scale));   /* 小卡片/下拉面板 */
+  --r-lg: calc(14px * var(--radius-scale));   /* 主卡片/弹窗 */
+  --r-xl: calc(20px * var(--radius-scale));   /* 登录卡/大容器 */
   --r-full: 999px;
 
   /* --- 字号阶梯（中文适配） --- */
@@ -47,7 +47,11 @@
   --fs-sm: 13px;    /* 次要 UI：按钮、表单控件、表格单元格 */
   --fs-base: 14px;  /* 正文主力 */
   --fs-md: 15px;    /* 卡片标题 */
-  --fs-lg: 17px;    /* 页面标题 */
+  --fs-lg: 17px;    /* 卡片大标题 */
+  --fs-xl: 21px;
+  --fs-2xl: 27px;
+  --fs-display: 34px;  /* 统计数字（B 的彩色数字锚点） */
+  --fs-hero: 44px;     /* 页面主标题（B 的冲击力来源：字号而非颜色） */
   --fs-xl: 20px;    /* 区块大标题 */
   --fs-2xl: 24px;   /* 统计数字 */
   --fs-3xl: 30px;   /* 登录页标题 */
@@ -93,12 +97,17 @@
   --z-toast: 120;
 
   /* --- 尺寸规格 --- */
-  --h-topbar: 56px;
-  --w-sidebar: 232px;
+  /* --- 尺寸（方案 B · 新芽）---
+     顶栏从 56 → 96：B 的核心决策是「顶栏承载三层信息」
+     （品牌 + 搜索 + 主 CTA），需要更多垂直空间。 */
+  --h-topbar: 96px;
+  --h-topbar-sm: 72px;      /* 窄屏收窄，避免挤 */
+  --w-sidebar: 196px;       /* 232 → 196：B 的侧栏更紧凑，让内容区更宽 */
   --w-sidebar-mini: 64px;
-  --h-control: 34px;   /* 输入框 / 按钮 */
-  --h-control-sm: 28px;
-  --h-table-row: 44px;
+  --h-control: 34px;        /* 输入框 / 按钮 */
+  --h-control-lg: 40px;     /* 搜索框 / 主 CTA（B 用胶囊圆角 + 40px） */
+  --h-control-sm: 30px;
+  --h-table-row: 46px;      /* 44 → 46：B 的表格稍宽松 */
   --w-modal: 480px;
   --w-modal-lg: 640px;
 
@@ -106,105 +115,134 @@
   --density: 1;        /* default: 1 | compact: .85 */
 }
 
-/* --- 颜色 token 兜底（若未加载 themes.css，退回「墨玉·浅色」） ---
- * 真实值由 themes.css 提供；此处仅保证单文件可用时页面不崩。
- * 色值同样源自 LOGO 品牌色。 */
+/* ==========================================================================
+ * 颜色令牌（方案 B · 新芽 —— 冷白画布 + LOGO 蓝强调）
+ * ==========================================================================
+ * 真实值由 themes.css 提供（亮/暗两套）；此处是**兜底值**，
+ * 保证只加载本文件时页面不崩。
+ *
+ * 设计决策（来自方案 B，已通过 320→2560px 布局扫描 + 9 项对比度校验）：
+ *   - 画布用**冷白** #f6f9fc（Stripe 原值）而非纯白或暖白
+ *   - 强调色用 **LOGO 蓝** #2d5ca4，不是模板蓝、更不是 Stripe 的紫
+ *   - 状态色取自 LOGO 的绿/橙黄/橙红（它们在 LOGO 里的原始角色就是语义色）
+ * ========================================================================== */
 :root {
-  --bg-canvas: #f2f6fd;
+  /* 画布层级（亮色） */
+  --bg-canvas: #f6f9fc;
   --bg-surface: #ffffff;
-  --bg-subtle: #f7fbff;
-  --bg-sunken: #eaeef5;
-  --bg-hover: #eff4fa;
-  --bg-active: #e5eaf0;
-  --bg-inverse: #13161b;
-  --text-primary: #12161d;
-  --text-secondary: #43484f;
-  --text-tertiary: #686c73;
-  --text-disabled: #9b9fa5;
+  --bg-subtle: #fbfcfe;
+  --bg-sunken: #eef3f8;
+  --bg-hover: #f4f8fb;
+  --bg-active: #e9f0f6;
+  --bg-inverse: #0a2540;
+
+  /* 文字（Stripe 的深蓝黑，不是纯黑） */
+  --text-primary: #0a2540;
+  --text-secondary: #425466;
+  --text-tertiary: #697386;
+  --text-disabled: #a3acba;
   --text-inverse: #ffffff;
-  --brand-solid: #3363ac;
-  --brand-solid-hover: #214f95;
-  --brand-solid-active: #113e80;
+
+  /* 品牌（LOGO 蓝） */
+  --brand-solid: #2d5ca4;
+  --brand-solid-hover: #24508f;
+  --brand-solid-active: #1c437a;
   --text-on-brand: #ffffff;
-  --brand-text: #2b5ba2;
-  --brand-subtle-bg: #caf2ff;
-  --brand-subtle-border: #aad6ff;
-  --brand-ring: #4f80cb;
-  --border-subtle: #e2e6ed;
-  --border-default: #d6dae1;
-  --border-strong: #bfc3c9;
-  --border-focus: #4f80cb;
-  --overlay: rgba(15,23,42,.45);
-  --success-bg: #e6f7e5;
-  --success-text: #16691c;
-  --success-border: #bae4b8;
-  --success-solid: #2e7c30;
+  --brand-text: #2d5ca4;
+  --brand-subtle-bg: #eaf1fa;
+  --brand-subtle-border: #c5d8ee;
+  --brand-ring: #4071bb;
+
+  /* 边框 */
+  --border-subtle: #eaf0f6;
+  --border-default: #e0e9f2;
+  --border-strong: #cbd8e6;
+  --border-focus: #4071bb;
+
+  /* 语义色（取自 LOGO 的绿 / 橙黄 / 橙红） */
+  --success-bg: #e3f9ea;
+  --success-text: #0f7a3d;
+  --success-border: #b8ecc9;
+  --success-solid: #12a150;
   --success-on-solid: #ffffff;
-  --warning-bg: #ffefdb;
-  --warning-text: #834600;
-  --warning-border: #f6d09c;
-  --warning-solid: #975900;
-  --warning-on-solid: #ffffff;
-  --danger-bg: #ffe9e4;
-  --danger-text: #9e1e14;
-  --danger-border: #ffc1b4;
-  --danger-solid: #b43629;
+
+  --warning-bg: #fdf1e3;
+  --warning-text: #b45309;
+  --warning-border: #f5d9b0;
+  --warning-solid: #e8a840;
+  --warning-on-solid: #3d2a00;
+
+  --danger-bg: #fdeceb;
+  --danger-text: #b3261e;
+  --danger-border: #f5c9c5;
+  --danger-solid: #e05040;
   --danger-on-solid: #ffffff;
-  --info-bg: #caf2ff;
-  --info-text: #2b5ba2;
-  --info-border: #aad6ff;
-  --info-solid: #3363ac;
+
+  --info-bg: #eaf1fa;
+  --info-text: #2d5ca4;
+  --info-border: #c5d8ee;
+  --info-solid: #2d5ca4;
   --info-on-solid: #ffffff;
+
+  --overlay: rgba(10, 37, 64, .42);
 }
 
-/* 深色模式：在 themes.css 未覆盖时也保证可用 */
+/* 深色模式兜底 */
 [data-mode="dark"] {
   color-scheme: dark;
-  --bg-canvas: #0a0c11;
-  --bg-surface: #14171c;
-  --bg-subtle: #1b1e23;
-  --bg-sunken: #05070a;
-  --bg-hover: #202328;
-  --bg-active: #2a2d32;
-  --bg-inverse: #e1e5eb;
-  --text-primary: #e1e7ee;
-  --text-secondary: #a8adb4;
-  --text-tertiary: #80858c;
-  --text-disabled: #595c62;
-  --text-inverse: #0b0d12;
-  --brand-solid: #5688d3;
-  --brand-solid-hover: #6c9ee9;
-  --brand-solid-active: #4374be;
-  --text-on-brand: #0b0d12;
-  --brand-text: #75a6f0;
-  --brand-subtle-bg: #1a283d;
-  --brand-subtle-border: #24395a;
-  --brand-ring: #5688d3;
-  --border-subtle: #202328;
-  --border-default: #2c2f34;
-  --border-strong: #404449;
-  --border-focus: #5688d3;
-  --overlay: rgba(0,0,0,.62);
-  --success-bg: #1b301b;
-  --success-text: #85c483;
-  --success-border: #274626;
-  --success-solid: #5c9f5c;
-  --success-on-solid: #0b0d12;
-  --warning-bg: #38260a;
-  --warning-text: #dca653;
-  --warning-border: #523709;
-  --warning-solid: #b88019;
-  --warning-on-solid: #0b0d12;
-  --danger-bg: #421e19;
-  --danger-text: #fb8e7e;
-  --danger-border: #602b24;
-  --danger-solid: #d66556;
-  --danger-on-solid: #0b0d12;
-  --info-bg: #1a283d;
-  --info-text: #75a6f0;
-  --info-border: #24395a;
-  --info-solid: #5688d3;
-  --info-on-solid: #0b0d12;
+  --bg-canvas: #0a1628;
+  --bg-surface: #0f1e33;
+  --bg-subtle: #13243c;
+  --bg-sunken: #071120;
+  --bg-hover: #16273f;
+  --bg-active: #1c3050;
+  --bg-inverse: #e6edf7;
+
+  --text-primary: #e6edf7;
+  --text-secondary: #9fb3cc;
+  --text-tertiary: #7d90a8;
+  --text-disabled: #5c6f88;
+  --text-inverse: #0a1628;
+
+  --brand-solid: #5486d3;
+  --brand-solid-hover: #6e9fea;
+  --brand-solid-active: #4071bb;
+  --text-on-brand: #06121f;
+  --brand-text: #8ab9ff;
+  --brand-subtle-bg: #16304f;
+  --brand-subtle-border: #24466f;
+  --brand-ring: #5486d3;
+
+  --border-subtle: #1a2c45;
+  --border-default: #22374f;
+  --border-strong: #2f4864;
+  --border-focus: #6e9fea;
+
+  --success-bg: #10321f;
+  --success-text: #6ee7a0;
+  --success-border: #1d5334;
+  --success-solid: #3ecf6e;
+  --success-on-solid: #06120a;
+
+  --warning-bg: #3a2a0d;
+  --warning-text: #f0c078;
+  --warning-border: #5a4318;
+  --warning-solid: #e8a840;
+  --warning-on-solid: #241a00;
+
+  --danger-bg: #3a1614;
+  --danger-text: #f09186;
+  --danger-border: #5c2622;
+  --danger-solid: #e05040;
+  --danger-on-solid: #1a0705;
+
+  --info-bg: #16304f;
+  --info-text: #8ab9ff;
+  --info-border: #24466f;
+  --info-solid: #5486d3;
+  --info-on-solid: #06121f;
+
+  --overlay: rgba(0, 0, 0, .62);
 }
 
 /* ==========================================================================
@@ -415,6 +453,12 @@ hr {
 
 /* --- 顶栏 --- */
 .am-topbar {
+  /* B 的品牌签名：顶部 4px 四色通栏条（LOGO 的蓝/橙红/橙黄/绿按序）
+     —— 全站唯一用满四色的地方。克制才有力。
+     用 ::before 实现，不改 DOM。 */
+  /* B 的品牌签名：顶部 4px 四色通栏条（LOGO 的蓝/橙红/橙黄/绿按序）
+     —— 全站唯一用满四色的地方。克制才有力。
+     用 ::before 实现，不改 DOM、不占布局空间。 */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -428,6 +472,13 @@ hr {
   top: 0;
   z-index: var(--z-sticky);
 }
+.am-topbar::before {
+  content: '';
+  position: absolute; left: 0; right: 0; top: 0; height: 4px;
+  background: linear-gradient(90deg, #e0503c, #e8a840, #70d070, #205098);
+  pointer-events: none;
+}
+.am-topbar { position: relative; }
 .am-topbar__left,
 .am-topbar__right {
   display: flex;
@@ -465,9 +516,12 @@ hr {
   flex-wrap: wrap;
 }
 .am-page-head__title {
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-semibold);
-  line-height: var(--lh-tight);
+  /* B 的核心决策：冲击力来自**字号**而非颜色。
+     页面主标题 44px，配 -0.035em 字距（中文不要收太紧）。 */
+  font-size: var(--fs-hero);
+  font-weight: 680;
+  letter-spacing: -.035em;
+  line-height: 1.06;
 }
 .am-page-head__desc {
   font-size: var(--fs-sm);
@@ -510,7 +564,10 @@ hr {
   }
   .am-shell.is-nav-open .am-sidebar { transform: none; }
   .am-content { padding: var(--sp-4); }
-  .am-topbar { padding: 0 var(--sp-4); }
+  .am-topbar {
+  /* B 的品牌签名：顶部 4px 四色通栏条（LOGO 的蓝/橙红/橙黄/绿按序）
+     —— 全站唯一用满四色的地方。克制才有力。
+     用 ::before 实现，不改 DOM、不占布局空间。 */ padding: 0 var(--sp-4); }
 }
 
 /* ==========================================================================
@@ -553,12 +610,22 @@ hr {
 
 /* 主按钮 */
 .am-btn--primary {
-  background: var(--brand-solid);
-  border-color: var(--brand-solid);
+  /* B 的决策：主按钮用「同色系渐变 + 同色投影」产生发光感，
+     而不是一个平面色块。这是"明亮有生命力"的关键细节之一。 */
+  background: linear-gradient(135deg, var(--brand-solid), var(--brand-alt, var(--brand-solid)));
+  border-color: transparent;
   color: var(--text-on-brand);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--brand-solid) 32%, transparent),
+              0 8px 20px -8px color-mix(in srgb, var(--brand-solid) 50%, transparent);
 }
 .am-btn--primary:hover {
-  background: var(--brand-solid-hover);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--brand-solid) 40%, transparent),
+              0 12px 28px -8px color-mix(in srgb, var(--brand-solid) 58%, transparent);
+  transform: translateY(-1px);
+}
+.am-btn--primary:active { transform: translateY(0); }
+.am-btn--primary:hover {
+  background: linear-gradient(135deg, var(--brand-solid-hover), var(--brand-alt, var(--brand-solid-hover)));
   border-color: var(--brand-solid-hover);
 }
 .am-btn--primary:active { background: var(--brand-solid-active); }
@@ -843,12 +910,118 @@ hr {
  * 6. 表格
  * ======================================================================= */
 
-.am-table-wrap { width: 100%; overflow-x: auto; }
+.am-table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/*
+ * 表格最小宽度 = 列数 × 每列最小宽。
+ *
+ * 每列 144px 的依据：中文长文本列（商品名、标题）需要放 9-10 个字
+ * 才不折行，加上左右 padding（各 16px）与数字列右对齐所需宽度。
+ *
+ * 演进过程（每次都是实测驱动的）：
+ *   104px → 「AI Agent 在内容生产中的落地」折 4 行
+ *   128px → 1040-1200px 时「华为 MateBook X Pro」仍折 3 行（卡临界点）
+ *   144px → 通过 320-2560px 全宽度扫描
+ *
+ * ⚠️ 不能用固定值 —— 980px 只够 9 列，12 列的表格仍会挤。
+ * 用 --col-count（模板注入列数）动态计算。
+ */
+.am-table[style*="--col-count"] { --table-min: calc(var(--col-count) * 144px); }
+
+/*
+ * ── 窄屏表格卡片化 ──────────────────────────────────────────
+ *
+ * 手机屏幕上，9 列中文表格无论怎么压都读不了。
+ * 与其让用户横向拖动找列，不如**把每行变成一张卡片**：
+ * 用 data-label 把表头带成每个字段前的标签。
+ *
+ * 用法：给容器加 am-table-wrap--stack，并给每个 td 加 data-label。
+ *
+ * ⚠️ 两个已踩过的坑：
+ *   1. data-label 用 td::before 生成 → 不能再用 ::before 做别的
+ *      （比如行级状态条会抢同一个伪元素，导致首个标签消失）
+ *   2. 卡片化后必须把 .am-table 的 min-width 归零，
+ *      否则仍会横向溢出
+ *
+ * 断点取 960px 而非 768：实测 880px 时（侧栏仍在）商品名这类
+ * 长中文列会折 3 行。宁可提前卡片化，也不要挤。
+ */
+@media (max-width: 960px) {
+  .am-table-wrap--stack .am-table { min-width: 0; width: 100%; }
+  .am-table-wrap--stack .am-table thead { display: none; }
+  .am-table-wrap--stack .am-table,
+  .am-table-wrap--stack .am-table tbody,
+  .am-table-wrap--stack .am-table tr,
+  .am-table-wrap--stack .am-table td { display: block; width: 100%; }
+
+  .am-table-wrap--stack .am-table tr {
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-md);
+    background: var(--bg-surface);
+    margin-bottom: var(--sp-3);
+    padding: var(--sp-3) var(--sp-4);
+  }
+  .am-table-wrap--stack .am-table tr:last-child { margin-bottom: 0; }
+
+  .am-table-wrap--stack .am-table td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    padding: var(--sp-2) 0;
+    height: auto;
+    min-height: 0;
+    border: none;
+    border-bottom: 1px solid var(--border-subtle);
+    text-align: right;
+    white-space: normal;
+  }
+  .am-table-wrap--stack .am-table td:last-child { border-bottom: none; padding-bottom: 0; }
+  .am-table-wrap--stack .am-table td:first-child { padding-top: 0; }
+
+  /* 用 data-label 生成字段名 */
+  .am-table-wrap--stack .am-table td[data-l]::before {
+    content: attr(data-l);
+    flex-shrink: 0;
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    text-align: left;
+  }
+  /* 空标签（操作列）不要占位 */
+  .am-table-wrap--stack .am-table td[data-l=""]::before { content: none; }
+
+  /* 操作列改为底部右对齐的一排按钮 */
+  .am-table-wrap--stack .am-table td.am-table__actions {
+    justify-content: flex-end;
+    padding-top: var(--sp-3);
+  }
+  .am-table-wrap--stack .am-table td.am-table__actions::before { content: none; }
+
+  /* 卡片化后操作列不再吸右 */
+  .am-table-wrap--stack .am-table td.am-table__actions,
+  .am-table-wrap--stack .am-table th.am-table__actions { position: static; box-shadow: none; }
+}
 
 .am-table {
   width: 100%;
   font-size: var(--fs-sm);
   background: var(--bg-surface);
+  /*
+   * ★ 最小宽度 —— 中文表格的命门。
+   *
+   * 没有它，窄屏下中文列会被压到 1 字宽 → 「后端」变竖排、
+   * 「Laravel / 性能优化 / 运维」折成 4 行。这是被实测反复验证的故障。
+   *
+   * 980px ≈ 9 列 × 平均 109px（含数字列右对齐所需宽度）。
+   * 宽度不够时**横向滚动**，而不是把字压扁 ——
+   * 宁可滚动，也不要挤坏的表格。
+   *
+   * ⚠️ 这条规则曾在替换 token 层时被误删，导致全列表页回归失败。
+   */
+  min-width: var(--table-min, 980px);
 }
 .am-table th {
   text-align: left;
@@ -991,7 +1164,8 @@ hr {
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
   border-radius: var(--r-lg);
-  box-shadow: var(--shadow-xs);
+  /* B 的双层阴影：贴地 1px + 环境光，比单层阴影"浮得起来" */
+  box-shadow: 0 1px 3px rgba(10,37,64,.05), 0 8px 22px -14px rgba(10,37,64,.14);
   transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
 .am-card--flush { overflow: hidden; }          /* 表格类卡片：裁掉子元素直角 */
@@ -1031,14 +1205,27 @@ hr {
   gap: var(--sp-1);
 }
 .am-stat__value {
-  font-size: var(--fs-2xl);
-  font-weight: var(--fw-semibold);
+  /* B 的决策：统计数字是**彩色锚点**（34px），
+     冲击力来自字号 + 色彩，不是卡片装饰。 */
+  font-size: var(--fs-display);
+  font-weight: 680;
+  letter-spacing: -.04em;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -.025em;
   line-height: 1.2;
   margin-top: var(--sp-2);
 }
+/* 统计数字的彩色修饰 —— B 的「彩色锚点」做法：
+   数字本身用强调色/语义色，卡片保持中性，形成 3-4 个视觉落点。 */
+.am-stat--accent .am-stat__value { color: var(--brand-solid); }
+.am-stat--success .am-stat__value { color: var(--success-text); }
+.am-stat--warning .am-stat__value { color: var(--warning-text); }
+.am-stat--danger .am-stat__value { color: var(--danger-text); }
+.am-stat--info .am-stat__value { color: var(--info-text); }
+.am-stat__delta { font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: var(--sp-2); }
+.am-stat__delta--up { color: var(--success-text); }
+.am-stat__delta--down { color: var(--danger-text); }
+
 .am-stat__delta { font-size: var(--fs-xs); margin-top: var(--sp-1); }
 .am-stat__delta--up { color: var(--success-text); }
 .am-stat__delta--down { color: var(--danger-text); }
@@ -1591,7 +1778,8 @@ hr {
   background: var(--bg-surface);
   color: var(--text-primary);
   font-weight: var(--fw-medium);
-  box-shadow: var(--shadow-xs);
+  /* B 的双层阴影：贴地 1px + 环境光，比单层阴影"浮得起来" */
+  box-shadow: 0 1px 3px rgba(10,37,64,.05), 0 8px 22px -14px rgba(10,37,64,.14);
 }
 
 /* ==========================================================================

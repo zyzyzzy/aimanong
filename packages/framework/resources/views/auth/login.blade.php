@@ -21,7 +21,7 @@
   $brand = \Aimanong\Aimanong::brand();
 @endphp
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="{{ $ui['style'] }}" data-mode="auto">
+<html lang="zh-CN" data-mode="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -33,7 +33,6 @@
   try {
     var s = JSON.parse(localStorage.getItem('aimanong.ui') || '{}');
     var r = document.documentElement;
-    if (s.style) r.dataset.theme = s.style;
     var m = s.dark && s.dark !== 'auto' ? s.dark
           : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
     r.dataset.mode = m;

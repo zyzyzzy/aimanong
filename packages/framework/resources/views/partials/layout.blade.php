@@ -7,7 +7,7 @@
     现在：全部 @include 本文件 + design-system。
 
   ## 关键：防深色闪屏（FOUC）
-    内联脚本必须**在引入 CSS 之前**写好 data-theme / data-mode，
+    内联脚本必须**在引入 CSS 之前**写好 data-mode，
     否则深色用户会先看到白色再跳黑。
 
   ## AI 提示
@@ -20,7 +20,7 @@
   $asset = fn (string $p): string => \Aimanong\Aimanong::asset()->url($p);
 @endphp
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="{{ $ui['style'] }}" data-mode="{{ $ui['dark'] === 'auto' ? 'auto' : $ui['dark'] }}">
+<html lang="zh-CN" data-mode="{{ $ui['dark'] === 'auto' ? 'light' : $ui['dark'] }}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">

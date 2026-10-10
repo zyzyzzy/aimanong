@@ -44,8 +44,10 @@
       </div>
     </div>
 
-    <div v-else class="am-table-wrap am-table-wrap--plain">
-      <table class="am-table">
+    <div v-else class="am-table-wrap am-table-wrap--stack">
+      {{-- min-width 按列数动态算（CSS 见 design-system 的 --col-count 规则）：
+           固定的 980px 只够 9 列，12 列的表格仍会把中文压成竖排。 --}}
+      <table class="am-table" :style="{'--col-count': columns.length}">
         <thead>
           <tr>
             {{-- 表头：排序状态用 .is-sortable / .is-sorted（设计系统的 API） --}}
@@ -68,7 +70,10 @@
         </thead>
         <tbody>
           <tr v-for="row in rows" :key="row.id">
-            <td v-for="col in columns" :key="col.name" :class="[cellClass(col, row), {'am-num': isNumeric(col)}]">
+            {{-- :data-l 供窄屏卡片化时生成字段标签（见 design-system 的 --stack 规则）--}}
+            <td v-for="col in columns" :key="col.name"
+                :data-l="col.label"
+                :class="[cellClass(col, row), {'am-num': isNumeric(col)}]">
               <template v-if="col.formatter === 'datetime'">
                 <span class="am-nowrap">@{{ formatDate(cellValue(col, row)) }}</span>
               </template>
@@ -98,7 +103,7 @@
                 </span>
               </template>
             </td>
-            <td class="am-table__actions">
+            <td class="am-table__actions" data-l="">
               <div class="am-flex am-gap-1 am-nowrap">
                 <button class="am-btn am-btn--sm am-btn--ghost" @click="edit(row)">编辑</button>
                 <button class="am-btn am-btn--sm am-btn--ghost" @click="remove(row)">删除</button>
@@ -483,13 +488,42 @@ createApp({
         }
 
         /** 根据值给出标签配色（状态类字段的语义色） */
-        function tagClass(value) {
-            const v = String(value ?? '').toLowerCase();
-            const positive = ['1', 'true', 'yes', 'active', 'enabled', 'success', 'paid', 'on_sale', 'published', 'resolved'];
-            const negative = ['0', 'false', 'no', 'disabled', 'failed', 'closed', 'sold_out', 'draft', 'pending'];
-            if (positive.includes(v)) return 'tag-on';
-            if (negative.includes(v)) return 'tag-off';
-            return '';
+        /**
+         * 状态值 → 徽章样式类。
+         *
+         * 注意类名必须与 design-system.css 一致（am-badge--*），
+         * 用旧类名（tag-on/tag-off）不会生效、会退化成默认灰。
+         */
+        /**
+         * 状态值 → 徽章样式类。
+         *
+         * ⚠️ 签名是 (col, row) —— 模板里传的是列定义与行数据，
+         * 不是直接传值。之前签名写成 (value) 导致收到的是 col 对象，
+         * String(col) 变成 "[object object]"，永远落到 default 分支。
+         */
+        function tagClass(col, row) {
+            const raw = cellValue(col, row);
+            const v = String(raw ?? '').toLowerCase();
+            // 英文状态值
+            const positive = ['1', 'true', 'yes', 'active', 'enabled', 'success', 'paid',
+                              'on_sale', 'published', 'resolved', 'completed', 'approved'];
+            const warning  = ['pending', 'review', 'draft', 'processing', 'waiting',
+                              'reviewing', 'submitted'];
+            const negative = ['0', 'false', 'no', 'disabled', 'failed', 'closed',
+                              'sold_out', 'refunded', 'archived', 'rejected', 'cancelled'];
+            // 中文状态值（map() 映射后的显示文本也要能识别）
+            // 信息类（进行中但非终态）
+            const info = ['shipped', 'shipping', 'delivering', 'confirmed', 'submitted', 'accepted'];
+            const zhPositive = ['已发布', '已完成', '已付款', '在售', '启用', '是', '正常', '成功'];
+            const zhInfo     = ['已发货', '已受理', '已确认', '已提交'];
+            const zhWarning  = ['待审', '待审核', '草稿', '处理中', '待付款', '审核中', '待处理'];
+            const zhNegative = ['已下架', '售罄', '已归档', '已退款', '已取消', '禁用', '否', '失败', '已驳回'];
+
+            if (positive.includes(v) || zhPositive.includes(v)) return 'am-badge--success';
+            if (info.includes(v) || zhInfo.includes(v)) return 'am-badge--info';
+            if (warning.includes(v)  || zhWarning.includes(v))  return 'am-badge--warning';
+            if (negative.includes(v) || zhNegative.includes(v)) return 'am-badge--muted';
+            return 'am-badge--brand';
         }
 
         /** 金额格式化：保留两位小数，千分位分隔 */

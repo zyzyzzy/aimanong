@@ -38,19 +38,6 @@
         <div class="am-themepanel__ctrl">
           @switch($opt['type'])
 
-            @case('style-picker')
-              <div class="am-themepanel__styles">
-                @foreach($opt['choices'] as $val => $choice)
-                  <button type="button" class="am-stylecard {{ ($ui[$key] ?? '') === $val ? 'is-on' : '' }}"
-                          data-pref="{{ $key }}" data-value="{{ $val }}">
-                    <span class="am-stylecard__swatch" style="background:linear-gradient(135deg,{{ $choice['swatch'][0] }} 50%,{{ $choice['swatch'][1] }} 50%)"></span>
-                    <span class="am-stylecard__name">{{ $choice['label'] }}</span>
-                    <span class="am-stylecard__desc">{{ $choice['desc'] }}</span>
-                  </button>
-                @endforeach
-              </div>
-              @break
-
             @case('color')
               <div class="am-themepanel__color">
                 <input type="color" value="{{ $ui[$key] ?: '#007643' }}" data-pref="{{ $key }}">
@@ -135,7 +122,6 @@
 
   /** 把偏好应用到 <html>（即时预览，不等服务端） */
   function apply(s) {
-    if (s.style) root.dataset.theme = s.style;
     if (s.dark) {
       root.dataset.mode = s.dark === 'auto'
         ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
@@ -162,15 +148,6 @@
   });
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') panel.hidden = true;
-  });
-
-  // 风格卡片
-  panel.querySelectorAll('.am-stylecard').forEach(function (card) {
-    card.addEventListener('click', function () {
-      panel.querySelectorAll('.am-stylecard').forEach(function (c) { c.classList.remove('is-on'); });
-      card.classList.add('is-on');
-      var s = read(); s[card.dataset.pref] = card.dataset.value; write(s); apply(s);
-    });
   });
 
   // 分段选择

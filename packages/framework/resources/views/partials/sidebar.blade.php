@@ -31,7 +31,8 @@
 <aside class="am-sidebar" id="am-sidebar">
   <div class="am-sidebar__brand">
     <a class="am-sidebar__brandlink" href="{{ url(\Aimanong\Aimanong::url()) }}">
-      <span class="am-sidebar__mark">AI</span>
+      <img class="am-sidebar__mark" alt="{{ \Aimanong\Aimanong::brand() }}"
+           src="{{ \Aimanong\Aimanong::asset()->url('logo.png') }}">
       <span class="am-sidebar__brandtext am-font-semibold">{{ \Aimanong\Aimanong::brand() }}</span>
     </a>
     {{-- 缩窄开关 --}}
@@ -151,6 +152,14 @@
 /* 悬停时给一个实底，避免和下面的元素视觉混淆 */
 .am-sidebar__toggle:hover { background: var(--bg-hover); color: var(--text-primary); }
 .am-sidebar__toggle svg { width: 14px; height: 14px; }
+
+/*
+ * 箭头方向随状态翻转：
+ *   正常态（展开）→ ‹  提示"点击向左收窄"
+ *   缩窄态        → ›  提示"点击向右展开"
+ * 图标本身是 ‹（M15 6l-6 6 6 6），缩窄时旋转 180° 即变 ›。
+ */
+.am-shell.is-collapsed .am-sidebar__toggle svg { transform: rotate(180deg); }
 
 /* ── 分组折叠 ── */
 .am-nav__groupwrap { margin-bottom: 2px; }

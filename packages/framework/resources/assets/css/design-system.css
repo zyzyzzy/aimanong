@@ -381,15 +381,16 @@ hr {
   color: var(--text-primary);
 }
 .am-sidebar__mark {
+  /* LOGO 图片：用户提供的品牌标识。
+     用 object-fit: contain 保证任何尺寸下不变形；
+     不加背景色 —— LOGO 自身带圆形蓝底。 */
   width: 28px; height: 28px;
-  border-radius: var(--r-sm);
-  background: var(--brand-solid);
-  color: var(--text-on-brand);
-  display: grid; place-items: center;
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-bold);
   flex-shrink: 0;
-  letter-spacing: -.02em;
+  object-fit: contain;
+  /* 图片自带白色背景（非透明 PNG），在浅色侧栏上直接可见，
+     不需要额外底座。圆角让四角与周围自然衔接。 */
+  border-radius: 50%;
+  display: block;
 }
 .am-sidebar__nav {
   flex: 1;

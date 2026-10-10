@@ -87,12 +87,20 @@
 /* 品牌标识 */
 .lg__logo-row { display: flex; align-items: center; gap: 14px; margin-bottom: 44px; }
 .lg__logo-box {
-  width: 46px; height: 46px; border-radius: 13px; flex-shrink: 0;
-  display: grid; place-items: center;
-  background: rgba(255,255,255,.16);
-  border: 1px solid rgba(255,255,255,.24);
-  backdrop-filter: blur(10px);
-  font-weight: 700; font-size: 17px; letter-spacing: -.5px;
+  /*
+   * LOGO 图片：用户提供的品牌标识。
+   *
+   * ⚠️ 这张图是 **RGB 无 Alpha 通道**（白色背景，非透明 PNG），
+   * 直接放在深蓝渐变上会显示成一个突兀的白方块。
+   * 解决：给它一个**白色圆角底座**，让留白看起来是刻意的设计，
+   * 而不是抠图没做好。同时加一圈极淡白边过渡。
+   */
+  width: 46px; height: 46px; flex-shrink: 0;
+  object-fit: contain; display: block;
+  background: #fff;
+  border-radius: 50%;
+  padding: 3px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 0 0 1px rgba(255,255,255,.18);
 }
 .lg__logo-name { font-size: 19px; font-weight: 650; letter-spacing: -.2px; }
 .lg__logo-desc { font-size: 12.5px; opacity: .7; margin-top: 1px; }
@@ -134,9 +142,8 @@
 .lg__mobile-brand { display: none; align-items: center; gap: 12px; margin-bottom: 32px; }
 @media (max-width: 960px) { .lg__mobile-brand { display: flex; } }
 .lg__mobile-mark {
-  width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
-  display: grid; place-items: center; font-weight: 700; font-size: 16px;
-  background: var(--brand-solid); color: var(--text-on-brand);
+  width: 42px; height: 42px; flex-shrink: 0;
+  object-fit: contain; display: block;
 }
 
 .lg__title { font-size: 27px; font-weight: 680; letter-spacing: -.025em; }
@@ -200,7 +207,8 @@
 
     <div class="lg__inner lg__inner--main">
       <div class="lg__logo-row">
-        <div class="lg__logo-box">AI</div>
+        <img class="lg__logo-box" alt="{{ $brand }}"
+             src="{{ $asset('logo.png') }}">
         <div>
           <div class="lg__logo-name">{{ $brand }}</div>
           <div class="lg__logo-desc">AI 码农 · 后台开发框架</div>
@@ -250,7 +258,7 @@
   <main class="lg__form-side">
     <div class="lg__form-box">
       <div class="lg__mobile-brand">
-        <div class="lg__mobile-mark">AI</div>
+        <img class="lg__mobile-mark" alt="{{ $brand }}" src="{{ $asset('logo.png') }}">
         <div>
           <div style="font-weight:650">{{ $brand }}</div>
           <div style="font-size:12.5px;color:var(--text-tertiary)">AI 码农 · 后台开发框架</div>

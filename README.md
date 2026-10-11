@@ -65,6 +65,11 @@ php artisan aimanong:install
 > Vue 3 内置在框架里（不走 CDN），页面由 Schema 自动渲染，
 > 使用者不需要 npm、不需要打包。这是刻意的取舍，
 > 不是"还没做"。
+>
+> 曾经规划过的 `packages/ui`（npm `@aimanong/ui`）**已决定不做并删除**，
+> 理由见 [决策分析](./internal-docs/packages-ui-决策分析.md)：
+> 使用者零构建，npm 包到不了他们的运行时；真正需要「组件复用」的
+> 是插件机制，那要的是**模板注入点**而不是组件包。
 
 ## 文档
 

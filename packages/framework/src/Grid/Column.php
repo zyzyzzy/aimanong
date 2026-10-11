@@ -116,6 +116,19 @@ class Column
     }
 
     /**
+     * 附件列：把存储路径渲染成「文件名」下载链接。
+     *
+     * 不这么做的话列表里显示的是一串 `uploads/2026/10/xxxx.pdf` ——
+     * 对用户毫无意义，还得自己拼路径才能下载。
+     */
+    public function file(): static
+    {
+        $this->formatter = 'file';
+
+        return $this;
+    }
+
+    /**
      * 用数据字典渲染这一列：自动取「值 → 文案」映射与语义色。
      *
      * ```php

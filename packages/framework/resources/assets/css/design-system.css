@@ -1893,3 +1893,66 @@ hr {
     --text-tertiary: var(--text-secondary);
   }
 }
+
+/* --- 上传字段（image / images / file / files） --- */
+.am-upload { display: block; }
+.am-upload__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.am-upload__thumb {
+  position: relative;
+  width: 78px; height: 78px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--bg-subtle);
+}
+.am-upload__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.am-upload__del {
+  position: absolute;
+  top: 3px; right: 3px;
+  width: 18px; height: 18px;
+  display: grid; place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(10, 37, 64, .62);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease);
+}
+.am-upload__del:hover { background: var(--danger-solid); }
+.am-upload__add {
+  width: 78px; height: 78px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--bg-subtle);
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.am-upload__add:hover:not(:disabled) { border-color: var(--brand-solid); color: var(--brand-text); }
+.am-upload__add:disabled { opacity: .6; cursor: progress; }
+.am-upload__plus { font-size: 18px; line-height: 1; }
+.am-upload__files { list-style: none; margin: 0 0 var(--sp-2); padding: 0; }
+.am-upload__files li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--fs-sm);
+}
+.am-upload__files li:last-child { border-bottom: 0; }
+.am-upload__files a { color: var(--brand-text); word-break: break-all; }
+.am-upload__err { margin-top: 6px; font-size: var(--fs-sm); color: var(--danger-text); }

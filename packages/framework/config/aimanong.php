@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use Aimanong\Foundation\Upload\Uploader;
 use Aimanong\Models\Administrator;
 
 return [
@@ -161,6 +162,39 @@ return [
             'enable' => env('AIMANONG_DICT', true),
             'cache_ttl' => (int) env('AIMANONG_DICT_TTL', 600),
             'declarations' => [],
+        ],
+
+        /*
+         * 文件上传。
+         *
+         * 用法：$form->image('avatar')->label('头像')->maxSize(2048);
+         *       $form->images('gallery')->label('图集');
+         *       $form->file('contract')->label('合同附件')->accept('pdf,docx');
+         *
+         * serve 决定「文件怎么被读出来」：
+         *   auto （默认）本地磁盘走框架读取路由，免 storage:link；
+         *                有公开 url 的云磁盘走 Storage::url()
+         *   route        始终走框架路由（需要登录才能读，适合私有附件）
+         *   url          始终走 Storage::url()（CDN / S3 场景）
+         *
+         * ⚠️ 默认**不包含 svg**。
+         * SVG 可以内嵌 <script>，而框架路由是同源读取，
+         * 打开一个恶意 SVG 就等于同源 XSS。要收就必须自己打开，
+         * 并确保在独立域名/CSP 下使用。
+         */
+        'upload' => [
+            'enable' => env('AIMANONG_UPLOAD', true),
+            'disk' => env('AIMANONG_UPLOAD_DISK', 'public'),
+            'directory' => env('AIMANONG_UPLOAD_DIR', 'uploads'),
+            'serve' => env('AIMANONG_UPLOAD_SERVE', 'auto'),
+
+            // 单位 KB
+            'max_size' => (int) env('AIMANONG_UPLOAD_MAX', Uploader::DEFAULT_MAX_SIZE),
+            'image_max_size' => (int) env('AIMANONG_UPLOAD_IMAGE_MAX', Uploader::DEFAULT_IMAGE_MAX_SIZE),
+
+            // 默认值定义在 Uploader 常量里（单一来源）
+            'image_extensions' => Uploader::DEFAULT_IMAGE_EXTENSIONS,
+            'file_extensions' => Uploader::DEFAULT_FILE_EXTENSIONS,
         ],
     ],
 

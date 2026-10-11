@@ -46,6 +46,12 @@ class FieldType
         'time' => ['json' => 'string', 'php' => 'string'],
         'daterange' => ['json' => 'array', 'php' => 'array'],
 
+        // 上传类
+        'image' => ['json' => 'string', 'php' => 'string'],
+        'images' => ['json' => 'array', 'php' => 'array'],
+        'file' => ['json' => 'string', 'php' => 'string'],
+        'files' => ['json' => 'array', 'php' => 'array'],
+
         // 其它
         'color' => ['json' => 'string', 'php' => 'string'],
         'icon' => ['json' => 'string', 'php' => 'string'],

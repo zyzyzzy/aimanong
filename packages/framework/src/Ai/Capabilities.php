@@ -118,6 +118,23 @@ class Capabilities
                 'config' => "config('aimanong.foundation.operation_log')",
                 'use_when' => '数据对不上时，**先查这张表** —— 它是唯一的客观依据',
             ],
+            'upload' => [
+                'summary' => '文件上传：单图/多图/单文件/多文件四种字段，落盘与 URL 解析统一走 Uploader',
+                'enabled' => $this->configFlag('aimanong.foundation.upload.enable'),
+                'declare' => "\$form->image('cover'); \$form->images('gallery'); "
+                    ."\$form->file('contract')->accept('pdf'); \$form->files('docs');",
+                'field_types' => ['image', 'images'],
+                'file_field_types' => ['file', 'files'],
+                'store_form' => '数据库里存**相对路径**（uploads/2026/10/合同-ab12cd34.pdf），'
+                    .'不是完整 URL —— 换域名/换 CDN 不用刷数据；多图/多文件存 JSON 数组',
+                'naming' => '落盘名 = 可读原名 + 8 位随机后缀。纯随机名用户认不出文件；'
+                    .'只用原名会静默覆盖同名文件。文件名全部服务端生成，客户端名不参与路径',
+                'serve' => "config('aimanong.foundation.upload.serve')："
+                    .'auto（本地磁盘走框架路由，免 storage:link）/ route（需登录）/ url（CDN）',
+                'security' => '扩展名 + 真实 MIME 双白名单；默认不含 svg'
+                    .'（SVG 可内嵌 script，同源读取等于 XSS）',
+                'use_when' => '需要图片/附件字段时 —— 不要自己写上传控制器',
+            ],
             'dict' => [
                 'summary' => '数据字典：把枚举变成一等公民，AI 能自省有哪些可选值',
                 'enabled' => $this->configFlag('aimanong.foundation.dict.enable'),
@@ -418,6 +435,12 @@ class Capabilities
             'relation(多对多)' => 'multiselect 上声明多对多关联：'
                 ."\$form->multiSelect('tags')->relation('tags')->options([...]); "
                 .'框架自动 sync 中间表 + 编辑时自动回填，无需手写模型事件',
+            'dict' => '用数据字典填选项：->dict(\'order_status\')，'
+                .'字典不存在会编译期报错（DICT_NOT_FOUND），不会给你空下拉框',
+            'accept' => '上传字段的扩展名收窄，参数: 字符串（如 pdf,docx）',
+            'maxSize' => '上传字段的单文件上限（KB），参数: int',
+            'directory' => '上传字段的存储子目录，参数: 字符串（默认 uploads）',
+            'disk' => '上传字段的存储磁盘，参数: 字符串（默认取框架配置）',
         ];
     }
 
@@ -438,6 +461,8 @@ class Capabilities
     {
         return match ($type) {
             'switch' => 'SwitchField',
+            // 类型名是 file，类名是 FileField（避免与 Illuminate 的 File 打架）
+            'file' => 'FileField',
             default => ucfirst($type),
         };
     }

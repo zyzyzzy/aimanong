@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Aimanong\Foundation\Upload\UploadController;
 use Aimanong\Http\Controllers\AuthController;
 use Aimanong\Http\Controllers\HomeController;
 use Aimanong\Http\Controllers\ResourceController;
@@ -66,6 +67,20 @@ Route::get('assets/{path}', function (string $path) {
 })->where('path', '.*')->name('asset');
 
 /*
+| 已上传文件的读取。
+|
+| 路径用 `file/` 而不是 `uploads/`：存储目录本身通常就叫 uploads，
+| 用 uploads 做路由前缀会拼出 /admin/uploads/uploads/... 这种滑稽路径。
+|
+| 由 Uploader::serve() 的 auto 模式决定是否走这里（local 磁盘默认走）。
+| 放在 admin 组内 = 需要登录 —— 后台上传的合同附件本来就不该匿名可下。
+| 需要公开直读就用 storage:link + serve=url。
+*/
+Route::get('file/{path}', [UploadController::class, 'show'])
+    ->where('path', '.*')
+    ->name('upload.show');
+
+/*
 | 数据 API
 */
 Route::prefix('api')->name('api.')->group(function (): void {
@@ -83,6 +98,13 @@ Route::prefix('api')->name('api.')->group(function (): void {
      */
     Route::get('ui/preferences', [UiController::class, 'show'])->name('ui.preferences');
     Route::post('ui/preferences', [UiController::class, 'store'])->name('ui.preferences.save');
+
+    /*
+     * 文件上传。
+     *
+     * 必须在 {uri} 之前 —— 否则 'upload' 会被当成 uri。
+     */
+    Route::post('upload', [UploadController::class, 'store'])->name('upload');
 
     Route::get('{uri}', [ResourceController::class, 'index'])->name('index');
     Route::post('{uri}', [ResourceController::class, 'store'])->name('store');

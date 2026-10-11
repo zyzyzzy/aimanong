@@ -178,6 +178,38 @@ class Form
     }
 
     /**
+     * 单图上传。
+     */
+    public function image(string $name, ?string $label = null): Fields\Image
+    {
+        return $this->add(new Fields\Image($name, $label));
+    }
+
+    /**
+     * 多图上传（相册 / 图集）。
+     */
+    public function images(string $name, ?string $label = null): Fields\Images
+    {
+        return $this->add(new Fields\Images($name, $label));
+    }
+
+    /**
+     * 单文件上传（合同 / 附件）。
+     */
+    public function file(string $name, ?string $label = null): Fields\FileField
+    {
+        return $this->add(new Fields\FileField($name, $label));
+    }
+
+    /**
+     * 多文件上传。
+     */
+    public function files(string $name, ?string $label = null): Fields\Files
+    {
+        return $this->add(new Fields\Files($name, $label));
+    }
+
+    /**
      * 分隔线 / 分组标题（纯展示，不产生数据）。
      */
     public function divider(string $title = ''): Divider

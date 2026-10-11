@@ -35,6 +35,7 @@ class FieldTypesTest extends TestCase
                 'multiselect' => 'Aimanong\\Form\\Fields\\MultiSelect',
                 'daterange' => 'Aimanong\\Form\\Fields\\DateRange',
                 'divider' => 'Aimanong\\Form\\Fields\\Divider',
+                'file' => 'Aimanong\\Form\\Fields\\FileField',
                 default => 'Aimanong\\Form\\Fields\\'.ucfirst($type),
             };
 

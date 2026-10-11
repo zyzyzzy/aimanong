@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Schema\Emitters;
 
+use Aimanong\Foundation\Upload\Uploader;
 use Aimanong\Schema\Ast\FieldNode;
 use Aimanong\Schema\Ast\ResourceNode;
 use Aimanong\Support\FieldType;
@@ -28,10 +29,38 @@ class JsonSchemaEmitter
             'model' => $node->model,
             // 只读 Resource：前端据此隐藏新增/编辑/删除入口
             'readonly' => $node->meta['readonly'] ?? false,
+            /*
+             * 上传配置随 Schema 下发。
+             *
+             * 前端因此不需要硬编码 /admin/uploads 这类路径 ——
+             * 换磁盘、换 CDN、换路由前缀都不用改前端。
+             */
+            'upload' => $this->upload(),
             'grid' => $this->grid($node),
             'form' => $this->form($node),
             'show' => $this->show($node),
             'generatedAt' => null, // 快照测试时保持确定性
+        ];
+    }
+
+    /**
+     * 上传能力（前端表单组件用）。
+     *
+     * @return array<string, mixed>
+     */
+    protected function upload(): array
+    {
+        $uploader = new Uploader;
+
+        return [
+            'urlTemplate' => $uploader->urlTemplate(),
+            'endpoint' => $uploader->endpoint(),
+            'disk' => $uploader->disk(),
+            'directory' => $uploader->directory(),
+            'imageMaxSize' => $uploader->maxSize('image'),
+            'fileMaxSize' => $uploader->maxSize('file'),
+            'imageExtensions' => $uploader->allowedExtensions('image'),
+            'fileExtensions' => $uploader->allowedExtensions('file'),
         ];
     }
 

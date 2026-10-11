@@ -325,9 +325,22 @@ class DocsCommand extends Command
             $lines[] = '### '.$key;
             $lines[] = '';
 
-            foreach (['uri', 'uris', 'auto', 'excludes', 'config', 'use_when'] as $field) {
-                if (isset($info[$field]) && is_string($info[$field])) {
-                    $lines[] = "- **{$field}**：{$info[$field]}";
+            foreach ([
+                'uri', 'uris', 'auto', 'excludes', 'config', 'use_when',
+                'declare', 'store_form', 'naming', 'serve', 'security', 'field_types',
+            ] as $field) {
+                if (! isset($info[$field])) {
+                    continue;
+                }
+
+                $value = $info[$field];
+
+                if (is_array($value)) {
+                    $value = implode('、', array_map('strval', $value));
+                }
+
+                if (is_string($value)) {
+                    $lines[] = "- **{$field}**：{$value}";
                 }
             }
 

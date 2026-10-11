@@ -2,6 +2,85 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.6.1] - 2026-10-11
+
+> CRM 真实场景验证（第三件）挖出的缺陷修复。
+>
+> 这四个缺陷的共同特征是：**界面看着正常、测试全绿**，
+> 只有把真实业务需求端到端跑一遍才会暴露。
+
+### 修复：`dangerWhen()` 从来没有过视觉效果
+
+`dangerWhen()` / `dangerBelow()` / `warningAbove()` 是**第一次真实场景验证**
+专门加出来的能力（需求：「库存少于 10 要标红」），
+这次用「商机金额超 100 万标红」实测，发现它**一次都没生效过**。
+
+三层原因，缺一层都修不好：
+
+| 层 | 问题 | 修复 |
+|---|---|---|
+| JS | 产出 `hl-danger` | CSS 里叫 `.am-hl-danger`（BEM 命名空间） |
+| CSS | 特异度不够 | `.am-hl-danger`(0,1,0) 被 `.am-table td`(0,1,1) 覆盖颜色 —— **字重生效了、颜色没有**，看起来像「高亮只是加粗」 |
+| 缓存 | 改了看不到 | 资源路由是 `Cache-Control: public`，升级后浏览器仍用旧 CSS → 资源 URL 加 `?v=<版本号>` |
+
+> 教训：验收标准要盯着**用户可感知的结果**（颜色变了），
+> 而不是中间产物（类名加上了）。
+
+### 修复：`daterange` 没有列契约
+
+前端硬编码绑定 `{字段名}_start` / `{字段名}_end`，
+真实列名（如合同的 `start_at` / `end_at`）无法声明 ——
+表单能渲染、提交永远存不进去，`ai:verify` 还会报一个
+莫名其妙的 `SUSPECT_FIELD('period')`。
+
+```php
+$form->dateRange('period')->columns('start_at', 'end_at');
+```
+
+验证器改为按声明的列检查，而不是检查字段名本身。
+
+### 修复：数值字段留空导致 NOT NULL 违约
+
+商机的「赢单率」滑块没动过，提交时报：
+
+```
+NOT NULL constraint failed: crm_opportunities.probability
+```
+
+链路：数值字段初始化为空串 → Laravel 的 `ConvertEmptyStringsToNull`
+变成 `null` → 撞 NOT NULL。
+
+- 数值类字段（`number` / `decimal` / `money` / `rate` / `slider`）
+  无默认值时初始化为 `0`
+- NOT NULL 违约改为返回**中文字段名 + 两种改法**，不再把 SQL 抛给用户
+
+### 修复：`->dict()` 让 CSV 导出退回英文
+
+`dict()` 最初是 `map()` 再 `badge()`，而 `badge()` 会把 formatter
+覆盖成 `'badge'` —— 导出器只在 formatter 为 `map`/`enum` 时才套用中文映射。
+
+界面上是「商务谈判」，导出文件里是 `negotiation`。
+前端三种 formatter 都走 `mapLabel`，所以**只有导出会坏**。
+
+- `dict()` 改为「先 badge 再 map」
+- 导出器对 `badge` 也检查 `props.map`（两种书写顺序都正确）
+
+### 修复：多文件上传被客户端预检误拦
+
+`->files('attachments')->accept('pdf,jpg,png,docx')` 的字段上传 png 时
+**客户端直接拒绝** —— 预检只看全局白名单，而全局白名单里没有 png。
+服务端一次请求都收不到，用户只看到「数量没变」。
+
+预检改为优先使用字段自己的 `accept`；
+`images` / `files` 也纳入「多值字段初始化为数组」的分支。
+
+### 测试
+
+新增 `CrmScenarioTest`（5 个用例）。**质量门禁**：
+PHPUnit **176 tests / 605 assertions**、PHPStan Level 8、Pint PASS 167 files。
+
+---
+
 ## [1.6.0] - 2026-10-11
 
 > 「带地基的平台」收官：**P0 六项基座能力一次性补齐** ——

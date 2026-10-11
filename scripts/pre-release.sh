@@ -145,7 +145,25 @@ if [ "$WITH_E2E" = "1" ]; then
     bad "framework-e2e 失败（见 /tmp/amn-e2e.log）"
   fi
 
-  # 检查 demo 服务
+  # 生成的 types.ts 能否通过真实 tsc 编译。
+  # 光断言字符串存在抓不到「引用的类型没定义」「基类型与产出不符」这类问题。
+  if bash tests/e2e/tsc-check.sh > /tmp/amn-tsc.log 2>&1; then
+    ok "$(tail -1 /tmp/amn-tsc.log)"
+  else
+    bad "tsc-check 失败（见 /tmp/amn-tsc.log）"
+  fi
+
+  #
+  # 检查 demo 服务。
+  #
+  # ⚠️ 服务没起时**必须报错，不能静默跳过**。
+  #
+  # 原先是 warn「跳过 http-e2e」就过去了 —— 那等于把「没测」
+  # 伪装成「通过」。真实后果：v1.5.0/v1.6.0 两个大版本新增了 7 项能力，
+  # e2e 覆盖为 0，而发布检查一直是绿的。
+  #
+  # 确实没法起服务时（如纯 CI 无 DB），显式设 AMN_SKIP_HTTP_E2E=1 才放行。
+  #
   if curl -s -o /dev/null -m 5 "http://localhost:8899/admin/auth/login" 2>/dev/null; then
     if php tests/e2e/http-e2e.php > /tmp/amn-http.log 2>&1; then
       R2=$(grep -oE '通过 [0-9]+ / [0-9]+' /tmp/amn-http.log | tail -1)
@@ -153,8 +171,12 @@ if [ "$WITH_E2E" = "1" ]; then
     else
       bad "http-e2e 失败（见 /tmp/amn-http.log）"
     fi
+  elif [ "${AMN_SKIP_HTTP_E2E:-0}" = "1" ]; then
+    warn "demo 服务未运行，且已显式设置 AMN_SKIP_HTTP_E2E=1，跳过 http-e2e"
   else
-    warn "demo 服务未运行（localhost:8899），跳过 http-e2e"
+    bad "demo 服务未运行（localhost:8899）—— 无法验证真实 HTTP 行为。
+         请先启动：cd <demo-app> && php artisan serve --port=8899
+         确实无法启动时，显式设 AMN_SKIP_HTTP_E2E=1 跳过（会记入风险）"
   fi
 else
   warn "跳过端到端（加 --with-e2e 启用，需 demo 环境）"

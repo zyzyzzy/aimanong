@@ -20,17 +20,34 @@ class OpenApiEmitter
      */
     public function emit(ResourceNode $node): array
     {
+        /*
+         * 只读资源**不能**声明写接口。
+         *
+         * ## 为什么这条很重要
+         *
+         * `Resource::readonly()` 在接口层会让 store/update/destroy 一律 403，
+         * 但 OpenAPI 里若仍写着 POST / PUT / DELETE，AI 照文档写代码
+         * 就会写出必然 403 的调用 —— 而且它没有任何理由怀疑文档。
+         *
+         * 这正是 `方案.md` 第一条要杜绝的事：
+         * 「Schema 是唯一真相 …… 杜绝文档与实现漂移，这是 AI 出错的最大来源」。
+         *
+         * 回归：v1.6.0 引入只读资源时漏改了这里，
+         * 四份产物里只有 schema.json 带 readonly 标志（见 EmittersTest）。
+         */
+        $collection = ['get' => $this->listOperation($node)];
+        $item = ['get' => $this->detailOperation($node)];
+
+        if (! $this->isReadonly($node)) {
+            $collection['post'] = $this->createOperation($node);
+            $item['put'] = $this->updateOperation($node);
+            $item['delete'] = $this->deleteOperation($node);
+        }
+
         return [
             'paths' => [
-                "/admin/{$node->uri}" => [
-                    'get' => $this->listOperation($node),
-                    'post' => $this->createOperation($node),
-                ],
-                "/admin/{$node->uri}/{id}" => [
-                    'get' => $this->detailOperation($node),
-                    'put' => $this->updateOperation($node),
-                    'delete' => $this->deleteOperation($node),
-                ],
+                "/admin/{$node->uri}" => $collection,
+                "/admin/{$node->uri}/{id}" => $item,
             ],
             'components' => [
                 'schemas' => [
@@ -38,6 +55,14 @@ class OpenApiEmitter
                 ],
             ],
         ];
+    }
+
+    /**
+     * 资源是否只读（前端隐藏写入口、接口 403）。
+     */
+    protected function isReadonly(ResourceNode $node): bool
+    {
+        return ($node->meta['readonly'] ?? false) === true;
     }
 
     /**

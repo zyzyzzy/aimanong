@@ -71,7 +71,8 @@ class SchemaCommand extends Command
 
         $files = [
             'schema.json' => json_encode($allJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE),
-            'types.ts' => implode("\n\n", $allTs),
+            // 基类型只输出一次，必须置顶 —— 否则接口引用的类型找不到
+            'types.ts' => $ts->header()."\n\n".implode("\n\n", $allTs),
             'openapi.json' => json_encode($allOpenApi, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE),
             'ai-context.md' => implode("\n\n", $allAi),
         ];

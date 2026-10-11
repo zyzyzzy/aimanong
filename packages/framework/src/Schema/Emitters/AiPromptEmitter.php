@@ -24,6 +24,26 @@ class AiPromptEmitter
         $lines[] = "## Resource: {$node->label} (uri: {$node->uri})";
         $lines[] = '';
         $lines[] = "- 绑定模型: `{$node->model}`";
+
+        /*
+         * 只读标志必须显式告知 AI。
+         *
+         * 否则 AI 会以为「这些数据管理员可以直接改」，生成
+         * POST / PUT / DELETE 调用，而接口一律 403 ——
+         * 对一个把「可自省」当卖点的框架，这属于自身声明失真。
+         *
+         * 回归：v1.6.0 引入只读资源后，本产物 0 处提到「只读」。
+         */
+        if (($node->meta['readonly'] ?? false) === true) {
+            $lines[] = '- **只读资源**：只有列表 / 详情 / 导出；'
+                .'`store` / `update` / `destroy` 一律 403，不要生成写操作调用';
+        }
+
+        if ($this->hasUploadFields($node)) {
+            $lines[] = '- 含上传字段：库里存**相对路径**（如 `uploads/2026/10/x.png`），'
+                .'不是完整 URL；展示时交给 Uploader 解析，不要自己拼域名';
+        }
+
         $lines[] = '';
 
         $lines[] = '### 列表页可用列';
@@ -70,6 +90,20 @@ class AiPromptEmitter
         $lines[] = '```';
 
         return implode("\n", $lines)."\n";
+    }
+
+    /**
+     * 是否含上传类字段（image / images / file / files）。
+     */
+    protected function hasUploadFields(ResourceNode $node): bool
+    {
+        foreach ($node->fields as $field) {
+            if (in_array($field->type, ['image', 'images', 'file', 'files'], true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected function describeField(FieldNode $f): string

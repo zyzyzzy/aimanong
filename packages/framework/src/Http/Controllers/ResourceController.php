@@ -356,8 +356,8 @@ class ResourceController extends Controller
             'error' => 'UNIQUE_CONSTRAINT_VIOLATION',
             'field' => $field,
             'hint' => $field !== null
-                ? "数据库唯一索引已正确拦截重复值，无需额外处理。"
-                    ."若要「提交前」就提示：该字段的 ->rules() 里**不要**写裸的 "
+                ? '数据库唯一索引已正确拦截重复值，无需额外处理。'
+                    .'若要「提交前」就提示：该字段的 ->rules() 里**不要**写裸的 '
                     ."unique:表名,{$field} —— 它会让编辑时记录与自己冲突；"
                     .'本框架的表单声明拿不到当前记录 id，写不出 ignore()。'
                 : '数据库唯一索引已拦截重复值；不建议在 ->rules() 里补 unique 规则',

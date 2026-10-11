@@ -2,6 +2,126 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.6.2] - 2026-10-11
+
+> 由《初衷对照评估》驱动的**一致性与可发现性修复**。
+>
+> 这一版的核心不是新功能，而是**让「文档说的」与「实际做的」一致** ——
+> 对一个以「可自省、可验证、AI 一次改对」为卖点的框架，
+> 自身声明失真是最不能接受的问题。
+>
+> 其中两个缺陷属于「照着框架的提示做，会得到错误结果」，
+> 性质最严重。
+
+### 修复：只读资源在 OpenAPI 里仍宣告写接口
+
+`Resource::readonly()` 让接口层 `store/update/destroy` 一律 403，
+但生成的 OpenAPI 仍然写着 `POST / PUT / DELETE` —— AI 照文档写代码
+就会写出必然 403 的调用，而且没有任何理由怀疑文档。
+
+这正是 `方案.md` 第一条要杜绝的「文档与实现漂移」。
+
+| 产物 | 修复前 | 修复后 |
+|---|---|---|
+| `schema.json` | ✅ 有 readonly | ✅ |
+| `openapi.json` | ❌ 宣告写接口 | ✅ 只出 GET |
+| `types.ts` | ❌ 接口签名无该字段 | ✅ 进签名 |
+| `ai-context.md` | ❌ 0 处提到只读 | ✅ 明确告知 |
+
+并新增 **跨 emitter 一致性断言**，防止将来新增能力时又漏改一处。
+
+### 修复：`types.ts` 根本编译不过（用真实 tsc 才发现）
+
+这份产物的存在理由是「端到端类型安全」，但**从未被编译过**：
+
+1. 它引用的 `AimanongGridSchema` / `AimanongFormSchema` /
+   `AimanongField` / `AimanongColumn` **从未定义**
+2. 补上后仍编译不过 —— 基类型与真实产出有四处不符：
+   字段实际有 `jsonType`、非树形 `grid.tree` 实际是 `null`、
+   空 `props` 是 `[]` 而非 `{}`、空 `rules` 也是数组
+
+新增 `tests/e2e/tsc-check.sh`（用真实 tsc 编译）并接入发版检查。
+
+> 教训：**基类型要照着产出写，不能照着想象写。**
+
+### 修复：`llms.txt` 教了一个不存在的方法
+
+```php
+$grid->filter()->equal('status');   // Call to undefined method
+```
+
+`llms.txt` 是「读这个文件就够开始工作」的入口文档，这类错误
+浪费的是 AI 的整轮尝试。已删除并说明列表页的筛选入口是 `->searchable()`。
+
+同时说明列上的 `->filter()` **只产元数据、不渲染 UI**（会产出
+`"filterable": true`、API 层 `?filters[x]=y` 也生效，但界面上没有筛选框）。
+
+### 修复：框架 hint 把用户从「能编辑」引向「不能编辑」
+
+`UNIQUE_CONSTRAINT_VIOLATION` 原本建议：
+
+    在 form() 中声明 ->rules('unique:表名,字段') 可在提交前校验
+
+**照着做会让编辑功能 100% 崩溃**（父 Agent 独立复现）：
+
+```
+裸 unique:equipment_repairs,repair_no  → 编辑自己 = ❌ 已存在
+Rule::unique(...)->ignore($id)         → 编辑自己 = ✅ 通过
+```
+
+根因：`unique` 规则把记录自己也算作冲突，而声明式表单拿不到
+当前记录 id，写不出 `ignore()`。hint 已改为「数据库唯一索引已正确拦截，
+无需额外处理」并解释为什么不能加。
+
+### 修复：业务语言检索不到能力（第六轮 AI 实测）
+
+需求方说的是「运营希望自己改文案」，而能力面写的是
+「把枚举变成一等公民」—— 「文案」「运营」出现 **0 次**，
+AI 拿业务词检索就是 MISS。
+
+- 检索改为**分词匹配**（中文 2-gram + 整块 + 停用词），
+  不再要求整串命中
+- 能力面新增 `also_known_as` **业务同义词**：
+  `dict` → 「运营改文案 / 状态文案不用发版」；
+  `operation_log` → 「处理留痕 / 谁改的 / 事后能查到」；
+  `upload` → 「现场照片 / 传多张图 / 报价单扫描件」
+
+### 修复：能力面谎报「权限节点自动生成」
+
+原文「权限节点由 Resource 注册时自动生成，无需手写」——
+实际节点名是自动推导的，**写库仍需显式 `permission sync`**。
+第六轮实测里 AI 据此断言节点已生成，而库里实际是 0 个。
+
+已改为 `naming`（命名自动推导）+ `requires_sync`（必须执行命令）。
+
+### 修复：Playground 落后于框架（含一个静默 bug）
+
+- 补 4 种上传字段类型（26 → 30）
+- 补 `->dict()` / `->accept()` / `->maxSize()` / `->requiredOnCreate()` /
+  `->omitWhenEmpty()` / `->relation()` / 条件高亮 / `file` 列展示器
+- **修掉驼峰方法被静默跳过**：映射表键是小写 `multiselect`，
+  而 PHP 方法名是 `multiSelect` —— 查表 miss 后 `continue`，
+  字段凭空消失且**不报任何错**（注释早就写着「大小写不敏感」，代码没做）
+
+新增 `tests/e2e/playground-check.mjs` 用真实声明验证。
+
+### 修复：README 描述了两个不存在的目录
+
+`packages/ui`（npm 包）与 `demo/` 实际都只有 `.gitkeep`。
+前端真实方案是**零构建内联 Vue**（框架内置，零 CDN）——
+这是刻意取舍，不是"还没做"。已改为实际结构并说明原因。
+
+### 测试
+
+`tests/e2e/` 从 47 项扩到 **88 项**，并修掉「只能在特定 demo 上跑」
+的可移植性问题（否则 CI 根本用不了它）。
+
+**质量门禁**：PHPUnit **183 tests / 650 assertions**、PHPStan Level 8、
+Pint PASS 167 files、`pre-release.sh --with-e2e` 三项全绿
+（framework 56/56、tsc 真编译、http 32/32）。
+
+---
+
 ## [1.6.1] - 2026-10-11
 
 > CRM 真实场景验证（第三件）挖出的缺陷修复。

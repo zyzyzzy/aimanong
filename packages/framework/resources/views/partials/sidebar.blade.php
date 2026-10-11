@@ -33,7 +33,9 @@
     <a class="am-sidebar__brandlink" href="{{ url(\Aimanong\Aimanong::url()) }}">
       <img class="am-sidebar__mark" alt="{{ \Aimanong\Aimanong::brand() }}"
            src="{{ \Aimanong\Aimanong::asset()->url('logo.png') }}">
-      <span class="am-sidebar__brandtext am-font-semibold">{{ \Aimanong\Aimanong::brand() }}</span>
+      {{-- 显示中文名「AI码农」—— LOGO 图片本身是拉丁文 "Ai manong"，
+           文字用中文名互补，避免重复。 --}}
+      <span class="am-sidebar__brandtext am-font-semibold">AI码农</span>
     </a>
     {{-- 缩窄开关 --}}
     <button type="button" class="am-sidebar__toggle" id="am-nav-toggle"
@@ -276,7 +278,12 @@
     min-height: 86px;
   }
   .am-shell.is-collapsed .am-sidebar__brandlink { padding-top: 0; }
-  .am-shell.is-collapsed .am-sidebar__brandtext { display: none; }
+  /*
+   * 缩窄态：品牌文字**完全隐藏**（含悬停展开时也不显示）。
+   * 用户要求 —— 缩窄后只留 LOGO 图标，更干净。
+   * 注意：这条规则不能被悬停态覆盖，否则 hover 时文字会突然冒出来。
+   */
+  .am-shell.is-collapsed .am-sidebar__brandtext { display: none !important; }
   /*
    * 缩窄态：开关放在**品牌行下方**（top: 56px），而不是左上角。
    *
@@ -285,9 +292,15 @@
    * 用固定 top/left → 两态坐标一致，稳定可点。
    */
   .am-shell.is-collapsed .am-sidebar__toggle {
-    /* top = 品牌行 padding-top(14) + logo 高(28) + 间距(8) = 50
-       → 与 logo 明确错开；left 固定 → 悬停展开时不位移，稳定可点。 */
-    left: 10px; right: auto; top: 50px; margin: 0;
+    /*
+     * top = 品牌行 padding-top(14) + logo 高(28) + 间距(8) = 50
+     * 水平**居中**（与上面的 LOGO 对齐）：
+     *   left:50% + translateX(-50%) —— 无论侧栏/内边距怎么变都居中，
+     *   比硬算 left 值稳健。
+     * ⚠️ transform 在这里用于居中，箭头翻转改在 svg 上（互不干扰）。
+     */
+    left: 50%; right: auto; top: 50px; margin: 0;
+    transform: translateX(-50%);
   }
 
   /* ── 缩窄且未悬停：只显示一级 ── */
@@ -333,11 +346,11 @@
   /* 悬停展开态：开关回到品牌行右侧（此态品牌行是横排、宽度固定 196，稳定） */
   .am-shell.is-collapsed .am-sidebar:has(.am-sidebar__nav:hover) .am-sidebar__toggle {
     left: auto; right: 10px; top: 14px; margin: 0;
+    transform: none;
   }
   /* 展开后按钮保持在**距左边缘同一位置**（不跟随宽度变化），
      否则又会出现"鼠标追不上"。视觉上它落在品牌名右侧附近，
      因为 left 固定、品牌文字从 padding-left 开始，二者不重叠。 */
-  .am-shell.is-collapsed .am-sidebar:has(.am-sidebar__nav:hover) .am-sidebar__brandtext { display: block; }
   .am-shell.is-collapsed .am-sidebar:has(.am-sidebar__nav:hover) .am-nav__group {
     justify-content: flex-start; padding-inline: var(--sp-3);
     height: auto; text-transform: uppercase; letter-spacing: .07em;

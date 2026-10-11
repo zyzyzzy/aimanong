@@ -70,6 +70,23 @@ class AimanongServiceProvider extends ServiceProvider
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'aimanong');
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 
+        /*
+         * 中文校验消息。
+         *
+         * Aimanong 是中文后台框架 —— 给用户看
+         * 「The slug field is required.」既违和又降低可用性，
+         * 尤其这些消息会直接显示在 AI 生成的表单上。
+         *
+         * ⚠️ 不传第二个参数（namespace）：传了会注册为
+         * `aimanong::validation`，而 Laravel 校验器读的是默认的
+         * `validation` 键，结果消息仍是英文（实测踩过）。
+         * 不传则 addPath 到默认搜索路径，校验器能直接命中。
+         *
+         * 用户自己的 lang/zh_CN/validation.php 优先级更高，
+         * 可以覆盖这里的任意条目。
+         */
+        $this->loadTranslationsFrom(__DIR__.'/../resources/lang');
+
         $this->registerPublishing();
         $this->registerRouteMiddleware();
         $this->bootApplication();

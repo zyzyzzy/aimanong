@@ -125,7 +125,7 @@
 
   {{-- 表单弹窗 --}}
   <div class="am-overlay" v-if="showCreate" @click.self="showCreate = false">
-    <div class="am-modal">
+    <div class="am-modal" :class="{'am-modal--lg': isStepped}">
       <div class="am-modal__head">
         <span class="am-modal__title">@{{ editing ? '编辑' : '新增' }}{{ $label }}</span>
         <button class="am-modal__close" @click="showCreate = false" aria-label="关闭">
@@ -138,9 +138,10 @@
         <div class="am-steps" v-if="isStepped">
           <div v-for="(s, i) in steps" :key="i" class="am-step"
                :class="{'is-active': i === currentStep, 'is-done': i < currentStep}"
+               :data-clickable="(editing || i <= currentStep) ? 'true' : 'false'"
                @click="goStep(i)">
             <span class="am-step__dot">@{{ i < currentStep ? '✓' : i + 1 }}</span>
-            <span>@{{ s }}</span>
+            <span class="am-step__label">@{{ s.title }}</span>
             <span class="am-steps__line" v-if="i < steps.length - 1"></span>
           </div>
         </div>
@@ -152,23 +153,24 @@
 
           <select v-if="f.type === 'select'" v-model="form[f.name]" class="am-select">
             <option value="">请选择…</option>
-            <option v-for="(text, val) in (f.props.options || {})" :key="val" :value="val">@{{ text }}</option>
+            <option v-for="o in fieldOptions(f)" :key="o.value" :value="o.value">@{{ o.label }}</option>
           </select>
 
           <div v-else-if="f.type === 'radio'" class="am-check-group">
-            <label v-for="(text, val) in (f.props.options || {})" :key="val" class="am-check">
-              <input type="radio" :value="val" v-model="form[f.name]"><span>@{{ text }}</span>
+            <label v-for="o in fieldOptions(f)" :key="o.value" class="am-check">
+              <input type="radio" :value="o.value" v-model="form[f.name]"><span>@{{ o.label }}</span>
             </label>
           </div>
 
           <div v-else-if="f.type === 'checkbox' || f.type === 'multiselect'" class="am-check-group">
-            <label v-for="(text, val) in (f.props.options || {})" :key="val" class="am-check">
-              <input type="checkbox" :value="val" v-model="form[f.name]"><span>@{{ text }}</span>
+            <label v-for="o in fieldOptions(f)" :key="o.value" class="am-check">
+              <input type="checkbox" :value="o.value" v-model="form[f.name]"><span>@{{ o.label }}</span>
             </label>
           </div>
 
           <label v-else-if="f.type === 'switch'" class="am-switch">
-            <input type="checkbox" v-model="form[f.name]"><span></span>
+            <input type="checkbox" v-model="form[f.name]"><span class="am-switch__track"></span>
+            <span>@{{ form[f.name] ? '开' : '关' }}</span>
           </label>
 
           <div v-else-if="f.type === 'region'" class="am-flex am-gap-2">
@@ -208,9 +210,56 @@
 
       <div class="am-modal__foot">
         <button class="am-btn" @click="showCreate = false">取消</button>
+        <button v-if="isStepped && currentStep > 0" class="am-btn" @click="currentStep--">上一步</button>
         <button v-if="isStepped && currentStep < steps.length - 1" class="am-btn am-btn--primary"
                 @click="currentStep++">下一步</button>
         <button v-else class="am-btn am-btn--primary" @click="save">保存</button>
+      </div>
+    </div>
+  </div>
+
+  {{-- ══ Toast 容器 ══
+       右上角堆叠，成功自动消失；失败停留更久并显示原因。
+       用 Teleport 到 body 避免被父容器的 overflow 裁切。 --}}
+  <teleport to="body">
+    <div class="am-toasts" v-if="toasts.length">
+      <div v-for="t in toasts" :key="t.id" class="am-toast" :class="'am-toast--' + t.type"
+           role="status" @click="dismissToast(t.id)">
+        <span class="am-toast__icon">
+          <svg v-if="t.type === 'success'" width="16" height="16" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m5 13 4 4L19 7"/></svg>
+          <svg v-else-if="t.type === 'danger'" width="16" height="16" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+          <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+        </span>
+        <div class="am-toast__body">
+          <div class="am-toast__title">@{{ t.title }}</div>
+          <div class="am-toast__desc" v-if="t.desc">@{{ t.desc }}</div>
+        </div>
+      </div>
+    </div>
+  </teleport>
+
+  {{-- ══ 删除确认 ══
+       替代原生 confirm()：显示记录的可读标识（而非自增 ID），
+       并明确提示不可撤销。 --}}
+  <div class="am-overlay" v-if="confirmState.open" @click.self="confirmState.open = false">
+    <div class="am-modal am-modal--sm">
+      <div class="am-modal__head">
+        <span class="am-modal__icon am-modal__icon--danger">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        </span>
+        <span class="am-modal__title">确认删除</span>
+      </div>
+      <div class="am-modal__body">
+        <p style="margin:0 0 8px">即将删除：<strong>@{{ confirmState.label }}</strong></p>
+        <p class="am-text-sm am-text-muted" style="margin:0">此操作不可撤销。</p>
+      </div>
+      <div class="am-modal__foot">
+        <button class="am-btn" @click="confirmState.open = false">取消</button>
+        <button class="am-btn am-btn--danger" @click="doDelete">确认删除</button>
       </div>
     </div>
   </div>
@@ -229,6 +278,27 @@ createApp({
         const uri = @json($uri);
         const treeConfig = schema.grid?.tree ?? null;
         const isTree = treeConfig !== null;
+
+        /* ── Toast 通知 ──
+           toast(title, desc, type) —— type: success | danger | warning | info
+           自动消失（成功 2.6s / 失败 4.5s，失败留久一点让用户看清原因）。 */
+        const toasts = ref([]);
+        let toastSeq = 0;
+
+        function toast(title, desc = '', type = 'info') {
+            const id = ++toastSeq;
+            toasts.value.push({ id, title, desc, type });
+            setTimeout(() => {
+                toasts.value = toasts.value.filter(t => t.id !== id);
+            }, type === 'danger' ? 4500 : 2600);
+        }
+
+        function dismissToast(id) {
+            toasts.value = toasts.value.filter(t => t.id !== id);
+        }
+
+        /* ── 删除确认弹窗 ── */
+        const confirmState = ref({ open: false, id: null, label: '' });
 
         const rows = ref([]);
         const loading = ref(false);
@@ -262,6 +332,31 @@ createApp({
 
         const csrf = document.querySelector('meta[name="csrf-token"]').content;
         const base = `/admin/api/${uri}`;
+
+        /**
+         * 把「选项」统一成 [{value, label}] 数组。
+         *
+         * Schema 编译层输出的就是数组（`array_column($options, 'value')` 依赖这一点），
+         * 但插件历史上可能塞过 `{值: 文案}` 映射表 —— 这里一并兼容。
+         *
+         * ⚠️ 早期模板把选项当**对象**遍历（`v-for="(text, val) in options"`），
+         * 结果是：`val` 拿到数组下标、`text` 拿到整个 `{value,label}` 对象，
+         * 于是下拉框把 JSON 原样打印出来、`:value` 全变成 0/1/2……
+         * 必填下拉框因此永远保存不了值。
+         */
+        function fieldOptions(f) {
+            const raw = f.props?.options;
+            if (!raw) return [];
+            if (Array.isArray(raw)) {
+                return raw.map((o) => {
+                    if (o && typeof o === 'object') {
+                        return { value: o.value ?? o.id ?? '', label: o.label ?? o.name ?? String(o.value ?? '') };
+                    }
+                    return { value: o, label: String(o) };
+                });
+            }
+            return Object.entries(raw).map(([value, label]) => ({ value, label }));
+        }
 
         async function load(page = 1) {
             loading.value = true;
@@ -553,10 +648,21 @@ createApp({
             currentStep.value = 0;
             form.value = {};
 
-            // 多选类字段必须初始化为数组，否则 v-model 无法绑定
+            /*
+             * 每个字段都必须有初值，否则 v-model 会绑定 undefined。
+             *
+             * 后果（真实复现）：`<select v-model>` 被赋值 undefined 时
+             * 匹配不到任何 <option>，浏览器把 selectedIndex 置为 -1
+             * → 必填下拉框显示为**空白**，用户看不到「请选择…」提示，
+             * 以为框是坏的。同理 checkbox 需要数组、其余需要空串。
+             */
             for (const f of (schema.form?.fields ?? [])) {
                 if (f.type === 'multiselect' || f.type === 'checkbox') {
                     form.value[f.name] = [];
+                } else if (f.type === 'switch') {
+                    form.value[f.name] = f.default ?? false;
+                } else {
+                    form.value[f.name] = f.default ?? '';
                 }
             }
 
@@ -608,6 +714,19 @@ createApp({
                 }
             }
 
+            /*
+             * 补齐缺失字段 —— 与 openCreate 同理：API 返回 null / 缺字段时，
+             * 若直接塞给 <select v-model>，selectedIndex 会变成 -1，
+             * 编辑弹窗里的下拉框显示空白，用户无法判断当前值。
+             */
+            for (const f of (schema.form?.fields ?? [])) {
+                if (form.value[f.name] === undefined || form.value[f.name] === null) {
+                    form.value[f.name] = (f.type === 'multiselect' || f.type === 'checkbox')
+                        ? []
+                        : (f.type === 'switch' ? false : '');
+                }
+            }
+
             showCreate.value = true;
         }
 
@@ -627,24 +746,92 @@ createApp({
                 });
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
-                    alert('保存失败: ' + (err.message ?? JSON.stringify(err.errors ?? err)));
+                    // 校验错误（422）逐字段展示，比丢一坨 JSON 给用户友好得多
+                    const fieldErrors = err.errors && typeof err.errors === 'object'
+                        ? Object.values(err.errors).flat().slice(0, 3).join('；')
+                        : '';
+                    toast(
+                        editing.value ? '保存失败' : '创建失败',
+                        fieldErrors || err.message || '请检查表单填写',
+                        'danger'
+                    );
                     return;
                 }
                 showCreate.value = false;
                 editing.value = false;
                 form.value = {};
+                // ⚠️ 顺序很重要：上面刚把 editing 置为 false，
+                // 若在这里读 editing.value 永远走 else 分支，
+                // 编辑保存也会提示「新记录已创建」。
+                toast('已保存', isEdit ? '修改已生效' : '新记录已创建', 'success');
                 load(currentPage.value);
             } catch (e) {
-                alert('保存失败: ' + e.message);
+                toast('保存失败', e.message || '网络异常，请重试', 'danger');
             }
         }
 
-        async function remove(row) {
-            if (!confirm('确认删除 #' + row.id + '？')) return;
-            await fetch(`${base}/${row.id}`, {
-                method: 'DELETE',
-                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
-            });
+        /**
+         * 删除确认。
+         *
+         * ⚠️ 不再用原生 confirm()：
+         *   1. 原生弹窗展示的是浏览器默认样式，与设计系统完全脱节
+         *   2. 之前把「#12」这类**自增 ID 直接暴露**给用户（无业务含义、还泄漏内部计数）
+         *   3. 原生 confirm 无法承载富文本（比如显示记录标题让用户确认删对了）
+         *
+         * 改为自定义弹窗：显示记录的主字段值（比 ID 有意义），并明确提示不可撤销。
+         */
+        function remove(row) {
+            const label = rowLabel(row);
+            confirmState.value = {
+                open: true,
+                id: row.id,
+                label: label,
+            };
+        }
+
+        /**
+         * 取一条记录的「人类可读标识」，用于确认框。
+         * 优先用列定义里的第一个可搜索文本列（通常是名称/标题），
+         * 拿不到就退回 ID —— 但不显示 "#" 前缀，避免像内部编号。
+         */
+        function rowLabel(row) {
+            const cols = schema.grid?.columns ?? [];
+            for (const c of cols) {
+                if (c.searchable && !c.name.includes('.')) {
+                    const v = row[c.name];
+                    if (v !== null && v !== undefined && String(v).trim() !== '') {
+                        return String(v).slice(0, 60);
+                    }
+                }
+            }
+            // 退化：用前两个非空文本列拼一个
+            const parts = [];
+            for (const c of cols) {
+                if (c.name.includes('.')) continue;
+                const v = row[c.name];
+                if (typeof v === 'string' && v.trim() !== '') parts.push(v.trim().slice(0, 24));
+                if (parts.length >= 2) break;
+            }
+            return parts.length ? parts.join(' · ') : '这条记录';
+        }
+
+        async function doDelete() {
+            const id = confirmState.value.id;
+            confirmState.value.open = false;
+            try {
+                const res = await fetch(`${base}/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    toast('删除失败', err.message || '可能已被他人删除', 'danger');
+                } else {
+                    toast('已删除', '', 'success');
+                }
+            } catch (e) {
+                toast('删除失败', e.message || '网络异常', 'danger');
+            }
             load(currentPage.value);
         }
 
@@ -660,7 +847,9 @@ createApp({
             exportable, doExport, isTree, treeTitleColumn, loadTree,
             isStepped, steps, currentStep, visibleFields,
             inputType, mapLabel, tagClass, formatMoney, cellValue, cellClass, normalizeCell,
+            toasts, toast, dismissToast, confirmState, doDelete,
             regionProvinces, regionTree, regionForm, onProvinceChange, onCityChange, ensureRegion, openCreate, goStep,
+            fieldOptions,
             isNumeric,
         };
     },

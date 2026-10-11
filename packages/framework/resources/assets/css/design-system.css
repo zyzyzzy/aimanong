@@ -751,15 +751,17 @@ hr {
 .am-input,
 .am-select,
 .am-textarea {
+  /* B 体系：控件高 40px、字号 14px（与正文一致）。
+     13px 在表单里偏小 —— 用户填表时是**逐字阅读**的场景。 */
   display: block;
   width: 100%;
-  min-height: var(--h-control);
+  min-height: var(--h-control-lg);
   padding: 6px var(--sp-3);
   border: 1px solid var(--border-strong);
   border-radius: var(--r-sm);
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-base);
   line-height: var(--lh-base);
   transition: border-color var(--dur) var(--ease),
               box-shadow var(--dur) var(--ease),

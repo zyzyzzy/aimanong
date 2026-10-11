@@ -75,6 +75,44 @@ jobs:
       - name: 运行发布前检查
         run: bash scripts/pre-release.sh
 
+  # 端到端测试：从零搭一个项目装框架，跑真实 HTTP
+  #
+  # ## 为什么这个 job 必须有
+  #
+  # 此前 CI 只跑 Pint / PHPStan / PHPUnit —— 全是**单元级**验证。
+  # v1.5.0/v1.6.0 新增 7 项基座能力，e2e 覆盖为 0，
+  # 而 CI 一直是绿的（见《初衷对照评估》偏离 2）。
+  #
+  # 单测环境没有容器、没有数据库、没有 HTTP ——
+  # 只读资源的 403、上传落盘、鉴权链路全都在它盲区里。
+  #
+  # 这个 job 顺便验证了一件更重要的事：
+  # **一个新项目装完框架能不能真的跑起来。**
+  e2e:
+    name: 端到端（真实 HTTP）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, json, pdo_sqlite, sqlite3, curl
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 准备 demo 项目
+        run: bash scripts/setup-demo.sh
+
+      - name: 运行发布前检查（含三项端到端）
+        env:
+          DEMO_PATH: ${{ github.workspace }}/../demo-app
+        run: bash scripts/pre-release.sh --with-e2e
+
   # 低版本 PHP 兼容性：确认不会用到 8.3 独占语法
   php82-compat:
     name: PHP 8.2 兼容性

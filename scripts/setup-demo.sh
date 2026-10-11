@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+#
+# 从零搭一个能跑端到端测试的 demo 项目。
+#
+# ## 用途
+#
+# 1. CI 的 e2e job（每次 push 都验证「新人装框架能否跑通」）
+# 2. 本地想复现 e2e 时
+#
+# ## 为什么值得单独写一个脚本
+#
+# 端到端测试需要「一个装了框架、有真实数据、服务在跑」的项目。
+# 此前这件事靠人工维护一个仓库外的 demo-app —— 结果是：
+# **CI 根本没法跑 e2e**，测试与框架长期脱节。
+#
+# 副作用（好的那种）：这个脚本顺带证明了框架的安装路径是通的。
+#
+# 用法：
+#   bash scripts/setup-demo.sh [目标目录]
+#   默认目标：<repo>/../demo-app
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DEMO="${1:-${DEMO_PATH:-$ROOT/../demo-app}}"
+
+echo "═══ 搭建 demo 项目 ═══"
+echo "  目标: $DEMO"
+
+if [ -d "$DEMO" ] && [ -f "$DEMO/artisan" ]; then
+  echo "  ✓ 已存在，跳过创建"
+else
+  echo "  → 创建 Laravel 项目…"
+  composer create-project laravel/laravel "$DEMO" --no-interaction --prefer-dist --quiet
+fi
+
+cd "$DEMO"
+
+# ── 用 path 仓库指向本地框架（CI 与本地都适用）──
+echo "  → 接入本地框架包"
+composer config repositories.aimanong path "$ROOT/packages/framework" --no-interaction
+composer config repositories.aimanong-region path "$ROOT/packages/region" --no-interaction
+composer require aimanong/framework:@dev aimanong/region:@dev \
+  --no-interaction --quiet 2>/dev/null || \
+  composer require aimanong/framework:@dev aimanong/region:@dev --no-interaction
+
+# ── SQLite ──
+echo "  → 配置 SQLite"
+touch database/database.sqlite
+sed -i.bak 's/^DB_CONNECTION=.*/DB_CONNECTION=sqlite/' .env 2>/dev/null || true
+grep -q '^DB_CONNECTION=sqlite' .env || echo 'DB_CONNECTION=sqlite' >> .env
+grep -q '^AIMANONG_RBAC=' .env || echo 'AIMANONG_RBAC=true' >> .env
+rm -f .env.bak
+
+# ── 安装框架（发布配置 + 迁移）──
+echo "  → 安装框架"
+php artisan aimanong:install --no-interaction 2>/dev/null || php artisan aimanong:install --force --no-interaction
+
+# ── 管理员账号（e2e 要用 admin/admin123 登录）──
+echo "  → 创建管理员账号"
+php artisan tinker --execute='
+use Aimanong\Models\Administrator;
+use Aimanong\Models\Role;
+$u = Administrator::firstOrCreate(
+    ["username" => "admin"],
+    ["name" => "超级管理员", "password" => "admin123", "enabled" => true]
+);
+$r = Role::firstOrCreate(
+    ["slug" => "super_admin"],
+    ["name" => "超级管理员", "is_super" => true]
+);
+$u->roles()->syncWithoutDetaching([$r->id]);
+echo "admin 就绪\n";
+'
+
+# ── 权限节点（内置 Resource 的节点要写库）──
+echo "  → 同步权限节点"
+php artisan aimanong:permission sync >/dev/null 2>&1 || true
+
+echo
+echo "✅ demo 项目就绪: $DEMO"
+echo "   启动服务: cd $DEMO && php artisan serve --port=8899"

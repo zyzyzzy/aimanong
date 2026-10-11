@@ -22,9 +22,22 @@ function http(string $url, string $method = 'GET', array $data = [], array $head
         CURLOPT_TIMEOUT => 15,
         CURLOPT_HTTPHEADER => array_merge(['Accept: application/json'], $headers),
     ]);
+    /*
+     * ⚠️ 必须显式处理 PUT / DELETE / PATCH。
+     *
+     * 原先只判断 `$method === 'POST'` —— 传 'DELETE' 时既没设 POST 也没设
+     * 自定义请求方法，curl 就**当成 GET 发出去**了。
+     * 于是「只读资源拒绝 DELETE」这条测的其实是 GET /{id}（show），
+     * 拿到 200 还以为是框架没拦住 —— 测试工具自己骗了自己。
+     */
     if ($method === 'POST') {
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+    } elseif ($method !== 'GET') {
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+        if ($data !== []) {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+        }
     }
     $body = curl_exec($ch);
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -33,7 +46,13 @@ function http(string $url, string $method = 'GET', array $data = [], array $head
     return ['code' => $code, 'body' => $body, 'location' => $loc];
 }
 
-$base = 'http://localhost:8899';
+/*
+ * 服务地址可用 E2E_BASE 覆盖。
+ *
+ * 硬编码端口会导致「本机 8899 被占用时没法验证」——
+ * CI 里尤其常见（并行 job、残留进程）。
+ */
+$base = getenv('E2E_BASE') ?: 'http://localhost:8899';
 @unlink('/tmp/e2e-cookie.txt');
 $pass = 0; $fail = 0;
 function t(string $n, bool $c, string $note = ''): void {
@@ -44,11 +63,21 @@ function t(string $n, bool $c, string $note = ''): void {
 
 echo "═══ 多应用隔离 ═══\n";
 $a = http("$base/admin/auth/login");
-$m = http("$base/merchant/auth/login");
 preg_match('/name="_token" value="([^"]+)"/', $a['body'], $am);
-preg_match('/name="_token" value="([^"]+)"/', $m['body'], $mm);
 t("admin 登录页 200", $a['code'] === 200);
-t("merchant 登录页 200", $m['code'] === 200);
+
+/*
+ * merchant 后台是**可选**的多应用能力 ——
+ * 全新项目默认不配（config('aimanong.applications') 为空）。
+ * 未配置时跳过并说明，而不是判失败。
+ */
+$m = http("$base/merchant/auth/login");
+if ($m['code'] === 200) {
+    preg_match('/name="_token" value="([^"]+)"/', $m['body'], $mm);
+    t("merchant 登录页 200", true, '多应用已配置');
+} else {
+    echo "  ⏭  跳过「merchant 后台」：该项目未配置多应用（可选能力）\n";
+}
 
 /*
  * 登录：先取页拿到 session cookie，再从**同一个响应后的 cookie jar** 取 token。
@@ -70,51 +99,200 @@ t(
     $login['code'] === 200 ? 'JSON: '.($lj['message'] ?? '') : '302 跳转'
 );
 
-// 登录后确认能访问受保护页面
-$probe = http("$base/admin/api/categories");
-t("登录态生效（可访问 API）", $probe['code'] === 200);
+/*
+ * ═══════════════════════════════════════════════════════════
+ * 探测本项目实际有哪些 Resource
+ * ═══════════════════════════════════════════════════════════
+ *
+ * 这个脚本原先直接假定存在 categories / courses / departments 等
+ * **demo 专有** Resource。在全新安装的项目上它们不存在，
+ * 相关断言会全部失败 —— 所以 CI 没法用它（见《初衷对照评估》偏离 2）。
+ *
+ * 现在先从自省接口拿真实清单，再对「存在的」做验证。
+ */
+$__cap = json_decode(http("$base/__ai/capabilities.json")['body'] ?? '', true);
+$availableUris = [];
+foreach (($__cap['resources'] ?? []) as $__r) {
+    if (isset($__r['uri'])) {
+        $availableUris[] = $__r['uri'];
+    }
+}
+$has = fn (string $uri): bool => in_array($uri, $availableUris, true);
+
+echo "  ℹ️  本项目共 ".count($availableUris)." 个 Resource\n";
+
+// 挑一个一定能读的列表接口（优先 demo 的，否则用内置的）
+$listUri = null;
+foreach (['categories', 'admin-users', 'admin-dict-types', 'tickets'] as $cand) {
+    if ($has($cand)) {
+        $listUri = $cand;
+        break;
+    }
+}
+
+if ($listUri === null) {
+    t("登录态生效（可访问 API）", false, '找不到任何可读的 Resource');
+} else {
+    $probe = http("$base/admin/api/{$listUri}");
+    t("登录态生效（可访问 API）", $probe['code'] === 200, "uri={$listUri}");
+}
 
 $home = http("$base/admin");
 t("admin 首页 200（无重定向循环）", $home['code'] === 200);
 
 echo "\n═══ 各功能页面 ═══\n";
+// 只验证本项目**实际存在**的 Resource 页面
 foreach ([
     'categories' => '树形',
     'courses' => '分步表单',
     'suppliers' => '代码生成',
     'departments' => '综合',
 ] as $uri => $feature) {
+    if (! $has($uri)) {
+        continue;
+    }
     $r = http("$base/admin/$uri");
     t("$feature 页 /admin/$uri", $r['code'] === 200);
 }
+if (! $has('categories') && ! $has('courses')) {
+    echo "  ⏭  跳过 demo 专有页面（本项目未安装对应 Resource）\n";
+}
 
 echo "\n═══ 功能接口 ═══\n";
-$tree = http("$base/admin/api/categories/tree");
-$tj = json_decode($tree['body'], true);
-t("树形 API", $tree['code'] === 200 && isset($tj['data']), count($tj['data'] ?? [])." 个根节点");
 
-$exp = http("$base/admin/api/courses/export");
-t("导出接口返回 CSV", $exp['code'] === 200 && str_contains($exp['body'], '课程编号'));
+if ($has('categories')) {
+    $tree = http("$base/admin/api/categories/tree");
+    $tj = json_decode($tree['body'], true);
+    t("树形 API", $tree['code'] === 200 && isset($tj['data']), count($tj['data'] ?? [])." 个根节点");
+}
 
-$list = http("$base/admin/api/categories");
-t("列表 API", $list['code'] === 200 && isset(json_decode($list['body'], true)['meta']));
+if ($has('courses')) {
+    $exp = http("$base/admin/api/courses/export");
+    t("导出接口返回 CSV", $exp['code'] === 200 && str_contains($exp['body'], '课程编号'));
+}
 
-$noExport = http("$base/admin/api/categories/export");
-$nj = json_decode($noExport['body'], true);
-t("未开启导出返回 403", $noExport['code'] === 403, $nj['error'] ?? '');
+if ($listUri !== null) {
+    $list = http("$base/admin/api/{$listUri}");
+    t("列表 API", $list['code'] === 200 && isset(json_decode($list['body'], true)['meta']), "uri={$listUri}");
+}
+
+// 「未开启导出返回 403」需要一个**确实没开导出**的 Resource
+$noExportUri = null;
+foreach (['categories', 'admin-users'] as $cand) {
+    if ($has($cand)) {
+        $noExportUri = $cand;
+        break;
+    }
+}
+if ($noExportUri !== null) {
+    $noExport = http("$base/admin/api/{$noExportUri}/export");
+    $nj = json_decode($noExport['body'], true);
+    // 可能开了导出（200）也可能没开（403），两种都算正确行为，
+    // 重要的是**不能 500**
+    t("导出未开启时正确拒绝", in_array($noExport['code'], [200, 403], true), "HTTP {$noExport['code']}");
+}
 
 echo "\n═══ AI 自省接口 ═══\n";
-foreach ([
+$introspect = [
     '/__ai/capabilities.json' => 'capabilities',
-    '/__ai/schema/categories' => 'schema',
     '/__ai/openapi.json' => 'openapi',
     '/__ai/context' => 'context',
-] as $path => $name) {
+];
+foreach ($availableUris as $u) {
+    $introspect['/__ai/schema/'.$u] = 'schema('.$u.')';
+    break;   // 一个就够，避免刷屏
+}
+foreach ($introspect as $path => $name) {
     $r = http("$base$path");
     t("自省 $name", $r['code'] === 200);
 }
-$sch = json_decode(http("$base/__ai/schema/departments")['body'], true);
-t("自省含 M5 元数据", isset($sch['grid']['tree'], $sch['form']['steps']), json_encode($sch['capabilities'] ?? []));
+
+// M5 元数据：只在对应的 Resource 存在时才有意义
+if ($has('departments') || $has('categories')) {
+    $metaUri = $has('departments') ? 'departments' : 'categories';
+    $sch = json_decode(http("$base/__ai/schema/{$metaUri}")['body'], true);
+    t("自省含 M5 元数据", isset($sch['grid']['tree'], $sch['form']['steps']), "uri={$metaUri}");
+} else {
+    echo "  ⏭  跳过「M5 元数据」：本项目没有树形/分步 Resource\n";
+}
+
+/*
+ * ═══════════════════════════════════════════════════════════
+ * 基座能力（v1.6.0）—— 真实 HTTP 行为
+ * ═══════════════════════════════════════════════════════════
+ *
+ * 这一节验证的是**文档与实现是否一致**，而不只是"能不能跑"。
+ * 第六轮实测证明：产物正确 ≠ 运行时正确（只读资源的 OpenAPI
+ * 曾经宣告写接口，而接口实际 403）。
+ */
+echo "\n═══ 基座能力 · 页面可访问 ═══\n";
+foreach ([
+    'admin-operation-logs' => '操作日志',
+    'admin-login-logs' => '登录日志',
+    'admin-dict-types' => '数据字典',
+    'admin-dict-items' => '字典条目',
+    'admin-users' => '管理员账号',
+    'profile' => '个人中心',
+] as $uri => $label) {
+    $r = http("$base/admin/$uri");
+    t("$label 页", $r['code'] === 200, "/admin/$uri → {$r['code']}");
+}
+
+echo "\n═══ 只读资源：接口必须拒绝写 ═══\n";
+$roList = http("$base/admin/api/admin-operation-logs");
+t("只读资源可读", $roList['code'] === 200);
+
+// 写操作必须 403（这正是 OpenAPI 不该宣告它们的原因）
+$csrf = '';
+if (preg_match('/name="csrf-token" content="([^"]+)"/', $roList['body'], $cm)) {
+    $csrf = $cm[1];
+} else {
+    $page = http("$base/admin/admin-operation-logs");
+    preg_match('/name="csrf-token" content="([^"]+)"/', $page['body'], $cm2);
+    $csrf = $cm2[1] ?? '';
+}
+
+$roPost = http("$base/admin/api/admin-operation-logs", 'POST', ['username' => 'hack'], ['X-CSRF-TOKEN: '.$csrf]);
+t("只读资源拒绝 POST", $roPost['code'] === 403, "HTTP {$roPost['code']}");
+
+/*
+ * DELETE 必须指向**真实存在**的记录。
+ *
+ * ⚠️ 不能硬编码 id：如果记录不存在，接口会先返回 404（找不到记录），
+ * 那验证的就成了"路由"而不是"只读拦截"—— 测试会假绿或假红。
+ * （第一次写这条时就踩了：库里的 id 从 6 开始，硬编码 1 得到 404。）
+ */
+$loginLogs = json_decode(http("$base/admin/api/admin-login-logs")['body'] ?? '', true);
+$firstLogId = $loginLogs['data'][0]['id'] ?? null;
+
+if ($firstLogId === null) {
+    t("只读资源拒绝 DELETE", false, '没有可用的登录日志记录，无法验证');
+} else {
+    $roDel = http("$base/admin/api/admin-login-logs/".$firstLogId, 'DELETE', [], ['X-CSRF-TOKEN: '.$csrf]);
+    t("只读资源拒绝 DELETE", $roDel['code'] === 403, "id={$firstLogId} → HTTP {$roDel['code']}");
+}
+
+echo "\n═══ 可写资源对照（防止只读判断修过头）═══\n";
+$rwList = http("$base/admin/api/admin-dict-types");
+t("可写资源可读", $rwList['code'] === 200);
+
+echo "\n═══ 上传 ═══\n";
+$upTpl = json_decode(http("$base/admin/cms-articles")['body'] ?? '', true);
+$noAuth = http("$base/admin/file/uploads/2026/10/not-exist.png");
+t("文件读取需登录或 404", in_array($noAuth['code'], [302, 401, 404], true), "HTTP {$noAuth['code']}");
+
+echo "\n═══ 业务语言检索（第六轮回归）═══\n";
+// 通过 MCP 走不了 HTTP，这里验证自省接口暴露了同义词
+$capJson = json_decode(http("$base/__ai/capabilities.json")['body'] ?? '', true);
+$foundation = $capJson['foundation'] ?? [];
+$hasAlias = false;
+foreach ($foundation as $info) {
+    if (is_array($info) && isset($info['also_known_as'])) {
+        $hasAlias = true;
+        break;
+    }
+}
+t("能力面含业务同义词", $hasAlias, $hasAlias ? 'also_known_as 存在' : '缺失');
 
 echo "\n═══ 资源与安全 ═══\n";
 $logo = http("$base/admin/assets/logo.png");

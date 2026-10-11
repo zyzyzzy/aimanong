@@ -164,24 +164,39 @@
 .am-shell.is-collapsed .am-sidebar__toggle svg { transform: rotate(180deg); }
 
 /* ── 分组折叠 ── */
-.am-nav__groupwrap { margin-bottom: 2px; }
+.am-nav__groupwrap { margin-bottom: 1px; }
+/* 分组之间加入淡分隔线 —— 收起状态也能看清分组边界 */
+.am-nav__groupwrap + .am-nav__groupwrap { margin-top: 1px; }
 /* 分组图标默认不显示 —— 展开态用文字标题即可；
    只有缩窄态才用图标代表一级菜单。 */
 .am-nav__groupicon { display: none; place-items: center; flex-shrink: 0; }
 .am-nav__group {
-  display: flex; align-items: center; gap: var(--sp-2); width: 100%;
-  padding: var(--sp-2) var(--sp-3);
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  /* 上边距更大 → 分组之间形成呼吸节奏 */
+  padding: var(--sp-2) var(--sp-3); margin-top: var(--sp-2);
   border: none; background: transparent; cursor: pointer;
-  font: inherit; font-size: var(--fs-xs); font-weight: var(--fw-semibold);
-  color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .07em;
+  font: inherit; font-size: 11px; font-weight: var(--fw-semibold);
+  /* 中文不加 letter-spacing（会撞笔画），靠字号与颜色拉开层次 */
+  color: var(--text-tertiary); letter-spacing: 0;
   text-align: left; border-radius: var(--r-sm);
-  transition: color .14s var(--ease), background .14s var(--ease);
+  transition: color .14s var(--ease);
 }
-.am-nav__group:hover { color: var(--text-secondary); background: var(--bg-hover); }
+.am-nav__group:hover { color: var(--text-secondary); }
+/* 分组标题左侧一道细竖线 —— 让"这是一组"更明确 */
+.am-nav__group::before {
+  content: ''; width: 2px; height: 11px; border-radius: 1px;
+  background: var(--border-strong); flex-shrink: 0;
+  transition: background .16s var(--ease);
+}
+.am-nav__groupwrap.is-open > .am-nav__group::before { background: var(--brand-solid); }
+
+/* 箭头紧跟标题文字（不再 margin-left:auto 跑到最右） */
 .am-nav__chev {
-  width: 12px; height: 12px; margin-left: auto; flex-shrink: 0;
-  transition: transform .22s var(--ease);
+  width: 11px; height: 11px; flex-shrink: 0; margin-left: 2px;
+  opacity: .55;
+  transition: transform .24s var(--ease), opacity .16s var(--ease);
 }
+.am-nav__group:hover .am-nav__chev { opacity: 1; }
 .am-nav__groupwrap.is-open .am-nav__chev { transform: rotate(180deg); }
 
 /*
@@ -189,12 +204,38 @@
  * 比 max-height 更好：不需要猜一个足够大的高度值，
  * 也不会因为内容变化而露馅（max-height 猜小了会裁切）。
  */
+/*
+ * 折叠动画：三层同时过渡，比单纯改高度更有质感
+ *   1. grid-template-rows 0fr→1fr  高度
+ *   2. opacity 0→1                 淡入
+ *   3. translateY(-4px)→0          从上方微滑入
+ * 用 220ms + 缓出曲线：够快不拖沓，又能看清"内容长出来"的过程。
+ */
 .am-nav__children {
   display: grid; grid-template-rows: 0fr;
-  transition: grid-template-rows .22s var(--ease);
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    grid-template-rows .24s var(--ease),
+    opacity .2s var(--ease),
+    transform .24s var(--ease);
 }
-.am-nav__groupwrap.is-open .am-nav__children { grid-template-rows: 1fr; }
-.am-nav__inner { overflow: hidden; min-height: 0; }
+.am-nav__groupwrap.is-open .am-nav__children {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transform: translateY(0);
+}
+/* 折叠容器：用 grid 0fr→1fr 实现内容"跟着长出来"，
+   比 max-height 更自然（无需猜高度）。 */
+.am-nav__inner {
+  overflow: hidden; min-height: 0;
+  /* 子项整体右缩进 → 与分组标题形成层级 */
+  padding-left: var(--sp-2);
+  border-left: 1px solid var(--border-subtle);
+  margin-left: 18px;
+  transition: border-color .2s var(--ease);
+}
+.am-nav__groupwrap.is-open .am-nav__inner { border-left-color: var(--border-default); }
 
 /* ══════════════════════════════════════════════════════════
    缩窄态（仅桌面 ≥961px）

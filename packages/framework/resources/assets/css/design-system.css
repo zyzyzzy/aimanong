@@ -432,12 +432,37 @@ hr {
   text-decoration: none;
 }
 .am-nav__item:active { background: var(--bg-active); }
+/* 悬停时左侧出现一道极淡色条 —— 与激活态形成"预览"关系 */
+.am-nav__item:hover::before {
+  content: '';
+  position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 12px; border-radius: 0 3px 3px 0;
+  background: var(--border-strong);
+  opacity: .6;
+}
+/*
+ * 激活态：左侧一道色条 + 极淡底色，而不是整块铺满。
+ *
+ * 设计考量：侧栏里有 20+ 个菜单项，如果激活项用饱和底色铺满，
+ * 视线会被整块色块吸走、显得"重"。改为左侧 3px 色条 + 8% 淡底，
+ * 既有明确指向，又保持轻盈。
+ * 同时避免改 font-weight（会引起文字重排抖动）→ 用颜色与色条区分。
+ */
 .am-nav__item.is-active {
+  position: relative;
   background: var(--brand-subtle-bg);
   color: var(--brand-text);
-  border-color: var(--brand-subtle-border);
+  border-color: transparent;
   font-weight: var(--fw-semibold);
 }
+.am-nav__item.is-active::before {
+  content: '';
+  position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 16px; border-radius: 0 3px 3px 0;
+  background: var(--brand-solid);
+}
+/* 激活项图标略微加重，强化识别 */
+.am-nav__item.is-active .am-nav__icon { opacity: 1; }
 .am-nav__icon {
   width: 18px; height: 18px;
   flex-shrink: 0;

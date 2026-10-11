@@ -413,10 +413,12 @@ hr {
   display: flex;
   align-items: center;
   gap: var(--sp-3);
-  height: 36px;
+  /* 字号 13 → 14px、高度 36 → 38px：
+     用户反馈菜单文字偏小。侧栏是高频点击区，字大一点更好读也更好点。 */
+  height: 38px;
   padding: 0 var(--sp-3);
   border-radius: var(--r-sm);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-base);
   font-weight: var(--fw-normal);
   color: var(--text-secondary);
   text-decoration: none;
@@ -436,7 +438,7 @@ hr {
 .am-nav__item:hover::before {
   content: '';
   position: absolute; left: 0; top: 50%; transform: translateY(-50%);
-  width: 3px; height: 12px; border-radius: 0 3px 3px 0;
+  width: 4px; height: 16px; border-radius: 0 4px 4px 0;
   background: var(--border-strong);
   opacity: .6;
 }
@@ -458,7 +460,7 @@ hr {
 .am-nav__item.is-active::before {
   content: '';
   position: absolute; left: 0; top: 50%; transform: translateY(-50%);
-  width: 3px; height: 16px; border-radius: 0 3px 3px 0;
+  width: 4px; height: 20px; border-radius: 0 4px 4px 0;
   background: var(--brand-solid);
 }
 /* 激活项图标略微加重，强化识别 */

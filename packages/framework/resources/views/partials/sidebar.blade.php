@@ -175,7 +175,7 @@
   /* 上边距更大 → 分组之间形成呼吸节奏 */
   padding: var(--sp-2) var(--sp-3); margin-top: var(--sp-2);
   border: none; background: transparent; cursor: pointer;
-  font: inherit; font-size: 11px; font-weight: var(--fw-semibold);
+  font: inherit; font-size: var(--fs-xs); font-weight: var(--fw-semibold);
   /* 中文不加 letter-spacing（会撞笔画），靠字号与颜色拉开层次 */
   color: var(--text-tertiary); letter-spacing: 0;
   text-align: left; border-radius: var(--r-sm);
@@ -184,7 +184,7 @@
 .am-nav__group:hover { color: var(--text-secondary); }
 /* 分组标题左侧一道细竖线 —— 让"这是一组"更明确 */
 .am-nav__group::before {
-  content: ''; width: 2px; height: 11px; border-radius: 1px;
+  content: ''; width: 3px; height: 14px; border-radius: 2px;
   background: var(--border-strong); flex-shrink: 0;
   transition: background .16s var(--ease);
 }
@@ -192,7 +192,7 @@
 
 /* 箭头紧跟标题文字（不再 margin-left:auto 跑到最右） */
 .am-nav__chev {
-  width: 11px; height: 11px; flex-shrink: 0; margin-left: 2px;
+  width: 13px; height: 13px; flex-shrink: 0; margin-left: 2px;
   opacity: .55;
   transition: transform .24s var(--ease), opacity .16s var(--ease);
 }

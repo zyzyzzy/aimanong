@@ -41,6 +41,12 @@ export default defineConfig({
           ],
         },
         {
+          text: '基座能力',
+          items: [
+            { text: '基座能力总览', link: '/guide/foundation' },
+          ],
+        },
+        {
           text: '开发',
           items: [
             { text: '字段类型', link: '/api/fields' },

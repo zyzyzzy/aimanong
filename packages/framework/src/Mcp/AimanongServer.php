@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Mcp;
 
+use Aimanong\Aimanong;
 use Aimanong\Mcp\Tools\CreatePage;
 use Aimanong\Mcp\Tools\DescribeResource;
 use Aimanong\Mcp\Tools\ListResources;
@@ -13,6 +14,7 @@ use Aimanong\Mcp\Tools\ScaffoldResource;
 use Aimanong\Mcp\Tools\SearchDocs;
 use Aimanong\Mcp\Tools\ValidateDeclaration;
 use Laravel\Mcp\Server;
+use Laravel\Mcp\Server\Contracts\Transport;
 use Laravel\Mcp\Server\Tool;
 
 /**
@@ -25,7 +27,25 @@ class AimanongServer extends Server
 {
     protected string $name = 'Aimanong';
 
-    protected string $version = '1.4.1';
+    /**
+     * 版本号不在这里写死 —— 统一从 composer.json 取（单一来源）。
+     *
+     * 回归：此前这里是与 composer.json 并存的 `'1.4.1'` 字面量，
+     * 发版时必须人肉记得改两处；VersionTest 现已锁死这条一致性。
+     */
+    protected string $version = '';
+
+    /**
+     * 构造时把 composer.json 的版本号注入进来。
+     *
+     * 不在属性上直接调用静态方法 —— PHP 不允许属性默认值调用函数。
+     */
+    public function __construct(Transport $transport)
+    {
+        $this->version = Aimanong::version();
+
+        parent::__construct($transport);
+    }
 
     protected string $instructions = <<<'MARKDOWN'
         Aimanong（AI 码农）是一个「AI 优先」的 Laravel 后台框架。

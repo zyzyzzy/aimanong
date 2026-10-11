@@ -70,4 +70,45 @@ class VersionTest extends TestCase
             'CHANGELOG 必须记录当前版本'
         );
     }
+
+    /**
+     * 回归：MCP Server 曾把版本号写死成 `'1.4.1'` 字面量。
+     *
+     * 后果比看起来严重 —— AI 客户端通过 MCP 握手拿到的 serverInfo.version
+     * 会与实际发布的框架版本不一致，AI 会基于错误版本判断能力是否存在。
+     */
+    public function test_mcp_server_version_is_not_hardcoded(): void
+    {
+        $source = (string) file_get_contents(dirname(__DIR__, 2).'/src/Mcp/AimanongServer.php');
+
+        $this->assertMatchesRegularExpression(
+            '/\$version\s*=\s*\'\';/',
+            $source,
+            'MCP Server 的版本号不应写死，应由 composer.json 注入'
+        );
+
+        $this->assertStringNotContainsString(
+            "'".Aimanong::version()."'",
+            $source,
+            'MCP Server 源码里不应出现当前版本号字面量'
+        );
+    }
+
+    /**
+     * README 的版本徽章也必须跟着走 —— 它是访客看到的第一印象。
+     */
+    public function test_readme_badge_matches_version(): void
+    {
+        $readme = dirname(__DIR__, 4).'/README.md';
+
+        if (! is_file($readme)) {
+            $this->markTestSkipped('README.md 不存在（子包中不检查）');
+        }
+
+        $this->assertStringContainsString(
+            'badge/version-'.Aimanong::version().'-',
+            (string) file_get_contents($readme),
+            'README 版本徽章必须与 composer.json 一致'
+        );
+    }
 }

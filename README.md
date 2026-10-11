@@ -7,7 +7,7 @@
 
 基于 **Laravel 12 + Vue 3**，专为 AI Agent 设计，同时为人类保留完整文档。
 
-[![Version](https://img.shields.io/badge/version-1.5.0-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.6.0-blue.svg)](./CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 [![PHP](https://img.shields.io/badge/PHP-%5E8.2-blue.svg)](https://www.php.net)
 [![Laravel](https://img.shields.io/badge/Laravel-%5E12.0-red.svg)](https://laravel.com)
@@ -293,6 +293,42 @@ packages/framework/
 | 校验失败 | ✅ 422 精确到字段 |
 
 ![M2 用户管理页面](docs/screenshot-m2-users.png)
+
+## 基座能力（v1.6.0 起开箱即用）
+
+传统后台框架只给你「画页面的工具」，登录、用户、权限、日志都得自己写。
+Aimanong 从 v1.3.0 起转向「**带地基的平台**」，v1.6.0 补齐了 P0 六项 ——
+**装完就有，一行代码都不用写**，每项都能用配置整体关掉。
+
+| 能力 | 怎么用 | 关掉它 |
+|---|---|---|
+| **登录日志** | 自动记录成功与失败，无需声明 | `foundation.login_log.enable` |
+| **操作日志** | 自动记录写操作（GET 不记），密码自动掩码 | `foundation.operation_log.enable` |
+| **数据字典** | `$form->select('status')->dict('order_status')` | `foundation.dict.enable` |
+| **文件上传** | `$form->image('cover')` / `->images()` / `->file()` / `->files()` | `foundation.upload.enable` |
+| **个人中心** | 顶栏用户名即入口：改资料 / 改密码 / 我的权限 / 我的操作记录 | `foundation.profile.enable` |
+| **管理员账号** | 内置 `admin-users` 资源：角色分配、启停用、最后登录 IP | `foundation.admin_user.enable` |
+
+### 为什么这六项要连着做
+
+它们是互相咬合的，拆开做等于把同一套接线做五遍：
+
+```
+管理员账号 ← 需要文件上传（头像）+ 角色关联
+个人中心   ← 需要文件上传（头像）+ 操作日志（我的操作记录）
+数据字典   ← 与其余几项共用一次「能力面三处接线」
+```
+
+### 这些能力对 AI 意味着什么
+
+`GET /__ai/capabilities.json` 会明确告诉 AI：
+
+- **数据对不上时先查 `admin-operation-logs`** —— 它是「谁在什么时候把哪条数据改成了什么」的唯一客观依据
+- **项目里实际有哪些字典、哪些可选值** —— AI 不必翻代码猜「状态有哪些值」
+- **哪些能力已经存在，不要重复造** —— 例如不要自己再建一张操作日志表
+
+配套的 AI 能力面（`capabilities.json` / `search-docs` / `aimanong:docs` 三处）
+由 `SingleSourceOfTruthTest` 锁死一致，新增能力漏接一处会直接测试失败。
 
 ## 许可
 

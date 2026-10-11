@@ -2,6 +2,153 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.6.0] - 2026-10-11
+
+> 「带地基的平台」收官：**P0 六项基座能力一次性补齐** ——
+> 装完就有，一行代码都不用写。
+>
+> 途中挖出并修掉一个**框架级**缺陷：多对多关联写入从未生效。
+
+### 新增：审计日志（操作日志 + 登录日志）
+
+| 项 | 说明 |
+|---|---|
+| 操作日志 | 自动记录写操作；**GET 不记**（否则刷新一下列表就是一条，重要记录会被淹没） |
+| 登录日志 | 成功与失败**都记** —— 只记成功等于放弃了「有人在爆破」这条线索 |
+| 脱敏 | `password` / `token` / `api_key` 等一律掩码为 `******`，含 `new_password` 这类变体 |
+| 只读 | 审计数据允许被改就失去了意义 |
+
+### 新增：只读 Resource（通用能力）
+
+```php
+public static function readonly(): bool { return true; }
+```
+
+三层同时生效：前端隐藏写入口、接口 `store/update/destroy` 一律 403、
+权限节点只生成 `index/show/export`。
+
+> ⚠️ 只读校验必须排在 RBAC 判断**之前** —— RBAC 默认关闭时 `authorize_()`
+> 会直接放行，写在后面等于没写（已用 `AIMANONG_RBAC=false` 实测 403）。
+
+### 新增：数据字典（枚举变成一等公民）
+
+```php
+$form->select('status')->label('状态')->dict('order_status');
+$grid->column('status', '状态')->dict('order_status');
+```
+
+- **两种来源，一个入口**：代码声明（可 git diff、后台只读）+ 数据库字典（运营可改文案）
+- **字典缺失直接报错**：编译期抛 `DICT_NOT_FOUND`，带 `did_you_mean` + 可用字典 + 示例
+- **颜色进字典**：列表徽章用字典声明的语义色，不再靠关键词表猜
+- **缓存自动失效**：写库即时生效
+
+它真正解决的问题不是「缺一个功能」，而是**已有的分叉**：
+同一个枚举原先在列表页写一遍 `map()`、表单页写一遍 `options()`、导出再写一遍。
+
+### 新增：文件上传
+
+```php
+$form->image('cover')->maxSize(2048);
+$form->images('gallery');
+$form->file('contract')->accept('pdf,docx');
+$form->files('docs');
+```
+
+| 决策 | 理由 |
+|---|---|
+| 落盘名 = 可读原名 + 8 位随机 | 纯随机名用户认不出文件；只用原名会**静默覆盖**同名文件 |
+| 数据库存相对路径 | 换域名 / 换 CDN 不用刷数据 |
+| 默认**不含 svg** | SVG 可内嵌 `<script>`，同源读取 = XSS |
+| 扩展名 + 真实 MIME 双白名单 | 只看扩展名挡不住 `shell.php.jpg` |
+| `auto` 按 driver 判断 | Laravel 的 `public` 盘**总是**配了 `url`，按「有没有 url」判断会让新项目直接得到坏图 |
+
+零构建上传组件（本地 Vue，无 CDN），URL 模板由服务端下发。
+
+### 新增：个人中心
+
+`GET {prefix}/profile` —— 基本资料（含头像上传）/ 修改密码 / 我的权限 / 我的操作记录。
+
+**不做成 Resource**：Resource 的心智模型是「一张表 = 一组页面」，
+而个人中心操作的是当前登录者自己 —— 没有 id、没有列表，
+硬套会得到一个「理论上能删自己」的页面。
+
+改密码必须验当前密码（防止会话被劫持后直接改密）；
+只允许改 `name/email/phone/avatar` 四个字段（白名单）。
+
+### 新增：管理员账号管理
+
+内置 `admin-users` 资源。v1.3.0 起框架就带了 admin guard + 用户表，
+却**没有管理界面** —— 地基埋好了，门一直没装。
+
+含角色分配、启停用、最后登录时间与 IP。停用的账号在**密码校验之后**被拒绝登录
+（先验密码再报停用，否则成了「用错误密码探测账号是否存在」的旁路）。
+
+### 新增：两个表单语义
+
+| 声明 | 不写会怎样 |
+|---|---|
+| `->requiredOnCreate()` | 用 `required()` 会让**编辑被自己的规则卡住**；用 `nullable()` 会让新增静默存空密码 |
+| `->omitWhenEmpty()` | 编辑用户留空密码本意是「不改」，但空串进了请求体，`'hashed'` cast 把它哈希成新密码 —— **账号当场失效且不报错** |
+
+> ⚠️ 剔除必须发生在 `validate()` **之前**。第一版写成「先校验再剔除」，
+> `min:6` 对着空串报错「密码 不能少于 6 个字符」—— 用户明明只是想不改密码。
+
+### 修复：多对多关联写入从未生效（框架级）
+
+`splitRelationFields()` / `syncRelations()` 定义了却**从未被任何地方调用**。
+
+后果：`multiSelect()->relation()` 是**幽灵能力** —— 表单提交成功、
+列表看不出区别、中间表一条都没有。demo 里的多对多标签只能自己写模型事件绕过。
+
+实测证据：给用户传 `roles=[2]`，中间表零行；接线后 create/update 均正确 sync。
+
+### 修复：多应用模式下操作日志一条都不会记
+
+单后台与多应用此前**各硬编码了一份中间件列表**，新增 `admin.audit` 时
+只改了单后台那份 —— 不报错、测试全绿。已合并为 `adminMiddlewareGroup()` 单一来源。
+
+### 修复：审计日志的 user_id / username 全是 null
+
+用了 `$request->user()`，它走 `config('auth.defaults.guard')`（通常是 `web`），
+而后台是 admin guard。审计日志「不知道是谁干的」等于没有价值。
+
+### 修复：界面偏好的服务端同步一直是坏的
+
+路由写成 `Route::prefix('api')` + `'api/ui/preferences'`，实际路径变成
+`/admin/api/api/ui/preferences`，与前端 `Aimanong::url('api/ui/preferences')`
+对不上：保存 405、读取报「Resource [ui] 未注册」。
+
+### 修复：配置浅合并导致「升级了但新功能没出现」
+
+`mergeConfigFrom` 只做浅合并：用户 config 里只要有 `foundation` 这个键，
+包内 `foundation` 的其它子键就拿不到默认值。已改为**递归补齐**。
+
+### 其它
+
+- `Uploader` / `Dictionary` / `Capabilities` 在无容器环境（单测、静态自省）下
+  容忍配置缺失，不再抛 `ReflectionException: Class "config" does not exist`
+- 上传能力抽成 `partials/upload.blade.php` 供个人中心复用
+- `search-docs` 与 `aimanong:docs` 不再静默丢弃数组型能力字段（如 `uris`）
+- 内置 Resource 的菜单排序：角色(90) → 权限(91) → 租户(92) → 数据字典(93) → 字典条目(94) → 操作日志(95) → 登录日志(96) → 上传演示(97)
+
+### 测试
+
+新增 `AuditFoundationTest`、`DictionaryTest`、`UploadTest`、
+`AdminUserFoundationTest` 与三个夹具，共 **+33 个用例**。
+
+**质量门禁**：PHPUnit **171 tests / 597 assertions**、PHPStan Level 8 无错误、
+Pint PASS 166 files、`pre-release.sh` 全部通过。
+
+**真机验证**（不是读 CSS）：
+
+- 四种上传字段各传一遍（含中文文件名），列表缩略图与文件名链接正确，附件可下载
+- 路径穿越（`../../evil.pdf` → `evil-xxxx.pdf`，确认未逃出目录）与危险文件名全部被拦
+- 分步表单端到端保存、字典徽章取色、个人中心传头像+改密码、用户角色写入中间表
+- 3 页 × 320→2560px 响应式扫描无横向溢出
+- demo 应用 `ai:verify` **28/28 全部通过**（顺带补了 2 处声明与表结构不一致）
+
+---
+
 ## [1.5.0] - 2026-10-11
 
 > 用户连续四轮反馈界面「老气、没有辨识度、颜色太闷」——

@@ -124,7 +124,37 @@ $form->select('type')->options(['a' => '甲', 'b' => '乙']);
 $form->switch('enabled')->default(true);
 $form->date('published_at');
 $form->number('sort')->default(0);
+
+// 数据字典：枚举只在字典里写一次，列表/表单/徽章配色共用
+$form->select('status')->label('状态')->dict('order_status');
+$grid->column('status', '状态')->dict('order_status');   // 自动 map + 徽章语义色
+
+// 文件上传（四种组合，零构建组件）
+$form->image('cover')->maxSize(2048);      // 单图，存相对路径
+$form->images('gallery');                  // 多图，存 JSON 数组
+$form->file('contract')->accept('pdf,docx');
+$form->files('docs')->accept('pdf,zip');
+
+// 多对多：框架自动 sync 中间表 + 编辑时自动回填
+$form->multiSelect('roles')->relation('roles')->options([1 => '管理员']);
+
+// 「留空表示不改」的可选字段（典型：用户表单的密码框）
+$form->password('password')
+    ->requiredOnCreate()   // 仅新增必填
+    ->omitWhenEmpty()      // 编辑留空 = 不提交这个键 = 不改密码
+    ->min(6);
 ```
+
+> ⚠️ `requiredOnCreate()` 与 `omitWhenEmpty()` 必须成对使用。
+> 只写 `required()` 会让编辑被自己的规则卡住；
+> 少了 `omitWhenEmpty()` 时空串会被 `'hashed'` cast 哈希成新密码，**账号当场失效**。
+
+### 只读 Resource
+```php
+public static function readonly(): bool { return true; }
+```
+前端隐藏写入口、`store/update/destroy` 一律 403、权限只生成 `index/show/export`。
+适用于审计日志、监控、报表快照这类「只应由系统写入」的数据。
 
 ### Show（详情页）
 ```php
@@ -203,6 +233,22 @@ php artisan ai:verify "App\\Aimanong\\UserResource"   # 校验单个
 - AI 协作指南：https://zyzyzzy.github.io/aimanong/guide/ai-collaboration.html
 - Playground（在线试玩）：https://zyzyzzy.github.io/aimanong/playground/
 
+## 基座能力（v1.6.0 起开箱即用，**不要重复造**）
+
+装完就有的能力，AI 必须先确认「它是否已经存在」，再决定要不要自己实现：
+
+| 能力 | 标识 | 什么时候用到它 |
+|---|---|---|
+| 操作日志 | `admin-operation-logs` | **数据对不上时先查这张表** —— 它是「谁在什么时候把哪条数据改成了什么」的唯一客观依据 |
+| 登录日志 | `admin-login-logs` | 排查「登不上」或「有人在爆破」（成功与失败都记） |
+| 数据字典 | `admin-dict-types` / `admin-dict-items` | 需要枚举可选值时，先看字典里有没有；`->dict()` 引用它 |
+| 管理员账号 | `admin-users` | 用户管理界面（含角色分配、启停用、最后登录 IP） |
+| 个人中心 | `GET {prefix}/profile` | 改自己的资料 / 密码 / 看自己的权限与操作记录 |
+| 文件上传 | `POST api/upload` | 图片与附件字段，不需要自己写上传控制器 |
+
+读 `GET /__ai/capabilities.json` 的 `foundation` 与 `dictionaries` 两节，
+可以拿到这些能力的**启用状态**、**声明写法**与**当前项目实际有哪些字典/可选值**。
+
 ## 不该做的事
 
 - ❌ 不要写 Vue / Blade / JS 代码（前端自动渲染）
@@ -210,3 +256,6 @@ php artisan ai:verify "App\\Aimanong\\UserResource"   # 校验单个
 - ❌ 不要猜方法名，先调 `list_resources` 或查 `/__ai/capabilities.json`
 - ❌ 不要用 `$request->string()` 的返回值做 `?:` 判空（返回 Stringable 对象，恒为真）
 - ❌ 不要用 Carbon 的 `diffIn*`（Laravel 12 下返回负数 float，用框架封装的时间工具）
+- ❌ 不要自己建操作日志 / 登录日志 / 数据字典表（框架已内置，重复造会分叉）
+- ❌ 不要在列表页和表单页各写一份枚举（用 `->dict()` 或 `->using(Enum::class)`）
+- ❌ 不要把上传文件的完整 URL 存进数据库（存相对路径，URL 由 `Uploader` 解析）

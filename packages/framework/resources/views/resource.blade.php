@@ -537,20 +537,13 @@ const app = createApp({
         }
 
         /*
-         * ══ 省市区插件状态 ══
+         * 省市区插件状态。
          *
-         * ⚠️ 必须做存在性判断。region 是**可选插件**，
-         * framework 的 composer.json 并没有依赖它。
+         * region 是**可选插件**（framework 的 composer.json 只把它列在 suggest），
+         * 因此这里必须做存在性判断 —— 否则只装核心包的用户打开任意列表页
+         * 都会因类不存在而 500。未装时降级为空数组，下拉框为空但不报错。
          *
-         * 回归（P0）：这里原本是无条件调用 ——
-         *
-         *     const regionProvinces = @json(\Aimanong\Region\Region::provinces());
-         *
-         * 于是只想 `composer require aimanong/framework` 的用户
-         * （完全按 README 的「快速开始」做），打开**任意列表页**都会
-         * `Class "Aimanong\Region\Region" not found` → 整个后台不可用。
-         *
-         * 对「带地基的平台」来说，「装完打不开」是最不该有的问题。
+         * 注：这段注释会随页面下发（在 <script> 内），保持简短。
          */
         const regionProvinces = @json(class_exists(\Aimanong\Region\Region::class)
             ? \Aimanong\Region\Region::provinces()

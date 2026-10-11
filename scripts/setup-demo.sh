@@ -17,7 +17,11 @@
 #
 # 用法：
 #   bash scripts/setup-demo.sh [目标目录]
-#   默认目标：<repo>/../demo-app
+#     默认目标：<repo>/../demo-app
+#
+#   AMN_MINIMAL=1 bash scripts/setup-demo.sh /tmp/x
+#     最小安装：只装 framework，不装任何可选插件 ——
+#     用来验证「新人照 README 只装核心包」时后台仍能打开
 
 set -euo pipefail
 
@@ -40,9 +44,19 @@ cd "$DEMO"
 echo "  → 接入本地框架包"
 composer config repositories.aimanong path "$ROOT/packages/framework" --no-interaction
 composer config repositories.aimanong-region path "$ROOT/packages/region" --no-interaction
-composer require aimanong/framework:@dev aimanong/region:@dev \
-  --no-interaction --quiet 2>/dev/null || \
-  composer require aimanong/framework:@dev aimanong/region:@dev --no-interaction
+
+# --minimal：只装 framework，不装任何可选插件。
+# 用来验证「新人照 README 只装核心包」时后台仍能打开 ——
+# 曾经因为模板硬依赖 region，这种项目一打开列表页就 Fatal error。
+if [ "${1:-}" = "--minimal" ] || [ "${AMN_MINIMAL:-0}" = "1" ]; then
+  echo "  → 【最小安装】只装 aimanong/framework，不装插件"
+  composer require aimanong/framework:@dev --no-interaction --quiet 2>/dev/null || \
+    composer require aimanong/framework:@dev --no-interaction
+else
+  composer require aimanong/framework:@dev aimanong/region:@dev \
+    --no-interaction --quiet 2>/dev/null || \
+    composer require aimanong/framework:@dev aimanong/region:@dev --no-interaction
+fi
 
 # ── SQLite ──
 echo "  → 配置 SQLite"

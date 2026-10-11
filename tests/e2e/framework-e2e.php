@@ -363,6 +363,39 @@ if ($tpl === '') {
 
     t("可选插件调用有存在性守卫", $bare === [],
         $bare ? '裸调用在第 '.implode(', ', $bare).' 行' : 'region 调用均有守卫');
+
+    /*
+     * 更强的一条：**注释里不得出现可执行的 Blade 指令**。
+     *
+     * 回归：修 region 守卫时，我把反例写进了注释 ——
+     *
+     *     * const regionProvinces = @json(\Aimanong\Region\Region::provinces());
+     *
+     * 而 Blade **不受注释保护**，那行被编译成了真实的 PHP 调用，
+     * 于是守卫明明加对了、页面照样 500，排查了很久。
+     *
+     * 静态扫描还不够 —— 这条直接检查**编译产物**里有没有
+     * 出现在注释上下文中的指令残留。
+     */
+    $commentDirectives = [];
+    foreach ($lines as $i => $line) {
+        $trimmed = ltrim($line);
+
+        // 只看「注释行」（* 开头 或 // 开头）里是否写了 @ 指令
+        $isCommentLine = str_starts_with($trimmed, '*') || str_starts_with($trimmed, '//');
+        if (! $isCommentLine) {
+            continue;
+        }
+
+        if (preg_match('/@(json|if|foreach|include|php)\s*\(/', $trimmed)) {
+            $commentDirectives[] = ($i + 1).': '.trim($trimmed);
+        }
+    }
+
+    t("注释里无可执行 Blade 指令", $commentDirectives === [],
+        $commentDirectives
+            ? 'Blade 不受注释保护，这些会被编译：'.implode(' | ', array_slice($commentDirectives, 0, 2))
+            : '无');
 }
 
 // region 是否只作为 suggest，而非 require

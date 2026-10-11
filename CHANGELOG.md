@@ -2,6 +2,110 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.7.0] - 2026-10-11
+
+> 主题：**框架核心与插件彻底解耦**。
+>
+> 插件从此可以自带前端 UI —— 第三方想加自定义字段，
+> 不必再改框架源码。
+
+### 新增：插件字段 UI 注入口（公开 API）
+
+在此之前，插件注册了字段类型（`Extension::field()`）却**无法表达
+「它长什么样」** —— 渲染逻辑只能写在框架核心的 `resource.blade.php` 里。
+
+```php
+// 插件侧
+public function boot(): void
+{
+    $this->views(__DIR__.'/../resources/views', 'aimanong-region');
+
+    $this->fieldView('region', 'aimanong-region::field');   // 长什么样
+    $this->fieldScript('aimanong-region::script');          // 逻辑怎么算
+}
+```
+
+| 入口 | 作用 |
+|---|---|
+| `Extension::fieldView($type, $view)` | 注册字段的 blade 渲染片段，框架按类型 `@include` |
+| `Extension::fieldScript($view)` | 注册 JS 片段，在页面 `setup()` **作用域内**执行，可用 `ref` / `form`，通过 `pluginExports` 暴露给模板 |
+| `FieldType::fieldViewFor()` / `viewableTypes()` | 自省：哪些字段类型带自定义 UI |
+
+框架侧新增三个插件无关的钩子：`pluginFieldViews` / `pluginScripts` /
+`pluginFieldInit`（打开表单时初始化插件字段状态）。
+
+### 修复（P0）：框架核心硬依赖 region 插件
+
+框架核心模板**无条件调用**了可选插件的类：
+
+```php
+const regionProvinces = @json(\Aimanong\Region\Region::provinces());
+```
+
+而 `framework` 的 composer.json **没有 require region**，
+`aimanong:install` 也不装它。
+
+**影响面**：`resource.blade.php` 是所有 Resource 的列表/表单页 ——
+只想 `composer require aimanong/framework` 的用户（完全按 README
+「快速开始」做），打开任意列表页就是
+`Class "Aimanong\Region\Region" not found` → **整个后台不可用**。
+
+对「带地基的平台」来说，「装完打不开」是最不该有的问题。
+
+修复方式不是加个 `class_exists` 就完事，而是**把 UI 归还给插件**
+（见上节的注入口）—— 根治耦合，顺带让第三方插件也有出路。
+
+### 迁移：region 插件带走了自己的 UI
+
+框架核心删除 61 行 region 专用代码（三级联动 UI + 5 个 JS 函数），
+改为插件自带 `resources/views/field.blade.php` + `script.blade.php`。
+
+**解耦的证明**：清空所有插件视图注册后重新渲染页面 ——
+95083 字节正常输出，**不含任何 region 残留**。
+
+### 验证
+
+**在真实的最小安装项目里实测**（只装 framework、确认无 region）：
+
+```
+/admin/admin-users            = 200     /admin/admin-login-logs = 200
+/admin/admin-dict-types       = 200     /admin/profile          = 200
+/admin/admin-operation-logs   = 200     GET /admin/api/admin-users = 200
+```
+
+修之前这些页面**每一个都是 Fatal error**。
+
+**真机实测三级联动仍正常**：3 个 select（`->level(3)`）、
+2 个 select（`->cityLevel()`）；选省→市级加载、选市→区级 5 个选项、
+三级选完 → 「北京市 / 市辖区 / 东城区」；控制台无错误。
+
+### 其它
+
+- `composer.json` 增加 `suggest`，让「插件可选」在 Composer 层面可见
+- 删除 `packages/ui` 空目录（决策见
+  [packages-ui-决策分析](./internal-docs/packages-ui-决策分析.md)），
+  并修正三处文档失实：仓库结构图、CSS 前缀（`amn-` → 实际 `am-`）、
+  npm 包状态
+- `scripts/setup-demo.sh` 新增 `AMN_MINIMAL=1` 最小安装模式
+- **e2e 从 47 项扩到 64 项**，新增：可选插件守卫、注释里无指令、
+  插件字段 UI 注入、最小安装可用性
+
+### 两条来自模板解析的教训（同一类坑，各踩一次）
+
+1. **Blade 注释不是注释** —— 注释块里的 `@json(...)` 会被编译成真实的
+   PHP 调用。修守卫时把反例写进注释，结果「守卫加了、页面照样 500」。
+2. **注释里不能出现指令名** —— 插件视图的注释里写了 `@php`，
+   Blade 无视注释上下文直接解析，导致注释块提前结束、模板结构错乱
+   （症状：三个 select 只渲染出最后一个）。
+
+> 已把两条都变成 e2e 断言，防止后人再犯。
+
+**质量门禁**：PHPUnit 183 tests / 650 assertions、PHPStan Level 8、
+Pint PASS 167 files、`pre-release.sh --with-e2e` 全绿
+（framework 64/64、tsc 真编译、http 32/32）。
+
+---
+
 ## [1.6.2] - 2026-10-11
 
 > 由《初衷对照评估》驱动的**一致性与可发现性修复**。

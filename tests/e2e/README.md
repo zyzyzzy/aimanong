@@ -44,7 +44,7 @@ bash tests/e2e/tsc-check.sh /tmp/demo-e2e
 
 实测：
 - 全新项目：framework-e2e 50/50、http-e2e 24/24
-- demo 项目：framework-e2e 56/56、http-e2e 32/32
+- demo 项目：framework-e2e **64/64**、http-e2e 32/32
 
 ## 覆盖范围
 
@@ -60,7 +60,7 @@ bash tests/e2e/tsc-check.sh /tmp/demo-e2e
 | M5 增强 | 导出 / 树形 / 分步 / 多应用 / 插件（条件） |
 | M6 生态 | 生成器 / 文档命令 |
 | 应用上下文 | prefix / guard / CLI 回退 |
-| **基座能力（v1.6.0）** | **内置 Resource / 只读三层一致 / 上传安全 / 字典 / 审计 / 管理员密码契约 / 个人中心 / 能力面一致性 / 业务语言可检索** |
+| **基座能力（v1.6.0+）** | **内置 Resource / 只读三层一致 / 上传安全 / 字典 / 审计 / 管理员密码契约 / 个人中心 / 能力面一致性 / 业务语言可检索 / 可选插件守卫 / 插件字段 UI 注入** |
 
 **http-e2e.php**
 

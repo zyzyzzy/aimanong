@@ -190,6 +190,32 @@ $this->transpile('resources/js/region.js');    // 或直接注入一段 JS
 
 ---
 
+## 六点五、执行结果（2026-10-11 当天完成）
+
+| 顺序 | 事项 | 状态 | 提交 |
+|---|---|---|---|
+| 1 | 修 region 硬依赖（守卫 + `suggest`） | ✅ | `d34c894` + `14228b5` |
+| 2 | e2e 断言「未装 region 时仍可用」 | ✅ | 同上（框架 58 → 59 项） |
+| 3 | 删 `packages/ui` 空目录 + 更新表述 | ✅ | `36d11e1` |
+| 4 | **插件前端注入口**（真正的组件复用） | ✅ | `b080689` |
+| 5 | 独立 UI 包 | ⬜ 不做（本文结论） |
+
+### 第 4 项落地形态
+
+```php
+// 插件侧：自带 UI
+$this->views(__DIR__.'/../resources/views', 'aimanong-region');
+$this->fieldView('region', 'aimanong-region::field');   // 长什么样
+$this->fieldScript('aimanong-region::script');          // 逻辑怎么算
+```
+
+region 插件据此带走了自己的 61 行 UI 代码，框架核心不再有任何
+region 专用逻辑 —— **清空插件注册后重新渲染页面，无任何残留**。
+
+第三方插件现在也能做到同样的事，不必再改框架源码。
+
+---
+
 ## 七、建议的执行顺序
 
 | 顺序 | 事项 | 工作量 |

@@ -38,7 +38,19 @@ class RegionExtension extends Extension
     }
 
     /**
-     * 注册阶段：注入字段类型。
+     * 注册阶段：注入字段类型 + 自带前端 UI。
+     *
+     * ⚠️ fieldView / fieldScript 是**框架为插件提供的注入口**。
+     *
+     * 在此之前，本插件的三级联动 UI 是硬编码在框架核心的
+     * `resource.blade.php` 里的 —— 那带来两个问题：
+     *
+     *   1. framework 隐式依赖 region：只装核心包的用户打开列表页
+     *      直接 Fatal error（composer.json 里并没有 require region）
+     *   2. **第三方插件没有出路**：想加自定义字段 UI，除了改框架源码
+     *      别无他法
+     *
+     * 现在插件自己带着 UI 走，框架只负责在合适的字段类型上渲染它。
      */
     public function register(): void
     {
@@ -46,10 +58,19 @@ class RegionExtension extends Extension
     }
 
     /**
-     * 启动阶段：注册级联查询路由。
+     * 启动阶段：注册视图 + 前端片段 + 级联查询路由。
      */
     public function boot(): void
     {
+        // 插件自带的视图（框架按字段类型 include 它们）
+        $this->views(__DIR__.'/../resources/views', 'aimanong-region');
+
+        // 字段「长什么样」
+        $this->fieldView('region', 'aimanong-region::field');
+
+        // 字段「逻辑怎么算」（在页面 setup() 作用域内执行）
+        $this->fieldScript('aimanong-region::script');
+
         $this->routes(function (): void {
             \Illuminate\Support\Facades\Route::get('cities/{province}', function (string $province) {
                 return response()->json(['data' => Region::cities($province)]);

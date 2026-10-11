@@ -188,24 +188,16 @@
                      :max-size="f.props.maxSize || 0"
                      :directory="f.props.directory || ''"></am-upload>
 
-          <div v-else-if="f.type === 'region'" class="am-flex am-gap-2">
-            <select v-model="ensureRegion(f.name).province" @change="onProvinceChange(f.name)" class="am-select">
-              <option value="">请选择省</option>
-              <option v-for="p in (f.props.data || []).length ? f.props.data : regionProvinces" :key="p.code" :value="p.code">@{{ p.name }}</option>
-            </select>
-            <select v-model="ensureRegion(f.name).city" @change="onCityChange(f.name)" class="am-select">
-              <option value="">请选择市</option>
-              <option v-for="c in ensureRegion(f.name).cities" :key="c.code" :value="c.code">@{{ c.name }}</option>
-            </select>
-            {{-- 区级也必须 @change 回写：漏了它，area 只会存到「市」。
-                 实测：选完省/市/区，数据库里是「北京市/市辖区」——
-                 区没了，而且不报错、页面看着完全正常。 --}}
-            <select v-if="(f.props.level || 3) === 3" v-model="ensureRegion(f.name).district"
-                    @change="syncRegionValue(f.name)" class="am-select">
-              <option value="">请选择区</option>
-              <option v-for="d in ensureRegion(f.name).districts" :key="d.code" :value="d.code">@{{ d.name }}</option>
-            </select>
-          </div>
+          {{-- ══ 插件字段渲染点 ══
+               插件通过 Extension::fieldView() 注册自己的片段，
+               在这里按字段类型分发。框架核心**不再内置任何插件字段的 UI**。
+
+               回归：region 的三级联动 UI 曾经硬编码在这里，
+               而 framework 并未依赖 region —— 只装核心包的用户
+               打开列表页直接 Fatal error。 --}}
+          @foreach($pluginFieldViews as $pluginType => $pluginView)
+            @include($pluginView, ['pluginType' => $pluginType])
+          @endforeach
 
           <input v-else-if="f.type === 'color'" type="color" v-model="form[f.name]" class="am-input" style="width:56px;padding:2px">
           <input v-else-if="f.type === 'slider'" type="range" v-model="form[f.name]" class="am-input" style="padding:0">
@@ -537,61 +529,27 @@ const app = createApp({
         }
 
         /*
-         * 省市区插件状态。
+         * ══ 插件脚本注入点 ══
          *
-         * region 是**可选插件**（framework 的 composer.json 只把它列在 suggest），
-         * 因此这里必须做存在性判断 —— 否则只装核心包的用户打开任意列表页
-         * 都会因类不存在而 500。未装时降级为空数组，下拉框为空但不报错。
+         * 插件通过 Extension::fieldScript() 注册 JS 片段，
+         * 在这里**于 setup() 作用域内**执行 —— 因此片段可以直接用
+         * ref / computed / form，并通过 pluginExports 把函数暴露给模板。
          *
-         * 注：这段注释会随页面下发（在 <script> 内），保持简短。
+         * 框架核心不再包含任何插件专用代码。
          */
-        const regionProvinces = @json(class_exists(\Aimanong\Region\Region::class)
-            ? \Aimanong\Region\Region::provinces()
-            : []);
+        const pluginExports = {};
 
-        const regionTree = @json(class_exists(\Aimanong\Region\Region::class)
-            ? \Aimanong\Region\Region::tree()
-            : []);
+        /*
+         * 插件字段初始化钩子（占位）。
+         *
+         * 声明为 let 而非 const：插件的 JS 片段可以覆盖它，
+         * 在「打开表单」时初始化自己的字段状态。
+         */
+        let pluginFieldInit = null;
 
-        const regionForm = ref({});
-
-        /** 确保字段状态存在 */
-        function ensureRegion(name) {
-            if (!regionForm.value[name]) {
-                regionForm.value[name] = { province: '', city: '', district: '', cities: [], districts: [] };
-            }
-            return regionForm.value[name];
-        }
-
-        function onProvinceChange(name) {
-            const st = ensureRegion(name);
-            st.city = '';
-            st.district = '';
-            st.districts = [];
-            const p = (regionTree || []).find(x => x.code === st.province);
-            st.cities = p ? (p.children || []) : [];
-            syncRegionValue(name);
-        }
-
-        function onCityChange(name) {
-            const st = ensureRegion(name);
-            st.district = '';
-            const p = (regionTree || []).find(x => x.code === st.province);
-            const c = p ? (p.children || []).find(x => x.code === st.city) : null;
-            st.districts = c ? (c.children || []) : [];
-            syncRegionValue(name);
-        }
-
-        /** 把三级选择拼成路径写入表单值 */
-        function syncRegionValue(name) {
-            const st = ensureRegion(name);
-            const p = (regionTree || []).find(x => x.code === st.province);
-            const c = p ? (p.children || []).find(x => x.code === st.city) : null;
-            const d = c ? (c.children || []).find(x => x.code === st.district) : null;
-
-            const parts = [p?.name, c?.name, d?.name].filter(Boolean);
-            form.value[name] = parts.join('/');
-        }
+        @foreach($pluginScripts as $pluginScript)
+            @include($pluginScript)
+        @endforeach
 
         /** 条件高亮的 CSS 类 */
         function cellClass(col, row) {
@@ -761,9 +719,17 @@ const app = createApp({
                 }
             }
 
-            // 插件字段需要预置状态，否则模板取值会报 undefined
-            for (const f of (schema.form?.fields ?? [])) {
-                if (f.type === 'region') ensureRegion(f.name);
+            /*
+             * 插件字段的预置钩子。
+             *
+             * 插件可通过 fieldScript() 注册 pluginFieldInit，
+             * 在「打开新增弹窗」时初始化自己的状态 ——
+             * 否则模板取值会拿到 undefined。
+             */
+            if (typeof pluginFieldInit === 'function') {
+                for (const f of (schema.form?.fields ?? [])) {
+                    pluginFieldInit(f);
+                }
             }
 
             showCreate.value = true;
@@ -773,9 +739,11 @@ const app = createApp({
             editing.value = true;
             currentStep.value = 0;
 
-            // 初始化插件字段状态
-            for (const f of (schema.form?.fields ?? [])) {
-                if (f.type === 'region') ensureRegion(f.name);
+            // 初始化插件字段状态（与 openCreate 同一钩子）
+            if (typeof pluginFieldInit === 'function') {
+                for (const f of (schema.form?.fields ?? [])) {
+                    pluginFieldInit(f);
+                }
             }
 
             form.value = { ...row };
@@ -943,8 +911,9 @@ const app = createApp({
             isStepped, steps, currentStep, visibleFields,
             inputType, mapLabel, tagClass, formatMoney, cellValue, cellClass, normalizeCell,
             toasts, toast, dismissToast, confirmState, doDelete,
-            regionProvinces, regionTree, regionForm, onProvinceChange, onCityChange, ensureRegion,
-            syncRegionValue, openCreate, goStep,
+            openCreate, goStep,
+            // 插件通过 pluginExports 把函数暴露给模板（与内置字段同等待遇）
+            ...pluginExports,
             fieldOptions, readonly, isUploadField, uploadUrl, uploadName,
             isNumeric,
         };

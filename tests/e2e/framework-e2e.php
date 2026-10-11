@@ -405,7 +405,50 @@ $fwRequire = $fwComposer['require'] ?? [];
 t("region 不在 framework 的 require 中", ! isset($fwRequire['aimanong/region']),
     isset($fwRequire['aimanong/region']) ? '❌ 被声明为硬依赖' : '仅 suggest');
 
-// ── 9.10 业务语言可检索（第六轮 AI 实测的回归）──
+// ── 9.10 插件可自带字段 UI（框架核心不得内置插件 UI）──
+/*
+ * 回归：region 的三级联动 UI 曾经硬编码在框架核心模板里，
+ * 导致 framework 隐式依赖 region —— 只装核心包的用户打开列表页
+ * 直接 Fatal error，而第三方插件想加自定义字段 UI 也没有出路。
+ *
+ * 现在插件通过 Extension::fieldView() / fieldScript() 自带 UI，
+ * 框架只负责在合适的字段类型上渲染它们。
+ */
+$fw = dirname(__DIR__, 2).'/packages/framework';
+
+// 1) 框架核心不得再出现插件自己的类
+$coreTpl = (string) file_get_contents($fw.'/resources/views/resource.blade.php');
+$coreHasRegionCode = preg_match(
+    '/^\s*(const|function|\$)\s*\w*region/i',
+    $coreTpl,
+    $mm
+) === 1;
+t("框架核心无 region 专用代码", ! $coreHasRegionCode,
+    $coreHasRegionCode ? '仍有：'.trim($mm[0]) : '已迁至插件');
+
+// 2) 框架提供了注入点
+t("FieldType 支持字段视图注册",
+    method_exists(\Aimanong\Support\FieldType::class, 'fieldView')
+    && method_exists(\Aimanong\Support\FieldType::class, 'fieldViewFor')
+    && method_exists(\Aimanong\Support\FieldType::class, 'fieldScript'));
+
+t("Extension 暴露 fieldView/fieldScript",
+    method_exists(\Aimanong\Extend\Extension::class, 'fieldView')
+    && method_exists(\Aimanong\Extend\Extension::class, 'fieldScript'));
+
+// 3) 装了 region 插件时，它确实注册了 UI（本项目装了）
+if (class_exists(\Aimanong\Region\RegionExtension::class)) {
+    t("region 插件自带字段 UI",
+        \Aimanong\Support\FieldType::fieldViewFor('region') !== null,
+        (string) \Aimanong\Support\FieldType::fieldViewFor('region'));
+
+    t("region 插件自带 JS 片段",
+        in_array('aimanong-region::script', \Aimanong\Support\FieldType::fieldScripts(), true));
+} else {
+    echo "  ⏭  跳过「region 插件 UI」：本项目未安装该插件\n";
+}
+
+// ── 9.11 业务语言可检索（第六轮 AI 实测的回归）──
 $searchDocs = new \Aimanong\Mcp\Tools\SearchDocs();
 $bizHits = 0;
 foreach (['运营希望自己改文案', '处理留痕', '现场照片要能传多张'] as $q) {

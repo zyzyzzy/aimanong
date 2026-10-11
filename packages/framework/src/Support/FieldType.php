@@ -76,6 +76,26 @@ class FieldType
     protected static array $fieldClasses = [];
 
     /**
+     * 字段的**渲染片段**（blade 视图名）。
+     *
+     * ## 为什么需要这个
+     *
+     * 插件注册了字段类型（`Extension::field()`）之后，只能表达
+     * 「这个字段是什么类型」，**无法表达「它长什么样」** ——
+     * 渲染逻辑只能写在框架核心的 resource.blade.php 里。
+     *
+     * 后果（真实发生）：官方 region 插件的三级联动 UI 是硬编码在
+     * **框架核心模板**里的，而 framework 的 composer.json 并没有
+     * 依赖 region —— 只装核心包的用户打开列表页直接 Fatal error。
+     *
+     * 这不只是耦合问题：**第三方插件根本没有出路** ——
+     * 想加个自定义字段，除了改框架源码别无他法。
+     *
+     * @var array<string, string>
+     */
+    protected static array $fieldViews = [];
+
+    /**
      * 注册一个字段类型。
      *
      * 供插件注入自定义字段 —— 无需修改框架核心。
@@ -95,6 +115,86 @@ class FieldType
         if ($fieldClass !== null) {
             self::$fieldClasses[$name] = $fieldClass;
         }
+    }
+
+    /**
+     * 注册字段的渲染片段。
+     *
+     * 插件侧：
+     *
+     * ```php
+     * $this->views(__DIR__.'/../resources/views', 'aimanong-region');
+     * $this->fieldView('region', 'aimanong-region::field');
+     * ```
+     *
+     * 片段里可使用 `f`（字段定义）、`form`（表单值）、`uri` 等变量，
+     * 与框架内置字段分支处于同一作用域 —— 插件因此能写出
+     * 与内置字段完全一致的自定义 UI。
+     *
+     * @param  string  $type  字段类型名（与 Extension::field() 注册的一致）
+     * @param  string  $view  blade 视图名
+     */
+    public static function fieldView(string $type, string $view): void
+    {
+        self::$fieldViews[$type] = $view;
+    }
+
+    /**
+     * 取字段的渲染片段（未注册则返回 null，由框架走内置分支）。
+     */
+    public static function fieldViewFor(string $type): ?string
+    {
+        return self::$fieldViews[$type] ?? null;
+    }
+
+    /**
+     * 字段用到的 **JS 片段**（注入到页面 setup() 作用域内）。
+     *
+     * @var array<int, string>
+     */
+    protected static array $fieldScripts = [];
+
+    /**
+     * 注册字段的 JS 片段。
+     *
+     * 片段在 Vue 的 `setup()` **作用域内**渲染，因此可以直接用
+     * `ref` / `computed` / `form` 等，并把辅助函数挂到 `pluginExports`：
+     *
+     * ```js
+     * // 插件片段（示意）
+     * const myState = ref({});
+     * function myHelper(name) { return myState.value[name]; }
+     * Object.assign(pluginExports, { myHelper });
+     * ```
+     *
+     * 框架最后会把这些导出合并进 setup 的返回值，
+     * 模板因此可以直接调用插件函数 —— **与内置字段同等待遇**。
+     */
+    public static function fieldScript(string $view): void
+    {
+        if (! in_array($view, self::$fieldScripts, true)) {
+            self::$fieldScripts[] = $view;
+        }
+    }
+
+    /**
+     * 全部字段 JS 片段。
+     *
+     * @return array<int, string>
+     */
+    public static function fieldScripts(): array
+    {
+        return self::$fieldScripts;
+    }
+
+    /**
+     * 全部已注册渲染片段的字段类型。
+     *
+     * @return array<int, string>
+     */
+    public static function viewableTypes(): array
+    {
+        return array_keys(self::$fieldViews);
     }
 
     /**

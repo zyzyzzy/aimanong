@@ -132,6 +132,54 @@ abstract class Extension
     }
 
     /**
+     * 注册字段的**渲染片段** —— 让插件自带前端 UI。
+     *
+     * ## 为什么需要它
+     *
+     * `field()` 只解决「这个字段是什么类型」，不解决「它长什么样」。
+     * 在此之前，插件字段的渲染逻辑只能写在框架核心的模板里 ——
+     * 那意味着第三方插件想加自定义字段，**除了改框架源码别无他法**。
+     *
+     * ## 用法
+     *
+     * ```php
+     * public function boot(): void
+     * {
+     *     // 1. 注册视图命名空间（指向插件自己的 resources/views）
+     *     $this->views(__DIR__.'/../resources/views', 'aimanong-region');
+     *
+     *     // 2. 把字段类型绑到片段上
+     *     $this->fieldView('region', 'aimanong-region::field');
+     * }
+     * ```
+     *
+     * 片段在**表单字段的作用域内**渲染，可直接使用：
+     *   - `$f`    字段定义（name / label / props ...）
+     *   - `$uri`  当前 Resource 的 uri
+     * 以及页面已注入的 Vue 上下文（`form`、`fieldOptions` 等）。
+     *
+     * @param  string  $type  字段类型名，须与 field() 注册的一致
+     * @param  string  $view  blade 视图名（含命名空间）
+     */
+    protected function fieldView(string $type, string $view): void
+    {
+        FieldType::fieldView($type, $view);
+    }
+
+    /**
+     * 注册字段用到的 JS 片段（注入到 Vue setup() 作用域内）。
+     *
+     * 与 fieldView() 配对使用：前者管「长什么样」，这里管「逻辑怎么算」。
+     *
+     * 片段里可以直接用 `ref` / `computed` / `form` / `f`（字段定义），
+     * 通过 `Object.assign(pluginExports, {...})` 把函数暴露给模板。
+     */
+    protected function fieldScript(string $view): void
+    {
+        FieldType::fieldScript($view);
+    }
+
+    /**
      * 从字段类的 $type 属性推导类型名。
      *
      * @param  class-string  $fieldClass

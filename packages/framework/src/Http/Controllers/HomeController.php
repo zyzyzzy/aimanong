@@ -9,8 +9,10 @@ use Aimanong\Auth\PermissionGate;
 use Aimanong\Menu\MenuRegistry;
 use Aimanong\Models\Administrator;
 use Aimanong\Models\Permission;
+use Aimanong\Schema\Ast\ResourceNode;
 use Aimanong\Schema\Compiler;
 use Aimanong\Schema\Emitters\JsonSchemaEmitter;
+use Aimanong\Support\FieldType;
 use Aimanong\Ui\ThemeConfig;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -123,6 +125,41 @@ class HomeController extends Controller
             // 菜单（按当前用户权限过滤）
             'menu' => (new MenuRegistry)->tree(),
             'ui' => $this->uiPreferences(),
+            /*
+             * 插件字段的渲染片段（由 Extension::fieldView() 注册）。
+             *
+             * 框架核心**不再内置任何插件字段的 UI** ——
+             * 页面按字段类型把渲染分发给对应的插件片段。
+             */
+            'pluginFieldViews' => $this->pluginFieldViews($node),
+            /*
+             * 插件字段的 JS 片段（由 Extension::fieldScript() 注册）。
+             * 在 Vue setup() 作用域内渲染，可用 ref / computed / form。
+             */
+            'pluginScripts' => FieldType::fieldScripts(),
         ]);
+    }
+
+    /**
+     * 当前 Resource 用到的**插件字段渲染片段**。
+     *
+     * 只返回这个页面真正会用到的（按 schema 里出现的字段类型过滤），
+     * 避免把无关插件的片段也塞进页面。
+     *
+     * @return array<string, string> 字段类型 => blade 视图名
+     */
+    protected function pluginFieldViews(ResourceNode $node): array
+    {
+        $out = [];
+
+        foreach ($node->fields as $field) {
+            $view = FieldType::fieldViewFor($field->type);
+
+            if ($view !== null && ! isset($out[$field->type])) {
+                $out[$field->type] = $view;
+            }
+        }
+
+        return $out;
     }
 }

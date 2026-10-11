@@ -37,8 +37,21 @@ export const FIELD_TYPE_MAP = {
   tags: { json: 'array', php: 'array' },
   hidden: { json: 'string', php: 'string' },
   display: { json: 'string', php: 'mixed' },
-  divider: { json: 'null', php: 'mixed' }
+  divider: { json: 'null', php: 'mixed' },
+  // v1.6.0 新增：上传类（与后端 FieldType::TYPES 保持一致）
+  image: { json: 'string', php: 'string' },
+  images: { json: 'array', php: 'array' },
+  file: { json: 'string', php: 'string' },
+  files: { json: 'array', php: 'array' }
 }
+
+/**
+ * 上传类字段（值是多值时前端要按数组处理）。
+ *
+ * 与后端 `FieldType` 的登记保持一一对应 —— 漏一个，
+ * Playground 里试 `$form->images('x')` 就会得到错误的 JSON 类型。
+ */
+export const UPLOAD_TYPES = ['image', 'images', 'file', 'files']
 
 /** 表单方法与字段类型的对应（方法名大小写不敏感） */
 const FORM_METHOD_TO_TYPE = {
@@ -67,7 +80,12 @@ const FORM_METHOD_TO_TYPE = {
   tags: 'tags',
   hidden: 'hidden',
   display: 'display',
-  divider: 'divider'
+  divider: 'divider',
+  // v1.6.0：上传类字段
+  image: 'image',
+  images: 'images',
+  file: 'file',
+  files: 'files'
 }
 
 /** 列展示器方法 → formatter 标识 */
@@ -244,7 +262,7 @@ function parseChain (chainText) {
       case 'width': props.width = Number(rawArgs); break
       case 'multiple': props.multiple = true; break
       case 'format': props.format = unquote(rawArgs); break
-      // 列展示器
+      // 列展示器（注意：方法名是驼峰，下面的 switch 用的是精确匹配）
       case 'dateTime': formatter = 'datetime'; props.format = unquote(rawArgs) || 'Y-m-d H:i:s'; break
       case 'bool': {
         formatter = 'bool'
@@ -267,6 +285,52 @@ function parseChain (chainText) {
       case 'using': formatter = 'enum'; props.enum = rawArgs; break
       case 'perPage': props.perPage = Number(rawArgs); break
       case 'using': break
+
+      /*
+       * ── v1.6.0 新增的声明语法 ──
+       *
+       * 这些是「带地基的平台」六项能力的入口。Playground 不支持它们时，
+       * 潜在用户照着文档试 `->dict('order_status')` 会得到错误产物 ——
+       * 而 Playground 是很多人接触框架的第一站。
+       */
+      case 'dict':
+        // 数据字典：选项来自字典，此处标记来源即可
+        props.dict = unquote(rawArgs)
+        break
+      case 'accept':
+        props.accept = unquote(rawArgs)
+        break
+      case 'maxSize':
+        props.maxSize = Number(rawArgs)
+        break
+      case 'directory':
+        props.directory = unquote(rawArgs)
+        break
+      case 'requiredOnCreate':
+        props.requiredOnCreate = rawArgs === '' || rawArgs === 'true'
+        break
+      case 'omitWhenEmpty':
+        props.omitWhenEmpty = rawArgs === '' || rawArgs === 'true'
+        break
+      case 'relation':
+        props.relation = unquote(rawArgs)
+        break
+      case 'file':
+        // 列展示器：附件渲染成文件名链接
+        formatter = 'file'
+        break
+      case 'dangerWhen':
+      case 'dangerBelow':
+      case 'warningAbove': {
+        // 条件高亮：编译产物里是 {operator, value, level}
+        const parts = splitArgs(rawArgs)
+        props.highlight = {
+          operator: name === 'dangerWhen' ? unquote(parts[0]) : (name === 'dangerBelow' ? '<' : '>'),
+          value: parts.length > 1 ? parseValue(parts[1]) : parseValue(parts[0]),
+          level: name === 'warningAbove' ? 'warning' : 'danger'
+        }
+        break
+      }
       default: break
     }
   }
@@ -349,7 +413,18 @@ export function parseForm (body) {
     const name = m[3]
     const label = m[5] || name
 
+    /*
+     * ⚠️ 查表必须大小写不敏感。
+     *
+     * 映射表的键是小写（`multiselect`），而 PHP 方法名是驼峰
+     * （`multiSelect`）—— 直接查表会 miss，那个字段就被**静默跳过**，
+     * 编译产物里凭空少一个字段，且不报任何错。
+     *
+     * 原文注释已经写了「方法名大小写不敏感」，但代码没做这件事。
+     * 实测：`$form->multiSelect('roles')->relation('roles')` 产出空数组。
+     */
     const type = FORM_METHOD_TO_TYPE[method]
+      || FORM_METHOD_TO_TYPE[method.toLowerCase()]
     if (!type) continue // 非字段方法（如 divider 的变体）忽略
 
     // divider 是纯展示，特殊处理

@@ -332,6 +332,23 @@ class ResourceController extends Controller
             $field = $m[1];
         }
 
+        /*
+         * ⚠️ hint 不能推荐裸的 `unique:表名,字段`。
+         *
+         * ## 回归（第六轮 AI 实测，父 Agent 独立复现）
+         *
+         * 原 hint 写的是「声明 ->rules('unique:表名,{$field}') 可在提交前校验」。
+         * AI 照着做了，结果**编辑任何字段都会 422「值已存在」** ——
+         * 因为 `unique` 规则会把「记录自己」也算作冲突，而框架的表单
+         * 声明是静态的，拿不到当前记录 id，写不出 `->ignore($id)`。
+         *
+         * 实测对照：
+         *   裸 unique:equipment_repairs,repair_no  → 编辑自己 = ❌ 已存在
+         *   Rule::unique(...)->ignore($id)         → 编辑自己 = ✅ 通过
+         *
+         * 也就是说：这条 hint 会把用户**从「能编辑」引导到「不能编辑」**。
+         * 对一个以「AI 一次改对」为卖点的框架，主动教错用法是最坏的情况。
+         */
         return response()->json([
             'message' => $field !== null
                 ? "{$field} 的值已存在，请换一个"
@@ -339,8 +356,13 @@ class ResourceController extends Controller
             'error' => 'UNIQUE_CONSTRAINT_VIOLATION',
             'field' => $field,
             'hint' => $field !== null
-                ? "在 form() 中声明 ->rules('unique:表名,{$field}') 可在提交前校验"
-                : '在 form() 中声明 unique 规则可在提交前校验',
+                ? "数据库唯一索引已正确拦截重复值，无需额外处理。"
+                    ."若要「提交前」就提示：该字段的 ->rules() 里**不要**写裸的 "
+                    ."unique:表名,{$field} —— 它会让编辑时记录与自己冲突；"
+                    .'本框架的表单声明拿不到当前记录 id，写不出 ignore()。'
+                : '数据库唯一索引已拦截重复值；不建议在 ->rules() 里补 unique 规则',
+            'note' => '数据库唯一约束是最终防线；表单层预校验对「更新」场景'
+                .'需要当前记录 id，当前声明式 API 无法表达，故不推荐。',
         ], 422);
     }
 

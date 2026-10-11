@@ -107,14 +107,25 @@ php artisan aimanong:schema --check   # 检测漂移（漂移会阻断 CI）
 $grid->column('field', '标题')        // 一列
     ->sortable()                     // 可排序
     ->searchable()                   // 加入快捷搜索
-    ->filter()                       // 加入筛选器
     ->using(EnumClass::class)        // 值→标签映射
     ->dateTime();                    // 格式化为日期时间
-$grid->filter()->equal('status');     // 精确筛选
-$grid->filter()->like('name');        // 模糊筛选
+$grid->perPage(20);                   // 每页条数
+$grid->export();                      // 开启 CSV 导出
+$grid->exportExcept(['body']);        // 导出时排除某列
 $grid->actions();                     // 行操作按钮
 $grid->batchActions();                // 批量操作
 ```
+
+> ⚠️ **没有 `$grid->filter()` 这个方法**（曾经写在这里，实测报
+> `Call to undefined method`）。列表页的筛选入口是
+> **搜索框 `->searchable()`**，它支持多列模糊匹配。
+>
+> `->filter()` **只作用于列**，且**当前不渲染 UI 控件** ——
+> 它会在 schema 里产出 `"filterable": true`，API 层
+> `?filters[列名]=值` 也确实生效，但页面上不会出现筛选框。
+> 需要按状态精确筛选时，请把该列设为 `->searchable()`，
+> 或把筛选值拼进请求参数。
+> **不要只声明 `->filter()` 就以为界面上能筛。**
 
 ### Form（表单页）
 ```php

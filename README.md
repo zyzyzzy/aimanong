@@ -30,7 +30,18 @@ Aimanong 为此明确牺牲部分"灵活性"来换取"确定性"：
 
 ## 快速开始
 
-**v1.0.0 已发布** —— 全部里程碑（M0–M6）完成，经过 5 轮 AI 实测、累计修复 20 个真实缺陷。
+**最新版本 v1.6.1** —— 全部里程碑（M0–M6）完成，
+且已补齐「带地基的平台」六项基座能力（登录日志 / 操作日志 / 数据字典 /
+文件上传 / 个人中心 / 管理员账号）。
+
+经过 **6 轮 AI 实测**（一次成功率 0.5 → 0.5 → 1.0 → 1.0 → 1.0 → **1.0**）
+与 **3 轮真实场景验证**（电商 / 插件 / CRM）。
+
+> 修复记录：CHANGELOG 里**显式列出**的缺陷条目 33 个
+> （这是下界 —— 部分小节用文字描述，未逐条编号）。
+> 其中多个属于「界面看着正常、测试全绿」的类型，例如：
+> 多对多关联写入从未生效、条件高亮从来没有视觉效果、
+> 只读资源在 OpenAPI 里仍宣告写接口。
 
 ```bash
 composer require aimanong/framework
@@ -44,9 +55,16 @@ php artisan aimanong:install
 | 路径 | 说明 |
 |---|---|
 | `packages/framework` | 核心框架（Composer: `aimanong/framework`） |
-| `packages/ui` | Vue 3 组件库（npm: `@aimanong/ui`） |
-| `docs/` | 文档站（VitePress） |
-| `demo/` | 示例项目 |
+| `packages/region` | 官方扩展：中国省市区三级联动 |
+| `docs/` | 文档站（VitePress）+ Playground |
+| `internal-docs/` | 开发文档：方案、实测记录、验证方法论 |
+| `tests/e2e/` | 端到端测试（从零搭项目跑真实 HTTP） |
+| `scripts/` | 发版检查、demo 一键搭建 |
+
+> **前端没有独立包**：Aimanong 采用**零构建**方案 ——
+> Vue 3 内置在框架里（不走 CDN），页面由 Schema 自动渲染，
+> 使用者不需要 npm、不需要打包。这是刻意的取舍，
+> 不是"还没做"。
 
 ## 文档
 

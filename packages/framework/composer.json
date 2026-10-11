@@ -34,6 +34,9 @@
         "illuminate/view": "^12.0|^13.0",
         "laravel/mcp": "^0.4"
     },
+    "suggest": {
+        "aimanong/region": "中国省市区三级联动字段（->region()）。不装也能用框架，只是没有这个字段类型"
+    },
     "require-dev": {
         "laravel/pint": "^1.18",
         "orchestra/testbench": "^9.0|^10.0",

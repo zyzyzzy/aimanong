@@ -318,7 +318,61 @@ t("能力面覆盖七项基座", $missing === [], $missing ? '缺: '.implode(','
 $dictCaps = $caps['dictionaries'] ?? [];
 t("能力面暴露字典清单", is_array($dictCaps), count($dictCaps).' 个');
 
-// ── 9.9 业务语言可检索（第六轮 AI 实测的回归）──
+// ── 9.9 可选插件不得成为硬依赖 ──
+/*
+ * 回归（P0）：框架核心模板曾**无条件**调用
+ * `\Aimanong\Region\Region::provinces()`，而 framework 的
+ * composer.json 并没有依赖 region。
+ *
+ * 后果：只想 `composer require aimanong/framework` 的用户
+ * （完全按 README 快速开始做），打开任意列表页就是
+ * `Class "Aimanong\Region\Region" not found` → 整个后台不可用。
+ *
+ * 这条断言检查模板里对**可选插件**的调用都带存在性守卫。
+ */
+$tplPath = dirname(__DIR__, 2).'/packages/framework/resources/views/resource.blade.php';
+$tpl = is_file($tplPath) ? (string) file_get_contents($tplPath) : '';
+
+if ($tpl === '') {
+    t("模板存在性守卫", false, "读不到 {$tplPath}");
+} else {
+    $lines = explode("\n", $tpl);
+    $bare = [];
+    $inComment = false;
+
+    foreach ($lines as $i => $line) {
+        $trimmed = ltrim($line);
+        if (str_contains($trimmed, '/*')) {
+            $inComment = true;
+        }
+        $isComment = $inComment || str_starts_with($trimmed, '*') || str_starts_with($trimmed, '//');
+        if (str_contains($trimmed, '*/')) {
+            $inComment = false;
+        }
+
+        // 注释里的示例代码不算（上一版检查就因此误报过）
+        if ($isComment || ! str_contains($line, 'Aimanong\\Region\\Region::')) {
+            continue;
+        }
+
+        $prev = $lines[$i - 1] ?? '';
+        if (! str_contains($line, 'class_exists') && ! str_contains($prev, 'class_exists')) {
+            $bare[] = $i + 1;
+        }
+    }
+
+    t("可选插件调用有存在性守卫", $bare === [],
+        $bare ? '裸调用在第 '.implode(', ', $bare).' 行' : 'region 调用均有守卫');
+}
+
+// region 是否只作为 suggest，而非 require
+$fwComposer = json_decode(
+    (string) file_get_contents(dirname(__DIR__, 2).'/packages/framework/composer.json'), true);
+$fwRequire = $fwComposer['require'] ?? [];
+t("region 不在 framework 的 require 中", ! isset($fwRequire['aimanong/region']),
+    isset($fwRequire['aimanong/region']) ? '❌ 被声明为硬依赖' : '仅 suggest');
+
+// ── 9.10 业务语言可检索（第六轮 AI 实测的回归）──
 $searchDocs = new \Aimanong\Mcp\Tools\SearchDocs();
 $bizHits = 0;
 foreach (['运营希望自己改文案', '处理留痕', '现场照片要能传多张'] as $q) {

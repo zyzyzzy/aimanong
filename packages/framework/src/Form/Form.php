@@ -284,6 +284,45 @@ class Form
     }
 
     /**
+     * 仅新增时必填的字段名。
+     *
+     * @return array<int, string>
+     */
+    public function requiredOnCreateFields(): array
+    {
+        $out = [];
+
+        foreach ($this->fields as $name => $field) {
+            if (($field->getProps()['requiredOnCreate'] ?? false) === true) {
+                $out[] = (string) $name;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * 声明了 omitWhenEmpty 的字段名。
+     *
+     * 这些字段提交时若为空则**整个键被剔除**，
+     * 用于「留空表示不修改」的可选字段（典型：编辑用户时的密码框）。
+     *
+     * @return array<int, string>
+     */
+    public function omitWhenEmptyFields(): array
+    {
+        $out = [];
+
+        foreach ($this->fields as $name => $field) {
+            if (($field->getProps()['omitWhenEmpty'] ?? false) === true) {
+                $out[] = (string) $name;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * 取声明了关联的字段：字段名 => 关联名。
      *
      * 这些字段不写主表，由 Repository 在保存后 sync 中间表。

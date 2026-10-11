@@ -209,6 +209,10 @@ class AimanongServiceProvider extends ServiceProvider
             $registry->register(Foundation\Resources\DictTypeResource::class);
             $registry->register(Foundation\Resources\DictItemResource::class);
         }
+
+        if (config('aimanong.foundation.admin_user.enable', true)) {
+            $registry->register(Foundation\Resources\AdminUserResource::class);
+        }
     }
 
     /**

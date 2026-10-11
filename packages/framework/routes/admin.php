@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Aimanong\Foundation\Profile\ProfileController;
 use Aimanong\Foundation\Upload\UploadController;
 use Aimanong\Http\Controllers\AuthController;
 use Aimanong\Http\Controllers\HomeController;
@@ -106,6 +107,15 @@ Route::prefix('api')->name('api.')->group(function (): void {
      */
     Route::post('upload', [UploadController::class, 'store'])->name('upload');
 
+    /*
+     * 个人中心。
+     *
+     * `profile/password` 必须声明在 `{uri}/{id}` 之前 ——
+     * 否则会被当成 uri=profile、id=password，永远命中不了。
+     */
+    Route::put('profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::put('profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+
     Route::get('{uri}', [ResourceController::class, 'index'])->name('index');
     Route::post('{uri}', [ResourceController::class, 'store'])->name('store');
 
@@ -118,6 +128,16 @@ Route::prefix('api')->name('api.')->group(function (): void {
     Route::put('{uri}/{id}', [ResourceController::class, 'update'])->name('update');
     Route::delete('{uri}/{id}', [ResourceController::class, 'destroy'])->name('destroy');
 });
+
+/*
+| 个人中心页面。
+|
+| 必须声明在下面的 {uri} 之前 —— 否则 'profile' 会被当成一个 Resource uri，
+| 得到「Resource [profile] 未注册」的 404。
+*/
+if (config('aimanong.foundation.profile.enable', true)) {
+    Route::get('profile', [ProfileController::class, 'show'])->name('profile');
+}
 
 /*
 | 页面路由：返回 Vue SPA 外壳，实际渲染由前端按 Schema 完成。

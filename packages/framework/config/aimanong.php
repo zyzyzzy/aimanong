@@ -165,6 +165,24 @@ return [
         ],
 
         /*
+         * 管理员账号管理界面。
+         *
+         * 关掉只隐藏界面，不影响认证 —— 用户可能想用自己的 User 模型与界面。
+         */
+        'admin_user' => [
+            'enable' => env('AIMANONG_ADMIN_USER', true),
+        ],
+
+        /*
+         * 个人中心：改资料 / 改密码 / 看我的权限与操作记录。
+         *
+         * 关掉后顶栏不再出现「个人中心」入口，路由 404。
+         */
+        'profile' => [
+            'enable' => env('AIMANONG_PROFILE', true),
+        ],
+
+        /*
          * 文件上传。
          *
          * 用法：$form->image('avatar')->label('头像')->maxSize(2048);

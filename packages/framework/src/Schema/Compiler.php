@@ -105,6 +105,10 @@ class Compiler
                 'steps' => $form->toArray()['steps'],
                 // 声明了多对多关联的字段：写入时自动 sync，不写主表
                 'relationFields' => $form->relationFields(),
+                // 留空即不提交的字段（如编辑用户时的密码框）
+                'omitWhenEmpty' => $form->omitWhenEmptyFields(),
+                // 仅新增时必填（编辑留空表示不改，典型是密码框）
+                'requiredOnCreate' => $form->requiredOnCreateFields(),
             ],
         );
     }

@@ -209,12 +209,28 @@ class ResourceController extends Controller
 
         $node = $this->resolve($uri);
 
-        $data = $this->validateRequest($request, $node);
+        $data = $this->validateRequest($request, $node, true);
+
+        /*
+         * 关联字段（multiSelect->relation()）不是真实列，必须：
+         *   1. 从主表数据里剔除，否则 insert 会带上不存在的列
+         *   2. 在主表写入拿到主键后，sync 中间表
+         *
+         * ⚠️ 这两步曾经只是"定义在那里"从未被调用 ——
+         * 于是 multiSelect()->relation() 变成「声明了但写不进去」的幽灵能力，
+         * 而且完全不报错：表单提交成功、列表看不出区别。
+         * demo 里的多对多标签不得不自己写模型事件绕过（见 CmsArticle 注释）。
+         */
+        [$data, $relations] = $this->splitRelationFields($node, $data);
 
         try {
             $model = $this->repository($node)->create($data);
         } catch (QueryException $e) {
             return $this->handleConstraintViolation($e);
+        }
+
+        if ($relations !== []) {
+            $this->syncRelations($model, $relations);
         }
 
         return response()->json(['data' => $model], 201);
@@ -231,10 +247,16 @@ class ResourceController extends Controller
 
         $data = $this->validateRequest($request, $node);
 
+        [$data, $relations] = $this->splitRelationFields($node, $data);
+
         try {
             $model = $this->repository($node)->update($id, $data);
         } catch (QueryException $e) {
             return $this->handleConstraintViolation($e);
+        }
+
+        if ($relations !== []) {
+            $this->syncRelations($model, $relations);
         }
 
         return response()->json(['data' => $model]);
@@ -452,29 +474,81 @@ class ResourceController extends Controller
      *
      * @return array<string, mixed>
      */
-    protected function validateRequest(Request $request, ResourceNode $node): array
+    protected function validateRequest(Request $request, ResourceNode $node, bool $isCreate = false): array
     {
+        /** @var array<string, mixed> $rules */
         $rules = $node->meta['rules'] ?? [];
 
-        if ($rules === []) {
-            return $request->all();
+        /*
+         * ── 第一步：先剔除「留空即不提交」的字段 ──
+         *
+         * ⚠️ 顺序至关重要：必须在 validate() **之前**。
+         *
+         * 最初写成「先校验、再剔除」，结果编辑用户时把密码框留空，
+         * min:6 直接对着空串报错「密码 不能少于 6 个字符」——
+         * 而用户的意思明明是「不改密码」。校验器看到的是空串，
+         * 不是"没提交"，所以规则一定会命中。
+         *
+         * @var array<int, mixed> $omit
+         */
+        $omit = $node->meta['omitWhenEmpty'] ?? [];
+
+        $input = $request->except(['_token', '_method']);
+
+        foreach ($omit as $name) {
+            if (! is_string($name)) {
+                continue;
+            }
+
+            $value = $input[$name] ?? null;
+
+            if ($value === null || $value === '' || $value === []) {
+                unset($input[$name]);
+            }
         }
 
-        // 校验（失败时抛 ValidationException → 422）
-        $request->validate($rules);
+        /*
+         * ── 第二步：仅新增时必填的字段（典型：用户表单的密码框）──
+         *
+         * 编辑时必须放行 —— 用户留空表示「不改密码」，
+         * 若这里仍要求 required，管理员就永远改不了别的字段。
+         */
+        if ($isCreate) {
+            /** @var array<int, mixed> $requiredOnCreate */
+            $requiredOnCreate = $node->meta['requiredOnCreate'] ?? [];
+
+            foreach ($requiredOnCreate as $name) {
+                if (! is_string($name) || ! isset($rules[$name])) {
+                    continue;
+                }
+
+                /** @var array<int, mixed>|string $current */
+                $current = $rules[$name];
+                $list = is_array($current) ? $current : explode('|', (string) $current);
+
+                if (! in_array('required', $list, true)) {
+                    array_unshift($list, 'required');
+                }
+
+                $rules[$name] = $list;
+            }
+        }
 
         /*
-         * 关键：不能直接用 validate() 的返回值。
-         * 它只返回"有校验规则"的字段，会把 password 等
-         * 未在表单声明中出现的字段静默丢弃，导致写入失败。
-         * 因此校验通过后仍以原始输入为准。
+         * 用剔除后的输入替换请求体，再校验。
+         *
+         * 关键：不能直接用 validate() 的返回值 ——
+         * 它只返回"有校验规则"的字段，会把未声明规则的字段静默丢弃，
+         * 导致写入不完整。因此校验后仍以完整输入为准。
          */
-        $data = $request->all();
+        $request->replace($input);
 
-        // 剔除 Laravel 内部字段
-        unset($data['_token'], $data['_method']);
+        if ($rules !== []) {
+            // 校验失败时抛 ValidationException → 422
+            $request->validate($rules);
+        }
 
-        return $data;
+        return $input;
     }
 
     protected function resolve(string $uri): ResourceNode

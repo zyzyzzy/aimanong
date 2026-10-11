@@ -154,7 +154,7 @@
 
         <div v-for="f in visibleFields" :key="f.name" class="am-field" v-show="!f.hidden">
           <label class="am-field__label">
-            @{{ f.label }}<span v-if="f.required" class="am-field__required">*</span>
+            @{{ f.label }}<span v-if="f.required || (f.props.requiredOnCreate && !editing)" class="am-field__required">*</span>
           </label>
 
           <select v-if="f.type === 'select'" v-model="form[f.name]" class="am-select">
@@ -284,29 +284,16 @@
 @push('scripts')
 {{-- Vue 从框架自带的静态资源加载（不依赖外部 CDN）--}}
 <script src="{{ \Aimanong\Aimanong::asset()->url('js/vue.global.prod.js') }}"></script>
+@include('aimanong::partials.upload', ['uploadConfig' => $schema['upload'] ?? []])
 <script>
 const { createApp, ref, computed, onMounted } = Vue;
 
-/*
- * 上传配置由服务端下发（见 JsonSchemaEmitter::upload）——
- * 前端不硬编码 /admin/uploads 这类路径，换磁盘/换 CDN 都不用改前端。
- */
-const UPLOAD = @json($schema['upload'] ?? []);
-const CSRF = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
-
-/** 相对路径 → 可访问 URL（完整 URL / data: / 绝对路径原样返回） */
-function uploadUrl(value) {
-    if (!value || typeof value !== 'string') return '';
-    if (/^(https?:)?\/\//.test(value) || value.startsWith('data:') || value.startsWith('/')) return value;
-    return String(UPLOAD.urlTemplate || '/{path}').replace('{path}', value);
-}
-
-/** 取文件名（路径最后一段） */
-function uploadName(value) {
-    if (!value || typeof value !== 'string') return '';
-    const clean = value.split('?')[0].split('#')[0];
-    return decodeURIComponent(clean.substring(clean.lastIndexOf('/') + 1));
-}
+/* 上传能力（配置 / URL 解析 / am-upload 组件）来自 partials/upload.blade.php ——
+   个人中心也要传头像，共用同一份，避免「后台能传、个人中心传不了」。 */
+const UPLOAD = window.AimanongUpload.config;
+const CSRF = window.AimanongUpload.csrf;
+const uploadUrl = window.AimanongUpload.url;
+const uploadName = window.AimanongUpload.name;
 
 const app = createApp({
     setup() {
@@ -918,173 +905,7 @@ const app = createApp({
     },
 });
 
-/*
- * ══ 上传组件 ══
- *
- * 用组件而不是在字段分支里堆标记：单图/多图/单文件/多文件
- * 四种组合共享同一套上传、校验、删除逻辑，避免四份复制。
- *
- * 校验分两层：这里先做即时反馈（体积/扩展名），
- * 服务端仍是唯一的真实关卡（客户端校验只防手滑，不防攻击）。
- */
-app.component('am-upload', {
-    props: {
-        modelValue: { default: null },
-        multiple: { type: Boolean, default: false },
-        kind: { type: String, default: 'file' },
-        accept: { type: String, default: '' },
-        maxSize: { type: Number, default: 0 },
-        directory: { type: String, default: '' },
-    },
-    emits: ['update:modelValue'],
-    setup(props, { emit }) {
-        const input = ref(null);
-        const uploading = ref(false);
-        const error = ref('');
-
-        /** 归一化成数组：后端可能返回 JSON 字符串（模型没做 array cast） */
-        const items = computed(() => {
-            const v = props.modelValue;
-            if (v === null || v === undefined || v === '') return [];
-            if (Array.isArray(v)) return v.filter(Boolean);
-            if (typeof v === 'string') {
-                const t = v.trim();
-                if (t.startsWith('[')) {
-                    try {
-                        const parsed = JSON.parse(t);
-                        return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
-                    } catch (e) {
-                        return [v];
-                    }
-                }
-                return [v];
-            }
-            return [v];
-        });
-
-        function emitValue(list) {
-            emit('update:modelValue', props.multiple ? list : (list[0] || ''));
-        }
-
-        const acceptAttr = computed(() => {
-            if (props.accept) return props.accept;
-            const exts = props.kind === 'image' ? (UPLOAD.imageExtensions || []) : (UPLOAD.fileExtensions || []);
-            return exts.map(e => '.' + e).join(',');
-        });
-
-        const limit = computed(() => props.maxSize || (props.kind === 'image'
-            ? (UPLOAD.imageMaxSize || 0)
-            : (UPLOAD.fileMaxSize || 0)));
-
-        function pick() {
-            error.value = '';
-            if (input.value) input.value.click();
-        }
-
-        /** 上传前的即时反馈（服务端仍会再校验一次） */
-        function precheck(file) {
-            if (limit.value > 0 && file.size > limit.value * 1024) {
-                return '「' + file.name + '」超过 ' + limit.value + ' KB';
-            }
-            const dot = file.name.lastIndexOf('.');
-            const ext = dot >= 0 ? file.name.substring(dot + 1).toLowerCase() : '';
-            const allowed = (props.kind === 'image' ? UPLOAD.imageExtensions : UPLOAD.fileExtensions) || [];
-            if (allowed.length && ext && !allowed.includes(ext)) {
-                return '「' + file.name + '」类型不在允许列表（' + allowed.join('/') + '）';
-            }
-            return '';
-        }
-
-        async function onPick(e) {
-            const files = Array.from(e.target.files || []);
-            e.target.value = '';
-            if (files.length === 0) return;
-
-            const list = items.value.slice();
-            const room = props.multiple ? files.length : 1;
-            const todo = files.slice(0, room);
-
-            uploading.value = true;
-            error.value = '';
-
-            try {
-                for (const file of todo) {
-                    const bad = precheck(file);
-                    if (bad) { error.value = bad; continue; }
-
-                    const fd = new FormData();
-                    fd.append('file', file);
-                    fd.append('kind', props.kind);
-                    if (props.accept) fd.append('accept', props.accept);
-                    if (props.directory) fd.append('directory', props.directory);
-
-                    const res = await fetch(UPLOAD.endpoint, {
-                        method: 'POST',
-                        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF },
-                        body: fd,
-                    });
-                    const json = await res.json().catch(() => ({}));
-
-                    if (!res.ok) {
-                        error.value = json.message || ('上传失败（HTTP ' + res.status + '）');
-                        continue;
-                    }
-
-                    const path = json.data && json.data.path;
-                    if (!path) { error.value = '服务端未返回文件路径'; continue; }
-
-                    if (props.multiple) list.push(path);
-                    else { list.length = 0; list.push(path); }
-                }
-                emitValue(list);
-            } catch (err) {
-                error.value = err.message || '上传失败';
-            } finally {
-                uploading.value = false;
-            }
-        }
-
-        function removeAt(i) {
-            const list = items.value.slice();
-            list.splice(i, 1);
-            emitValue(list);
-        }
-
-        return { input, items, uploading, error, acceptAttr, limit, pick, onPick, removeAt, uploadUrl, uploadName };
-    },
-    template: `
-      <div class="am-upload" :class="{'am-upload--multiple': multiple}">
-        <template v-if="kind === 'image'">
-          <div class="am-upload__grid">
-            <div v-for="(item, i) in items" :key="item + i" class="am-upload__thumb">
-              <img :src="uploadUrl(item)" :alt="uploadName(item)">
-              <button type="button" class="am-upload__del" title="移除" @click="removeAt(i)">&times;</button>
-            </div>
-            <button v-if="multiple || items.length === 0" type="button" class="am-upload__add"
-                    :disabled="uploading" @click="pick">
-              <template v-if="uploading">上传中…</template>
-              <template v-else><span class="am-upload__plus">＋</span><span>选择图片</span></template>
-            </button>
-          </div>
-        </template>
-
-        <template v-else>
-          <ul v-if="items.length" class="am-upload__files">
-            <li v-for="(item, i) in items" :key="item + i">
-              <a :href="uploadUrl(item)" target="_blank" rel="noopener">@{{ uploadName(item) }}</a>
-              <button type="button" class="am-btn am-btn--sm am-btn--ghost" @click="removeAt(i)">移除</button>
-            </li>
-          </ul>
-          <button v-if="multiple || items.length === 0" type="button" class="am-btn am-btn--sm"
-                  :disabled="uploading" @click="pick">@{{ uploading ? '上传中…' : '选择文件' }}</button>
-        </template>
-
-        <div v-if="error" class="am-upload__err">@{{ error }}</div>
-        <div v-else-if="limit && kind === 'image'" class="am-field__help">单个文件不超过 @{{ limit }} KB</div>
-        <input ref="input" type="file" :accept="acceptAttr" :multiple="multiple" hidden @change="onPick">
-      </div>
-    `,
-});
+app.component('am-upload', window.AimanongUpload.component);
 
 app.mount('#app');
 </script>

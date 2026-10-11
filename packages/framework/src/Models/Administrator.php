@@ -31,9 +31,13 @@ class Administrator extends Model implements AuthenticatableContract
     protected $fillable = [
         'username',
         'name',
+        'email',
+        'phone',
         'password',
         'avatar',
         'enabled',
+        'last_login_at',
+        'last_login_ip',
     ];
 
     /**
@@ -81,9 +85,44 @@ class Administrator extends Model implements AuthenticatableContract
     {
         return [
             'enabled' => 'boolean',
+            // 'hashed' 让「赋值明文 → 自动哈希」，
+            // 因此后台表单可以直接收明文密码，无需控制器手动 Hash::make
             'password' => 'hashed',
             'preferences' => 'array',
+            'last_login_at' => 'datetime',
         ];
+    }
+
+    /**
+     * 记录一次成功登录。
+     *
+     * 给「用户管理」列表提供「最后登录时间/IP」——
+     * 排查「这个账号还在用吗」「是不是异地登录」都靠它。
+     */
+    public function markLoggedIn(?string $ip): void
+    {
+        try {
+            $this->forceFill([
+                'last_login_at' => now(),
+                'last_login_ip' => $ip,
+            ])->save();
+        } catch (\Throwable) {
+            // 老项目可能还没跑迁移，缺这两列。
+            // 记不上登录时间不该导致登录失败。
+        }
+    }
+
+    /**
+     * 是否是启用状态。
+     *
+     * 停用的账号必须拦在登录之前 —— 否则「停用」只是个装饰。
+     */
+    public function isEnabled(): bool
+    {
+        /** @var mixed $value */
+        $value = $this->getAttribute('enabled');
+
+        return $value === null || (bool) $value;
     }
 
     protected $hidden = [

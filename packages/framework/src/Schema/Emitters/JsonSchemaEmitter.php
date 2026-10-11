@@ -50,18 +50,7 @@ class JsonSchemaEmitter
      */
     protected function upload(): array
     {
-        $uploader = new Uploader;
-
-        return [
-            'urlTemplate' => $uploader->urlTemplate(),
-            'endpoint' => $uploader->endpoint(),
-            'disk' => $uploader->disk(),
-            'directory' => $uploader->directory(),
-            'imageMaxSize' => $uploader->maxSize('image'),
-            'fileMaxSize' => $uploader->maxSize('file'),
-            'imageExtensions' => $uploader->allowedExtensions('image'),
-            'fileExtensions' => $uploader->allowedExtensions('file'),
-        ];
+        return (new Uploader)->toArray();
     }
 
     /**

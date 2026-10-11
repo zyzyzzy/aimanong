@@ -145,6 +145,25 @@ class Uploader
     }
 
     /**
+     * 前端需要的上传配置（随 Schema 或页面下发给前端）。
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        return [
+            'urlTemplate' => $this->urlTemplate(),
+            'endpoint' => $this->endpoint(),
+            'disk' => $this->disk(),
+            'directory' => $this->directory(),
+            'imageMaxSize' => $this->maxSize('image'),
+            'fileMaxSize' => $this->maxSize('file'),
+            'imageExtensions' => $this->allowedExtensions('image'),
+            'fileExtensions' => $this->allowedExtensions('file'),
+        ];
+    }
+
+    /**
      * URL 模板（含字面量 `{path}` 占位符）。
      *
      * 前端拿它把「存进数据库的相对路径」还原成可访问 URL，

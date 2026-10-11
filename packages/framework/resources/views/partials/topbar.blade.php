@@ -34,7 +34,18 @@
     </button>
 
     @if($user)
-      <span class="am-text-sm am-text-secondary">{{ $user->name ?? $user->username ?? '' }}</span>
+      @if(config('aimanong.foundation.profile.enable', true))
+        <a class="am-topbar__user" href="{{ url(\Aimanong\Aimanong::url('profile')) }}" title="个人中心">
+          @if(!empty($user->avatar))
+            <img class="am-avatar am-avatar--sm" src="{{ (new \Aimanong\Foundation\Upload\Uploader)->urlFromValue($user->avatar) }}" alt="">
+          @else
+            <span class="am-avatar am-avatar--sm am-avatar--text">{{ mb_substr((string) ($user->name ?? $user->username ?? '?'), 0, 1) }}</span>
+          @endif
+          <span class="am-text-sm">{{ $user->name ?? $user->username ?? '' }}</span>
+        </a>
+      @else
+        <span class="am-text-sm am-text-secondary">{{ $user->name ?? $user->username ?? '' }}</span>
+      @endif
       <form method="POST" action="{{ url(\Aimanong\Aimanong::url('auth/logout')) }}" style="display:inline">
         @csrf
         <button type="submit" class="am-btn am-btn--ghost am-btn--sm">

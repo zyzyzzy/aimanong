@@ -118,6 +118,38 @@ abstract class Field
         return $this->rules("min:{$value}");
     }
 
+    /**
+     * 仅「新增」时必填。
+     *
+     * 典型场景：用户表单的密码框 —— 新增时必须填，
+     * 编辑时留空表示不改（配合 omitWhenEmpty()）。
+     *
+     * 用 required() 会导致编辑时被自己的规则卡住，
+     * 用 nullable() 又会让新增时静默存进空密码。
+     */
+    public function requiredOnCreate(bool $value = true): static
+    {
+        $this->props['requiredOnCreate'] = $value;
+
+        return $this;
+    }
+
+    /**
+     * 提交时若为空则**整个字段不提交**。
+     *
+     * 典型场景：编辑用户时的密码框。留空代表「不改密码」，
+     * 若把空字符串提交上去，`'hashed'` cast 会把它哈希成一个
+     * 新密码 —— 账号当场失效，而且不报任何错。
+     *
+     * 更通用地说：任何「留空表示不动」的可选字段都该加它。
+     */
+    public function omitWhenEmpty(bool $value = true): static
+    {
+        $this->props['omitWhenEmpty'] = $value;
+
+        return $this;
+    }
+
     public function help(string $text): static
     {
         $this->props['help'] = $text;

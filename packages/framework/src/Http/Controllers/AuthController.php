@@ -50,6 +50,9 @@ class AuthController extends Controller
             ]);
         }
 
+        // 记录「最后登录时间/IP」——用户管理列表要用
+        $this->markLoggedIn($request);
+
         $audit->recordLogin(
             $credentials['username'],
             true,
@@ -65,6 +68,22 @@ class AuthController extends Controller
         }
 
         return redirect()->intended(Aimanong::url('/'));
+    }
+
+    /**
+     * 更新当前用户的最后登录信息。
+     *
+     * 用 method_exists 而不是直接写属性：用户的自定义管理员模型
+     * 可能没有这个方法（老项目没跑迁移），那就跳过 ——
+     * 记不上登录时间不该导致登录失败。
+     */
+    protected function markLoggedIn(Request $request): void
+    {
+        $user = Aimanong::user();
+
+        if ($user !== null && method_exists($user, 'markLoggedIn')) {
+            $user->markLoggedIn($request->ip());
+        }
     }
 
     protected function currentUserId(): ?int

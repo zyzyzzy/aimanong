@@ -1956,3 +1956,24 @@ hr {
 .am-upload__files li:last-child { border-bottom: 0; }
 .am-upload__files a { color: var(--brand-text); word-break: break-all; }
 .am-upload__err { margin-top: 6px; font-size: var(--fs-sm); color: var(--danger-text); }
+
+/* --- 顶栏用户区（个人中心入口） --- */
+.am-topbar__user {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 4px 10px 4px 4px;
+  border-radius: var(--r-full);
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: background-color var(--dur) var(--ease);
+}
+.am-topbar__user:hover { background: var(--bg-hover); }
+.am-avatar--text {
+  display: inline-grid;
+  place-items: center;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-on-brand);
+  background: var(--brand-solid);
+}

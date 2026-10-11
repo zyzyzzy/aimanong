@@ -328,6 +328,7 @@ class DocsCommand extends Command
             foreach ([
                 'uri', 'uris', 'auto', 'excludes', 'config', 'use_when',
                 'declare', 'store_form', 'naming', 'serve', 'security', 'field_types',
+                'route', 'api', 'note', 'password', 'fields',
             ] as $field) {
                 if (! isset($info[$field])) {
                     continue;

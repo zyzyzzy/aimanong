@@ -110,6 +110,19 @@ class AdminGuard implements Guard
             return false;
         }
 
+        /*
+         * 停用的账号不允许登录。
+         *
+         * 没有这道判断，「停用」就只是个装饰：管理员点了停用，
+         * 对方照样能登进来 —— 这是权限系统里最容易被忽略的漏洞。
+         *
+         * 放在密码校验**之后**：先验密码再报「已停用」，
+         * 否则就成了「用错误密码探测账号是否存在」的旁路。
+         */
+        if (method_exists($user, 'isEnabled') && ! $user->isEnabled()) {
+            return false;
+        }
+
         // Laravel 11+ 契约：登录成功后按需重哈希密码
         $this->provider->rehashPasswordIfRequired($user, $credentials);
 

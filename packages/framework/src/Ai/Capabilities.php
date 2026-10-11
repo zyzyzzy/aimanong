@@ -118,6 +118,26 @@ class Capabilities
                 'config' => "config('aimanong.foundation.operation_log')",
                 'use_when' => '数据对不上时，**先查这张表** —— 它是唯一的客观依据',
             ],
+            'profile' => [
+                'summary' => '个人中心：改资料 / 改密码 / 看我的角色权限与操作记录',
+                'enabled' => $this->configFlag('aimanong.foundation.profile.enable'),
+                'route' => 'GET {prefix}/profile（顶栏用户名即入口）',
+                'api' => 'PUT api/profile、PUT api/profile/password',
+                'security' => '只允许改 name/email/phone/avatar 四个字段（白名单）；'
+                    .'改密码必须验当前密码，防止会话被劫持后直接改密',
+                'note' => '它不是 Resource —— Resource 的心智模型是「一张表 = 一组页面」，'
+                    .'而个人中心操作的是当前登录者自己，没有 id 也没有列表',
+            ],
+            'admin_user' => [
+                'summary' => '管理员账号管理界面（内置 Resource：admin-users）',
+                'enabled' => $this->configFlag('aimanong.foundation.admin_user.enable'),
+                'uri' => 'admin-users',
+                'auto' => '框架内置，装完就有；关掉只影响界面，不影响认证',
+                'password' => '密码框三件套：requiredOnCreate() + omitWhenEmpty() + min(6)。'
+                    .'编辑留空 = 不改密码；少了 omitWhenEmpty 会被空串哈希成新密码，账号当场失效',
+                'fields' => '账号/姓名/邮箱/手机/密码/头像/角色/启用；'
+                    .'停用的账号在密码校验之后被拒绝登录',
+            ],
             'upload' => [
                 'summary' => '文件上传：单图/多图/单文件/多文件四种字段，落盘与 URL 解析统一走 Uploader',
                 'enabled' => $this->configFlag('aimanong.foundation.upload.enable'),
@@ -435,6 +455,9 @@ class Capabilities
             'relation(多对多)' => 'multiselect 上声明多对多关联：'
                 ."\$form->multiSelect('tags')->relation('tags')->options([...]); "
                 .'框架自动 sync 中间表 + 编辑时自动回填，无需手写模型事件',
+            'requiredOnCreate' => '仅新增时必填（编辑留空表示不改），典型是用户表单的密码框',
+            'omitWhenEmpty' => '提交时若为空则整个字段不提交 —— 「留空表示不修改」的可选字段必须加它',
+            'relation' => 'multiSelect 上声明多对多关联并自动 sync 中间表：->relation(\'roles\')',
             'dict' => '用数据字典填选项：->dict(\'order_status\')，'
                 .'字典不存在会编译期报错（DICT_NOT_FOUND），不会给你空下拉框',
             'accept' => '上传字段的扩展名收窄，参数: 字符串（如 pdf,docx）',

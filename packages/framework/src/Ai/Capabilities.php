@@ -117,6 +117,8 @@ class Capabilities
                 'excludes' => 'GET/HEAD/OPTIONS 不记；密码类字段自动掩码为 ******',
                 'config' => "config('aimanong.foundation.operation_log')",
                 'use_when' => '数据对不上时，**先查这张表** —— 它是唯一的客观依据',
+                'also_known_as' => '处理留痕 / 操作留痕 / 谁改的 / 变更记录 / 审计追踪 / '
+                    .'事后能查到谁在什么时候改了什么',
             ],
             'profile' => [
                 'summary' => '个人中心：改资料 / 改密码 / 看我的角色权限与操作记录',
@@ -154,6 +156,8 @@ class Capabilities
                 'security' => '扩展名 + 真实 MIME 双白名单；默认不含 svg'
                     .'（SVG 可内嵌 script，同源读取等于 XSS）',
                 'use_when' => '需要图片/附件字段时 —— 不要自己写上传控制器',
+                'also_known_as' => '现场照片 / 传多张图 / 附件上传 / 报价单扫描件 / '
+                    .'图片附件 / 文件上传',
             ],
             'dict' => [
                 'summary' => '数据字典：把枚举变成一等公民，AI 能自省有哪些可选值',
@@ -168,6 +172,19 @@ class Capabilities
                 'cache' => "config('aimanong.foundation.dict.cache_ttl')，写库自动失效",
                 'use_when' => '同一个枚举要在列表、表单、导出多处出现时 —— '
                     .'不要在各处重复写 options()/map()',
+                /*
+                 * 业务同义词。
+                 *
+                 * 第六轮实测发现：需求方说的是「运营希望以后自己改文案，
+                 * 不希望每次改文案都找开发」，而能力面里写的是
+                 * 「把枚举变成一等公民」—— 开发视角，业务词一个都没有
+                 * （「文案」「运营」出现 0 次）。AI 拿业务词去检索就是 MISS。
+                 *
+                 * 这不是分词问题，是**词表问题**：能力描述要能被
+                 * 「用业务语言提问的人」检索到。
+                 */
+                'also_known_as' => '运营改文案 / 改显示名 / 下拉选项可维护 / '
+                    .'状态文案不用发版 / 枚举集中管理',
             ],
             'login_log' => [
                 'summary' => '登录日志：成功与失败都记',
@@ -334,7 +351,17 @@ class Capabilities
             'enabled' => PermissionGate::enabled(),
             'actions' => PermissionGate::ACTIONS,
             'slug_format' => '{uri}.{action}，如 cms-authors.update',
-            'auto_generated' => '权限节点由 Resource 注册时自动生成，无需手写',
+            /*
+             * ⚠️ 措辞必须准确：节点是「命名自动推导」，不是「注册即写库」。
+             *
+             * 原文写的是「权限节点由 Resource 注册时自动生成，无需手写」——
+             * 第六轮实测里 AI 据此在注释中断言「权限节点自动生成」，
+             * 但**它没跑 sync 命令，数据库里实际是 0 个节点**。
+             * 新建 Resource 后不做这一步，权限列表里根本看不到它。
+             */
+            'naming' => '权限节点名由 Resource 自动推导为 {uri}.{action}，无需手写',
+            'requires_sync' => '新增/改动 Resource 后**必须执行** php artisan aimanong:permission sync '
+                .'才会写入数据库；不执行则权限列表里看不到该资源',
             'super_role' => 'is_super 角色绕过所有判定',
             'toggle' => "config('aimanong.auth.rbac') 或 AIMANONG_RBAC 环境变量；关闭时全部放行",
             'command' => 'php artisan aimanong:permission sync|list|super {user}',

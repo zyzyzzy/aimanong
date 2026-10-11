@@ -175,6 +175,53 @@ class SingleSourceOfTruthTest extends TestCase
     }
 
     /**
+     * search-docs 必须能用**业务语言**检索到能力。
+     *
+     * ## 回归（第六轮 AI 实测）
+     *
+     * 需求方说的是「运营希望以后自己改文案，不希望每次改文案都找开发」，
+     * 而能力面里写的是「把枚举变成一等公民」—— 纯开发视角。
+     * 「文案」「运营」在能力面出现 **0 次**，AI 拿业务词去查就是 MISS。
+     *
+     * 这不是分词问题，是**词表问题**：能力描述要能被
+     * 「用业务语言提问的人」检索到。
+     *
+     * 修法是给能力加 `also_known_as` 业务同义词，
+     * 并把检索从「整串匹配」改成「分词匹配」。
+     */
+    public function test_search_docs_matches_business_language(): void
+    {
+        $tool = new SearchDocs;
+
+        foreach ([
+            '运营希望自己改文案',   // → dict
+            '处理留痕',             // → operation_log
+            '现场照片要能传多张',   // → upload
+            '事后能查到谁改的',     // → operation_log
+        ] as $query) {
+            $text = $tool->handle(new Request(['query' => $query]))
+                ->content()->toArray()['text'] ?? '';
+
+            $this->assertStringNotContainsString(
+                '未找到',
+                $text,
+                "业务语言查询「{$query}」检索不到任何能力 —— 词表缺业务同义词"
+            );
+        }
+    }
+
+    /**
+     * 反向：胡编的词仍然应该「未找到」，不能为了命中而命中。
+     */
+    public function test_search_docs_still_rejects_nonsense(): void
+    {
+        $text = (new SearchDocs)->handle(new Request(['query' => 'zzzqqqxxx不存在的东西']))
+            ->content()->toArray()['text'] ?? '';
+
+        $this->assertStringContainsString('未找到', $text);
+    }
+
+    /**
      * 字段类型数量必须与文档一致。
      */
     public function test_field_type_count_is_stable(): void

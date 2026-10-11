@@ -82,26 +82,51 @@ class SearchDocs extends Tool
         $out = ["# 检索: {$query}", ''];
         $hit = 0;
 
+        /*
+         * 分词后再匹配。
+         *
+         * ## 为什么不能整串匹配
+         *
+         * 第六轮实测发现：AI 拿到的需求是**中文业务语言**，
+         * 它会直接拿需求里的词去查，而整串 `str_contains` 只认
+         * 「文档里恰好出现过这一整串」——
+         *
+         *   查「多图上传」→ 未找到（文档里写的是 `images()`）
+         *   查「图片」    → 命中
+         *
+         * 需求里几乎不会刚好写成一个 API 名，所以整串匹配对
+         * 「用业务语言发现能力」这个核心场景基本无效。
+         *
+         * 改为按词匹配：中文按 2-gram 切、英文/符号按空格与标点切，
+         * 任一词命中即算命中，并按命中词数排序（最相关的排前面）。
+         *
+         * 保留「整串优先」：整串命中说明是精确查询，置顶。
+         */
+        $terms = $this->tokenize($query);
+        $scored = [];
+
         foreach ($sections as $title => $items) {
-            $matched = array_values(array_filter(
-                $items,
-                fn (string $i): bool => str_contains(strtolower($i), $query)
-                    || str_contains(strtolower($title), $query)
-            ));
+            foreach ($items as $item) {
+                $haystack = strtolower($item.' '.$title);
+                $score = 0;
 
-            if ($matched === []) {
-                continue;
-            }
+                if (str_contains($haystack, $query)) {
+                    $score += 100;   // 整串命中，权重最高
+                }
 
-            $out[] = "## {$title}";
-            foreach ($matched as $m) {
-                $out[] = "- {$m}";
-                $hit++;
+                foreach ($terms as $term) {
+                    if (str_contains($haystack, $term)) {
+                        $score++;
+                    }
+                }
+
+                if ($score > 0) {
+                    $scored[] = ['title' => $title, 'item' => $item, 'score' => $score];
+                }
             }
-            $out[] = '';
         }
 
-        if ($hit === 0) {
+        if ($scored === []) {
             return Response::text(sprintf(
                 "未找到与 '%s' 相关的内容。\n\n可检索的主题: %s",
                 $query,
@@ -109,7 +134,123 @@ class SearchDocs extends Tool
             ));
         }
 
+        // 相关度降序，同分保持原始顺序（稳定排序）
+        usort($scored, fn (array $a, array $b): int => $b['score'] <=> $a['score']);
+
+        $bySection = [];
+        foreach ($scored as $row) {
+            $bySection[$row['title']][] = $row['item'];
+        }
+
+        foreach ($sections as $title => $items) {
+            if (! isset($bySection[$title])) {
+                continue;
+            }
+
+            $out[] = "## {$title}";
+            foreach ($bySection[$title] as $m) {
+                $out[] = "- {$m}";
+                $hit++;
+            }
+            $out[] = '';
+        }
+
         return Response::text(implode("\n", $out));
+    }
+
+    /**
+     * 检索停用词。
+     *
+     * 只放「词面高频但语义泛化」的词 —— 它们出现在几乎任何句子和
+     * 任何文档里，保留只会制造假阳性。刻意保持很短：
+     * 过度停用会让正常查询查不到，那是另一种失败。
+     *
+     * @var array<int, string>
+     */
+    protected const STOP_WORDS = [
+        '不存在', '不能', '不会', '不要', '不是',
+        '可以', '需要', '进行', '如果', '因为', '所以', '但是',
+        '什么', '怎么', '这个', '那个', '一个', '东西',
+    ];
+
+    /**
+     * 把查询串切成检索词。
+     *
+     * - 英文/数字/符号：按空白与常见标点切
+     * - 中文：按 2-gram 切（「多图上传」→ 多图 / 图上 / 上传）
+     *
+     * 2-gram 是个刻意粗糙的选择：中文没有空格，做真正分词要引依赖；
+     * 而 2-gram 对「上传」「字典」「日志」这类双字术语命中率已经足够，
+     * 且不会把「多图上传」这种四字组合漏掉。
+     *
+     * @return array<int, string>
+     */
+    protected function tokenize(string $query): array
+    {
+        $terms = [];
+
+        // 英文与数字：按非字母数字切
+        foreach (preg_split('/[^a-z0-9_]+/u', $query) ?: [] as $part) {
+            if ($part !== '' && mb_strlen($part) >= 2) {
+                $terms[] = $part;
+            }
+        }
+
+        /*
+         * 中文：整块 + 2-gram（滤掉停用词）。
+         *
+         * ⚠️ 只切 2-gram 是不够的：查「报修留痕」会切出
+         * 报修 / 修留 / 留痕 —— 其中「修留」是**跨词边界的假词**，
+         * 而文档里真正存在的词是「留痕」。若只靠 2-gram，
+         * 这个查询会**因为假词没命中而整条失败**（实测踩到）。
+         *
+         * 所以额外保留：
+         *   - 整个中文块（若文档里恰好有这个词组）
+         *   - 每个 2-gram（覆盖「多图上传」→ 上传 这类）
+         */
+        $han = preg_replace('/[^\p{Han}]+/u', ' ', $query) ?? '';
+        foreach (preg_split('/\s+/u', trim($han)) ?: [] as $block) {
+            if ($block === '') {
+                continue;
+            }
+
+            $terms[] = $block;
+
+            $len = mb_strlen($block);
+
+            /*
+             * 用滑动 2-gram，但**跳过落在停用词内部的 gram**。
+             *
+             * 停用词表按「完整停用词」列（如「不存在」），
+             * 匹配时看整块里是否出现它 —— 命中则整段跳过，
+             * 而不是逐个 gram 比对。
+             *
+             * 原因：「不存在」会切出 不存 / 存在 两个 gram，
+             * 逐个比对要同时列两条，且「存在」单独看又是正常词
+             * （「字典存在」「文件存在」）。按整词跳过才不会误伤。
+             */
+            $skip = [];
+            foreach (self::STOP_WORDS as $word) {
+                $offset = 0;
+                while (($pos = mb_strpos($block, $word, $offset)) !== false) {
+                    for ($k = $pos; $k < $pos + mb_strlen($word); $k++) {
+                        $skip[$k] = true;
+                    }
+                    $offset = $pos + 1;
+                }
+            }
+
+            for ($i = 0; $i < $len - 1; $i++) {
+                // 起始位落在停用词内 → 这个 gram 不可靠，跳过
+                if (isset($skip[$i]) || isset($skip[$i + 1])) {
+                    continue;
+                }
+
+                $terms[] = mb_substr($block, $i, 2);
+            }
+        }
+
+        return array_values(array_unique($terms));
     }
 
     public function schema(JsonSchema $schema): array
@@ -225,6 +366,8 @@ class SearchDocs extends Tool
             foreach ([
                 'example', 'detail', 'auto', 'excludes', 'when', 'use_when',
                 'config', 'uri', 'uris', 'declare', 'two_sources', 'colors', 'cache',
+                // 业务同义词：让「用业务语言提问的人」也能检索到
+                'also_known_as',
             ] as $field) {
                 if (! isset($info[$field])) {
                     continue;

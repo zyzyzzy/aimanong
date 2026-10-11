@@ -20,6 +20,25 @@ use Aimanong\Ui\ThemeConfig;
 class Capabilities
 {
     /**
+     * 读布尔配置，**无容器时退化为默认值**。
+     *
+     * 能力清单要能在单元测试、纯静态自省（不启动 Laravel）下被读取 ——
+     * 直接调 config() 在没有 Application 实例时会抛
+     * `ReflectionException: Class "config" does not exist`。
+     *
+     * 注意：只对「有没有开关」这类展示性信息容错，
+     * 业务逻辑里的 config() 不许这么写（那会掩盖真实配置错误）。
+     */
+    protected function configFlag(string $key, bool $default = true): bool
+    {
+        try {
+            return (bool) config($key, $default);
+        } catch (\Throwable) {
+            return $default;
+        }
+    }
+
+    /**
      * 完整能力清单。
      *
      * @return array<string, mixed>
@@ -55,6 +74,50 @@ class Capabilities
             'column_options' => $this->columnOptions(),
             'form_options' => $this->formOptions(),
             'rules' => $this->availableRules(),
+            'foundation' => $this->foundationCapabilities(),
+        ];
+    }
+
+    /**
+     * 基座能力（P0）—— 框架内置、用户一行代码都不用写的能力。
+     *
+     * 这是「带地基的平台」在 AI 侧的表达：AI 必须知道
+     * 「操作日志已经存在，不要自己再建一张表」。
+     *
+     * 单一来源：search-docs 与 aimanong:docs 都从这里取数。
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public function foundationCapabilities(): array
+    {
+        $operationOn = $this->configFlag('aimanong.foundation.operation_log.enable');
+        $loginOn = $this->configFlag('aimanong.foundation.login_log.enable');
+
+        return [
+            'readonly' => [
+                'summary' => 'Resource::readonly() 声明只读资源',
+                'example' => 'public static function readonly(): bool { return true; }',
+                'detail' => '返回 true 时：前端隐藏「新增/编辑/删除」入口，'
+                    .'store/update/destroy 一律 403，权限节点只生成 index/show/export。',
+                'when' => '审计日志、监控、报表快照这类「只应由系统写入」的数据',
+            ],
+            'operation_log' => [
+                'summary' => '操作日志：谁在什么时候改了哪条数据',
+                'enabled' => $operationOn,
+                'uri' => 'admin-operation-logs',
+                'auto' => '框架自动记录写操作（POST/PUT/PATCH/DELETE），无需声明',
+                'excludes' => 'GET/HEAD/OPTIONS 不记；密码类字段自动掩码为 ******',
+                'config' => "config('aimanong.foundation.operation_log')",
+                'use_when' => '数据对不上时，**先查这张表** —— 它是唯一的客观依据',
+            ],
+            'login_log' => [
+                'summary' => '登录日志：成功与失败都记',
+                'enabled' => $loginOn,
+                'uri' => 'admin-login-logs',
+                'auto' => '框架在登录控制器内自动记录，无需声明',
+                'config' => "config('aimanong.foundation.login_log')",
+                'use_when' => '排查「登不上」或「有人在爆破」',
+            ],
         ];
     }
 

@@ -19,7 +19,8 @@
       <button class="am-btn" v-if="exportable" @click="doExport">
         @include('aimanong::partials.icon', ['name' => 'download', 'size' => 15]) 导出
       </button>
-      <button class="am-btn am-btn--primary" @click="openCreate">
+      {{-- 只读资源（如审计日志）不显示新增：按钮点了必然 403 --}}
+      <button class="am-btn am-btn--primary" v-if="!readonly" @click="openCreate">
         @include('aimanong::partials.icon', ['name' => 'plus', 'size' => 15]) 新增
       </button>
     </div>
@@ -37,7 +38,7 @@
       <div class="am-empty__icon">@include('aimanong::partials.icon', ['name' => 'inbox', 'size' => 22])</div>
       <div class="am-empty__title">暂无数据</div>
       <div class="am-empty__desc">还没有任何{{ $label }}记录，点击下方按钮创建第一条</div>
-      <div class="am-empty__actions">
+      <div class="am-empty__actions" v-if="!readonly">
         <button class="am-btn am-btn--primary" @click="openCreate">
           @include('aimanong::partials.icon', ['name' => 'plus', 'size' => 15]) 新增{{ $label }}
         </button>
@@ -65,7 +66,7 @@
                 </svg>
               </span>
             </th>
-            <th class="am-table__actions">操作</th>
+            <th class="am-table__actions" v-if="!readonly">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -103,7 +104,7 @@
                 </span>
               </template>
             </td>
-            <td class="am-table__actions" data-l="">
+            <td class="am-table__actions" data-l="" v-if="!readonly">
               <div class="am-flex am-gap-1 am-nowrap">
                 <button class="am-btn am-btn--sm am-btn--ghost" @click="edit(row)">编辑</button>
                 <button class="am-btn am-btn--sm am-btn--ghost" @click="remove(row)">删除</button>
@@ -329,6 +330,13 @@ createApp({
             const st = steps.value[currentStep.value];
             return st ? st.fields.filter(f => !f.hidden) : formFields.value;
         });
+
+        /**
+         * 只读资源：后端已声明 Resource::readonly() 返回 true。
+         * 前端据此隐藏「新增 / 编辑 / 删除」入口 —— 后端也会 403，
+         * 但让用户点到一个必然失败的按钮是设计缺陷。
+         */
+        const readonly = computed(() => schema.readonly === true);
 
         const csrf = document.querySelector('meta[name="csrf-token"]').content;
         const base = `/admin/api/${uri}`;
@@ -579,7 +587,9 @@ createApp({
         function mapLabel(col, value) {
             const map = col.props?.map;
             if (map && map[value] !== undefined) return map[value];
-            return value ?? '';
+            // 值为空时给个占位符，否则徽章会渲染成一个没有文字的灰点
+            if (value === null || value === undefined || value === '') return '—';
+            return value;
         }
 
         /** 根据值给出标签配色（状态类字段的语义色） */
@@ -849,7 +859,7 @@ createApp({
             inputType, mapLabel, tagClass, formatMoney, cellValue, cellClass, normalizeCell,
             toasts, toast, dismissToast, confirmState, doDelete,
             regionProvinces, regionTree, regionForm, onProvinceChange, onCityChange, ensureRegion, openCreate, goStep,
-            fieldOptions,
+            fieldOptions, readonly,
             isNumeric,
         };
     },

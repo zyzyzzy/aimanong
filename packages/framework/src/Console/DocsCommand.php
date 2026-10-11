@@ -224,6 +224,57 @@ class DocsCommand extends Command
     /**
      * 列展示器手册。
      */
+    /**
+     * 基座功能章节。
+     *
+     * 从 Capabilities 取数（单一来源）——
+     * 关闭某项基座功能时，文档里也会同步显示「已关闭」，
+     * 不会出现「文档说有、实际没有」的漂移。
+     *
+     * @param  array<int, string>  $lines
+     */
+    protected function foundationSection(array &$lines, Capabilities $caps): void
+    {
+        $foundation = $caps->foundationCapabilities();
+
+        $lines[] = '## 基座功能（开箱即用）';
+        $lines[] = '';
+        $lines[] = '以下能力由框架内置，**用户一行代码都不用写**，且可用配置整体关掉。';
+        $lines[] = '';
+        $lines[] = '| 能力 | 状态 | 说明 |';
+        $lines[] = '|---|---|---|';
+
+        foreach ($foundation as $key => $info) {
+            if ($key === 'readonly') {
+                continue;
+            }
+
+            $enabled = ($info['enabled'] ?? true) ? '已启用' : '已关闭';
+            $summary = is_string($info['summary'] ?? null) ? $info['summary'] : '';
+
+            $lines[] = "| `{$key}` | {$enabled} | {$summary} |";
+        }
+
+        $lines[] = '';
+
+        foreach ($foundation as $key => $info) {
+            if ($key === 'readonly') {
+                continue;
+            }
+
+            $lines[] = '### '.$key;
+            $lines[] = '';
+
+            foreach (['uri', 'auto', 'excludes', 'config', 'use_when'] as $field) {
+                if (isset($info[$field]) && is_string($info[$field])) {
+                    $lines[] = "- **{$field}**：{$info[$field]}";
+                }
+            }
+
+            $lines[] = '';
+        }
+    }
+
     protected function columnsPage(Capabilities $caps): string
     {
         $data = $caps->toArray();
@@ -292,6 +343,25 @@ class DocsCommand extends Command
         $lines[] = '> 字段归属由**声明顺序**决定 —— 扁平、无嵌套闭包（框架铁律）。';
         $lines[] = '> 提交时所有步骤一起校验，规则与单页表单一致。';
         $lines[] = '';
+        $lines[] = '## 只读资源';
+        $lines[] = '';
+        $lines[] = '审计日志、监控、报表快照这类数据「只应该由系统写入」，';
+        $lines[] = '在后台能随手改就失去了意义。覆盖 `readonly()` 即可：';
+        $lines[] = '';
+        $lines[] = '```php';
+        $lines[] = 'public static function readonly(): bool';
+        $lines[] = '{';
+        $lines[] = '    return true;';
+        $lines[] = '}';
+        $lines[] = '```';
+        $lines[] = '';
+        $lines[] = '| 层 | 效果 |';
+        $lines[] = '|---|---|';
+        $lines[] = '| 前端 | 隐藏「新增 / 编辑 / 删除」按钮与「操作」列 |';
+        $lines[] = '| 接口 | `store` / `update` / `destroy` 一律 403（**与 RBAC 开关无关**） |';
+        $lines[] = '| 权限 | 只生成 `index` / `show` / `export`，不产生点了必然 403 的假权限 |';
+        $lines[] = '';
+        $this->foundationSection($lines, $caps);
         $lines[] = '## 扩展（插件）';
         $lines[] = '';
         $lines[] = '一个扩展 = 一个继承 `Aimanong\\Extend\\Extension` 的类：';

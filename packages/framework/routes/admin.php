@@ -69,9 +69,20 @@ Route::get('assets/{path}', function (string $path) {
 | 数据 API
 */
 Route::prefix('api')->name('api.')->group(function (): void {
-    // 界面偏好（主题/密度/圆角）—— 必须在 {uri} 之前
-    Route::get('api/ui/preferences', [UiController::class, 'show'])->name('ui.preferences');
-    Route::post('api/ui/preferences', [UiController::class, 'store'])->name('ui.preferences.save');
+    /*
+     * 界面偏好（主题/密度/圆角）。
+     *
+     * 这里曾经写成 'api/ui/preferences'，而外层已经有 Route::prefix('api')，
+     * 实际路径变成 /admin/api/api/ui/preferences —— 与前端
+     * （Aimanong::url('api/ui/preferences')）对不上：
+     * 保存返回 405、读取返回「Resource [ui] 未注册」，
+     * 主题面板的跨设备同步一直是坏的。
+     *
+     * 必须声明在 {uri} 之前 —— 否则 'ui/preferences' 会被
+     * 当成 uri=ui、id=preferences。
+     */
+    Route::get('ui/preferences', [UiController::class, 'show'])->name('ui.preferences');
+    Route::post('ui/preferences', [UiController::class, 'store'])->name('ui.preferences.save');
 
     Route::get('{uri}', [ResourceController::class, 'index'])->name('index');
     Route::post('{uri}', [ResourceController::class, 'store'])->name('store');

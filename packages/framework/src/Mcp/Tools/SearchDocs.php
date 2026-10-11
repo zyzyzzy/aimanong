@@ -53,6 +53,8 @@ class SearchDocs extends Tool
                 '例：$form->step(\'基本信息\'); $form->text(\'name\'); $form->step(\'联系方式\'); $form->email(\'email\');',
                 '字段归属由声明顺序决定 —— 扁平、无嵌套闭包（框架铁律）',
             ],
+            '只读资源' => $this->foundationOptions('readonly'),
+            '基座功能' => $this->foundationOptions('foundation'),
             '扩展与多应用' => $this->extensionAndApplicationOptions(),
             '需求核对' => $this->requirementKeys(),
             '工作流' => [
@@ -185,6 +187,46 @@ class SearchDocs extends Tool
 
         foreach ((new Capabilities)->columnOptions() as $name => $desc) {
             $out[] = "{$name}() {$desc}";
+        }
+
+        return $out;
+    }
+
+    /**
+     * 基座能力（P0）—— 从 Capabilities 取数。
+     *
+     * `readonly` 单列一节，因为它是**声明写法**，
+     * AI 需要能一眼找到「怎么写」；其余是「已经存在、不要重复造」的告知。
+     *
+     * @return array<int, string>
+     */
+    protected function foundationOptions(string $mode): array
+    {
+        $foundation = (new Capabilities)->foundationCapabilities();
+        $out = [];
+
+        foreach ($foundation as $key => $info) {
+            if ($mode === 'readonly' && $key !== 'readonly') {
+                continue;
+            }
+
+            if ($mode === 'foundation' && $key === 'readonly') {
+                continue;
+            }
+
+            $line = "{$key}() {$info['summary']}";
+
+            if (isset($info['enabled'])) {
+                $line .= $info['enabled'] ? '（已启用）' : '（已关闭）';
+            }
+
+            $out[] = $line;
+
+            foreach (['example', 'detail', 'auto', 'excludes', 'when', 'use_when', 'config', 'uri'] as $field) {
+                if (isset($info[$field]) && is_string($info[$field])) {
+                    $out[] = "  - {$field}: {$info[$field]}";
+                }
+            }
         }
 
         return $out;

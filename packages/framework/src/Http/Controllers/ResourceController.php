@@ -504,6 +504,15 @@ class ResourceController extends Controller
      */
     protected function authorize_(string $uri, string $action): void
     {
+        /*
+         * 只读校验**必须在 RBAC 判断之前**。
+         *
+         * RBAC 默认关闭时 authorize_ 会直接放行；若把只读校验写在后面，
+         * 未启用 RBAC 的项目就能随便改审计日志。
+         * 「只读」是资源自身的性质，与权限系统无关。
+         */
+        $this->assertWritable($uri, $action);
+
         if (! PermissionGate::enabled()) {
             return;
         }
@@ -516,6 +525,29 @@ class ResourceController extends Controller
                 .PermissionGate::actionLabel($action).'」权限。'
             );
         }
+    }
+
+    /**
+     * 只读资源拒绝一切写操作。
+     *
+     * @throws AccessDeniedHttpException
+     */
+    protected function assertWritable(string $uri, string $action): void
+    {
+        if (! in_array($action, ['create', 'update', 'destroy'], true)) {
+            return;
+        }
+
+        $node = $this->resolve($uri);
+
+        if (! ($node->meta['readonly'] ?? false)) {
+            return;
+        }
+
+        throw new AccessDeniedHttpException(
+            "「{$node->label}」是只读资源（Resource::readonly() 返回 true），"
+            .'只能由系统写入，不允许通过后台接口修改。'
+        );
     }
 
     /**

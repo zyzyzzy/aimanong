@@ -97,6 +97,43 @@ return [
         'brand' => env('AIMANONG_BRAND', 'Aimanong'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | 基座功能（P0）
+    |--------------------------------------------------------------------------
+    |
+    | 「带地基的平台」开箱即用的能力，由框架内置 Resource 提供，
+    | 用户无需写任何代码。关掉即整体隐藏（菜单、权限、路由一起消失）。
+    |
+    */
+    'foundation' => [
+
+        /*
+         * 操作日志：谁在什么时候改了哪条数据。
+         *
+         * 只记写操作（POST/PUT/PATCH/DELETE），不记 GET ——
+         * 否则刷新一下列表就是一条日志，真正重要的记录会被淹没。
+         *
+         * except：按路径前缀排除噪音（不含路由前缀，框架自动补）。
+         */
+        'operation_log' => [
+            'enable' => env('AIMANONG_OPERATION_LOG', true),
+            'except' => [
+                'api/ui/preferences',
+            ],
+            'keep_days' => (int) env('AIMANONG_OPERATION_LOG_KEEP_DAYS', 90),
+        ],
+
+        /*
+         * 登录日志：成功与失败都记。
+         * 只记成功等于放弃了「有人在爆破」这条线索。
+         */
+        'login_log' => [
+            'enable' => env('AIMANONG_LOGIN_LOG', true),
+            'keep_days' => (int) env('AIMANONG_LOGIN_LOG_KEEP_DAYS', 180),
+        ],
+    ],
+
     'extensions' => [
         // App\Aimanong\Extensions\DemoExtension::class,
     ],

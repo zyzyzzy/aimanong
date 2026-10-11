@@ -8,6 +8,7 @@ use Aimanong\Aimanong;
 use Aimanong\Models\Administrator;
 use Aimanong\Models\Permission;
 use Aimanong\Models\Role;
+use Aimanong\Schema\Ast\ResourceNode;
 use Aimanong\Schema\Compiler;
 use Illuminate\Support\Collection;
 
@@ -38,6 +39,9 @@ class PermissionGate
      * @var array<int, string>
      */
     public const ACTIONS = ['index', 'show', 'create', 'update', 'destroy', 'export'];
+
+    /** 只读 Resource 拥有的动作（没有 create/update/destroy） */
+    public const READONLY_ACTIONS = ['index', 'show', 'export'];
 
     /**
      * 是否启用 RBAC。未启用时一律放行。
@@ -99,6 +103,24 @@ class PermissionGate
     }
 
     /**
+     * 某个 Resource 应该有哪些权限节点。
+     *
+     * 只读资源只生成 index/show/export —— 否则权限列表里会多出
+     * 「操作日志 · 新增」这种点了必然 403 的假权限，
+     * 管理员会以为是自己配错了。
+     *
+     * 抽成公开静态方法是为了可测：单据断言，不必真的写库。
+     *
+     * @return array<int, string>
+     */
+    public static function actionsFor(ResourceNode $node): array
+    {
+        return ($node->meta['readonly'] ?? false)
+            ? self::READONLY_ACTIONS
+            : self::ACTIONS;
+    }
+
+    /**
      * 同步权限节点到数据库。
      *
      * 会把当前所有已注册 Resource 的权限节点写入 admin_permissions，
@@ -132,7 +154,13 @@ class PermissionGate
             $uri = $node->uri;
             $label = $node->label;
 
-            foreach (self::ACTIONS as $action) {
+            /*
+             * 只读 Resource 不生成写权限节点。
+             *
+             * 否则权限列表里会出现「操作日志 · 新增」这种
+             * 点了也一定 403 的假权限 —— 管理员会以为配错了。
+             */
+            foreach (self::actionsFor($node) as $action) {
                 $slug = self::slug($uri, $action);
 
                 if (Permission::query()->where('slug', $slug)->exists()) {

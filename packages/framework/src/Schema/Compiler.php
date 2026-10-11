@@ -100,11 +100,32 @@ class Compiler
                 'exportChunkSize' => $grid->getExportChunkSize(),
                 'tree' => $tree?->toArray(),
                 'stepped' => $form->isStepped(),
+                // 只读 Resource：前端隐藏写按钮、后端拒绝写请求
+                'readonly' => $this->isReadonly($resource),
                 'steps' => $form->toArray()['steps'],
                 // 声明了多对多关联的字段：写入时自动 sync，不写主表
                 'relationFields' => $form->relationFields(),
             ],
         );
+    }
+
+    /**
+     * Resource 是否声明为只读。
+     *
+     * 用 method_exists 而不是直接调用：契约（Contracts\Resource）
+     * 只约定 uri/label/model 三个必需方法，readonly() 属于**可选**声明，
+     * 与 grid()/form()/show()/tree() 一致 —— 未声明即视为可写。
+     *
+     * @param  class-string<ResourceContract>  $resource
+     */
+    protected function isReadonly(string $resource): bool
+    {
+        if (! is_subclass_of($resource, \Aimanong\Resource::class)) {
+            return false;
+        }
+
+        /** @var class-string<\Aimanong\Resource> $resource */
+        return $resource::readonly();
     }
 
     /**

@@ -26,6 +26,8 @@ class JsonSchemaEmitter
             'uri' => $node->uri,
             'label' => $node->label,
             'model' => $node->model,
+            // 只读 Resource：前端据此隐藏新增/编辑/删除入口
+            'readonly' => $node->meta['readonly'] ?? false,
             'grid' => $this->grid($node),
             'form' => $this->form($node),
             'show' => $this->show($node),

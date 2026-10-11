@@ -82,6 +82,26 @@ abstract class Resource implements ResourceContract
     }
 
     /**
+     * 是否只读（**可选**）。子类可覆盖。
+     *
+     * 只读 Resource 只提供「列表 + 详情 + 导出」：
+     *   - 前端不显示「新增 / 编辑 / 删除」按钮
+     *   - 后端 store()/update()/destroy() 直接 403
+     *   - 权限节点**只生成** index/show/export
+     *
+     * 典型用途：审计日志、监控、报表快照 ——
+     * 这类数据只应该由系统写入；人在后台能随手改，审计就失去意义。
+     *
+     * ```php
+     * public static function readonly(): bool { return true; }
+     * ```
+     */
+    public static function readonly(): bool
+    {
+        return false;
+    }
+
+    /**
      * 资源 URI，默认按类名推导（UserResource → users）。
      */
     public static function uri(): string

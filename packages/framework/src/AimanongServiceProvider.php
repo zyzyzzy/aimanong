@@ -28,6 +28,7 @@ class AimanongServiceProvider extends ServiceProvider
         'admin.auth' => Http\Middleware\Authenticate::class,
         'admin.bootstrap' => Http\Middleware\Bootstrap::class,
         'admin.session' => Http\Middleware\Session::class,
+        'admin.audit' => Foundation\Audit\RecordOperation::class,
     ];
 
     /**
@@ -35,17 +36,42 @@ class AimanongServiceProvider extends ServiceProvider
      *
      * @var array<string, array<int, string>>
      */
-    protected array $middlewareGroups = [
-        'admin' => [
+    /**
+     * 中间件组由 adminMiddlewareGroup() 统一构造 ——
+     * 见该方法上的说明（多应用模式曾漏挂审计中间件）。
+     *
+     * @var array<string, array<int, string>>
+     */
+    protected array $middlewareGroups = [];
+
+    /**
+     * 后台中间件链。
+     *
+     * ## 为什么抽成方法
+     *
+     * 单后台与多应用此前各自硬编码了一份列表，结果新增
+     * `admin.audit` 时只改了单后台那份 —— 多应用模式下
+     * 操作日志**一条都不会记**，而且不报错、测试全绿。
+     * 两份列表 = 两次漂移机会，合并成一份。
+     *
+     * @param  string  $auth  认证中间件（多应用时带 guard：admin.auth:merchant）
+     * @return array<int, string>
+     */
+    protected function adminMiddlewareGroup(string $auth = 'admin.auth'): array
+    {
+        return [
             // admin.session 必须在 web 之前：web 含 StartSession，
             // 若它先跑，session 会用旧 cookie path 启动，改配置就晚了。
             'admin.session',
             // web 提供会话基础（$errors / CSRF / session store）
             'web',
             'admin.bootstrap',
-            'admin.auth',
-        ],
-    ];
+            $auth,
+            // 审计中间件放最后：此时已认证，拿得到当前用户；
+            // 且它包住整个请求，能统计耗时。
+            'admin.audit',
+        ];
+    }
 
     public function register(): void
     {
@@ -89,6 +115,7 @@ class AimanongServiceProvider extends ServiceProvider
 
         $this->registerPublishing();
         $this->registerRouteMiddleware();
+        $this->registerFoundationResources();
         $this->bootApplication();
     }
 
@@ -117,6 +144,28 @@ class AimanongServiceProvider extends ServiceProvider
 
         if ($changed) {
             config(['aimanong' => $current]);
+        }
+    }
+
+    /**
+     * 注册框架内置的基座 Resource。
+     *
+     * 这是「带地基的平台」的关键：登录日志 / 操作日志这类能力
+     * 用户**一行代码都不用写**，装完就有，且能通过配置整体关掉。
+     *
+     * 只在配置开启时注册 —— 不注册就等于整条链路消失：
+     * 菜单没有、权限节点不生成、路由 404，不会留下半开状态。
+     */
+    protected function registerFoundationResources(): void
+    {
+        $registry = Aimanong::registry();
+
+        if (config('aimanong.foundation.operation_log.enable', true)) {
+            $registry->register(Foundation\Resources\OperationLogResource::class);
+        }
+
+        if (config('aimanong.foundation.login_log.enable', true)) {
+            $registry->register(Foundation\Resources\LoginLogResource::class);
         }
     }
 
@@ -215,6 +264,9 @@ class AimanongServiceProvider extends ServiceProvider
         foreach ($this->middlewareGroups as $key => $middleware) {
             $router->middlewareGroup($key, $middleware);
         }
+
+        // 后台中间件链统一由 adminMiddlewareGroup() 提供（单一来源）
+        $router->middlewareGroup('admin', $this->adminMiddlewareGroup());
     }
 
     /**
@@ -384,12 +436,10 @@ class AimanongServiceProvider extends ServiceProvider
          * 我们的 Session 中间件只改 config，不依赖 session 实例，
          * 因此可以安全地前置。
          */
-        $this->app->make('router')->middlewareGroup($group, [
-            'admin.session',
-            'web',
-            'admin.bootstrap',
-            'admin.auth:'.$guard,
-        ]);
+        $this->app->make('router')->middlewareGroup(
+            $group,
+            $this->adminMiddlewareGroup('admin.auth:'.$guard)
+        );
 
         Route::middleware($group)
             ->prefix($prefix)

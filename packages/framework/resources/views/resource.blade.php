@@ -609,6 +609,19 @@ createApp({
         function tagClass(col, row) {
             const raw = cellValue(col, row);
             const v = String(raw ?? '').toLowerCase();
+
+            /*
+             * 数据字典声明的颜色优先。
+             *
+             * 下面那张中英文关键词表是「猜」—— 猜不出来就退化成品牌色，
+             * 而且项目自定义的状态值（如 'partial_refund'）必然猜错。
+             * 字典里显式写了 color，就不再猜。
+             */
+            const dictColors = col.props?.dictColors;
+            if (dictColors) {
+                const c = dictColors[String(raw ?? '')];
+                if (c) return 'am-badge--' + c;
+            }
             // 英文状态值
             const positive = ['1', 'true', 'yes', 'active', 'enabled', 'success', 'paid',
                               'on_sale', 'published', 'resolved', 'completed', 'approved'];

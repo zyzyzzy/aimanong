@@ -7,6 +7,7 @@ namespace Aimanong\Ai;
 use Aimanong\Aimanong;
 use Aimanong\Auth\PermissionGate;
 use Aimanong\Form\Fields\Field;
+use Aimanong\Foundation\Dict\Dictionary;
 use Aimanong\Schema\Compiler;
 use Aimanong\Support\FieldType;
 use Aimanong\Ui\ThemeConfig;
@@ -75,6 +76,13 @@ class Capabilities
             'form_options' => $this->formOptions(),
             'rules' => $this->availableRules(),
             'foundation' => $this->foundationCapabilities(),
+            /*
+             * 项目里**实际存在**的字典与可选值。
+             *
+             * 这是数据字典对 AI 最大的价值：AI 不再需要翻代码猜
+             * 「状态有哪些值」，自省一次就拿到完整枚举。
+             */
+            'dictionaries' => (new Dictionary)->all(),
         ];
     }
 
@@ -109,6 +117,20 @@ class Capabilities
                 'excludes' => 'GET/HEAD/OPTIONS 不记；密码类字段自动掩码为 ******',
                 'config' => "config('aimanong.foundation.operation_log')",
                 'use_when' => '数据对不上时，**先查这张表** —— 它是唯一的客观依据',
+            ],
+            'dict' => [
+                'summary' => '数据字典：把枚举变成一等公民，AI 能自省有哪些可选值',
+                'enabled' => $this->configFlag('aimanong.foundation.dict.enable'),
+                'uris' => ['admin-dict-types', 'admin-dict-items'],
+                'declare' => "\$form->select('status')->dict('order_status');  "
+                    ."\$grid->column('status', '状态')->dict('order_status');",
+                'two_sources' => '代码声明（config foundation.dict.declarations，优先级高、后台只读）'
+                    .' 与数据库字典（后台可维护）；读取只走 Dictionary 一个入口，因此不算分叉',
+                'colors' => '字典条目可带 color（success/danger/warning/info/muted），'
+                    .'列表徽章直接用字典颜色，不再靠关键词猜',
+                'cache' => "config('aimanong.foundation.dict.cache_ttl')，写库自动失效",
+                'use_when' => '同一个枚举要在列表、表单、导出多处出现时 —— '
+                    .'不要在各处重复写 options()/map()',
             ],
             'login_log' => [
                 'summary' => '登录日志：成功与失败都记',

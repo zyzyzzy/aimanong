@@ -222,9 +222,23 @@ class SearchDocs extends Tool
 
             $out[] = $line;
 
-            foreach (['example', 'detail', 'auto', 'excludes', 'when', 'use_when', 'config', 'uri'] as $field) {
-                if (isset($info[$field]) && is_string($info[$field])) {
-                    $out[] = "  - {$field}: {$info[$field]}";
+            foreach ([
+                'example', 'detail', 'auto', 'excludes', 'when', 'use_when',
+                'config', 'uri', 'uris', 'declare', 'two_sources', 'colors', 'cache',
+            ] as $field) {
+                if (! isset($info[$field])) {
+                    continue;
+                }
+
+                $value = $info[$field];
+
+                // uris 这类是数组，要展开成可读文本，否则 AI 拿不到具体 URI
+                if (is_array($value)) {
+                    $value = implode(', ', array_map('strval', $value));
+                }
+
+                if (is_string($value)) {
+                    $out[] = "  - {$field}: {$value}";
                 }
             }
         }

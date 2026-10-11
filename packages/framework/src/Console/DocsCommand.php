@@ -6,6 +6,7 @@ namespace Aimanong\Console;
 
 use Aimanong\Ai\Capabilities;
 use Aimanong\Aimanong;
+use Aimanong\Foundation\Dict\Dictionary;
 use Aimanong\Schema\Compiler;
 use Aimanong\Support\FieldType;
 use Illuminate\Console\Command;
@@ -225,6 +226,65 @@ class DocsCommand extends Command
      * 列展示器手册。
      */
     /**
+     * 数据字典章节。
+     *
+     * 字典列表直接从 Dictionary 取（单一来源）——
+     * 后台新增一个字典，文档里立刻就有，不需要人工同步。
+     *
+     * @param  array<int, string>  $lines
+     */
+    protected function dictionarySection(array &$lines): void
+    {
+        $dictionary = new Dictionary;
+        $all = $dictionary->all();
+
+        $lines[] = '## 数据字典';
+        $lines[] = '';
+        $lines[] = '把枚举变成一等公民：**声明一次，列表 / 表单 / 徽章配色共用**。';
+        $lines[] = '';
+        $lines[] = '```php';
+        $lines[] = "\$form->select('status')->label('状态')->dict('order_status');";
+        $lines[] = "\$grid->column('status', '状态')->dict('order_status');";
+        $lines[] = '```';
+        $lines[] = '';
+        $lines[] = '字典不存在或没有任何启用条目时**编译期直接报错**（DICT_NOT_FOUND + 模糊匹配建议），';
+        $lines[] = '而不是给你一个永远选不了值的空下拉框。';
+        $lines[] = '';
+        $lines[] = '两种来源，读取只走 `Dictionary` 一个入口：';
+        $lines[] = '';
+        $lines[] = '| 来源 | 位置 | 特点 |';
+        $lines[] = '|---|---|---|';
+        $lines[] = '| 代码声明 | `config/aimanong.php` 的 `foundation.dict.declarations` | 随代码走、可 diff、后台只读 |';
+        $lines[] = '| 数据库 | 后台「数据字典 / 字典条目」 | 运营可随时改文案 |';
+        $lines[] = '';
+
+        if ($all === []) {
+            $lines[] = '> 当前项目还没有任何数据字典。';
+            $lines[] = '';
+
+            return;
+        }
+
+        $lines[] = '### 当前项目的字典';
+        $lines[] = '';
+        $lines[] = '| code | 名称 | 来源 | 可选值 |';
+        $lines[] = '|---|---|---|---|';
+
+        foreach ($all as $code => $info) {
+            $values = implode(' / ', array_map(
+                fn (string $v, string $l): string => "`{$v}`={$l}",
+                array_keys($info['items']),
+                array_values($info['items'])
+            ));
+
+            $source = $info['source'] === 'code' ? '代码声明' : '数据库';
+            $lines[] = "| `{$code}` | {$info['name']} | {$source} | {$values} |";
+        }
+
+        $lines[] = '';
+    }
+
+    /**
      * 基座功能章节。
      *
      * 从 Capabilities 取数（单一来源）——
@@ -265,7 +325,7 @@ class DocsCommand extends Command
             $lines[] = '### '.$key;
             $lines[] = '';
 
-            foreach (['uri', 'auto', 'excludes', 'config', 'use_when'] as $field) {
+            foreach (['uri', 'uris', 'auto', 'excludes', 'config', 'use_when'] as $field) {
                 if (isset($info[$field]) && is_string($info[$field])) {
                     $lines[] = "- **{$field}**：{$info[$field]}";
                 }
@@ -361,6 +421,7 @@ class DocsCommand extends Command
         $lines[] = '| 接口 | `store` / `update` / `destroy` 一律 403（**与 RBAC 开关无关**） |';
         $lines[] = '| 权限 | 只生成 `index` / `show` / `export`，不产生点了必然 403 的假权限 |';
         $lines[] = '';
+        $this->dictionarySection($lines);
         $this->foundationSection($lines, $caps);
         $lines[] = '## 扩展（插件）';
         $lines[] = '';

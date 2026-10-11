@@ -132,6 +132,36 @@ return [
             'enable' => env('AIMANONG_LOGIN_LOG', true),
             'keep_days' => (int) env('AIMANONG_LOGIN_LOG_KEEP_DAYS', 180),
         ],
+
+        /*
+         * 数据字典：把枚举变成一等公民。
+         *
+         * 两种声明方式，读取只走 Dictionary 一个入口：
+         *   1. declarations（代码，优先级更高、可 git diff、AI 能读）
+         *   2. 后台「数据字典」维护（运营可改文案）
+         *
+         * declarations 里的字典在后台**只读**：运维误删一个
+         * 被代码引用的字典，会让相关页面瞬间变成空下拉框。
+         *
+         * 写法：
+         *   'declarations' => [
+         *       'order_status' => [
+         *           'name'  => '订单状态',
+         *           'items' => [
+         *               'pending' => '待付款',
+         *               ['value' => 'paid', 'label' => '已付款', 'color' => 'success'],
+         *           ],
+         *       ],
+         *   ],
+         *
+         * 用法：$form->select('status')->dict('order_status');
+         *       $grid->column('status', '状态')->dict('order_status');
+         */
+        'dict' => [
+            'enable' => env('AIMANONG_DICT', true),
+            'cache_ttl' => (int) env('AIMANONG_DICT_TTL', 600),
+            'declarations' => [],
+        ],
     ],
 
     'extensions' => [

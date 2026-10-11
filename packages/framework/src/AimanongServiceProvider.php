@@ -133,18 +133,55 @@ class AimanongServiceProvider extends ServiceProvider
         /** @var array<string, mixed> $current */
         $current = config('aimanong', []);
 
+        [$current, $changed] = $this->fillMissing($current, $defaults);
+
+        if ($changed) {
+            config(['aimanong' => $current]);
+        }
+    }
+
+    /**
+     * 递归补齐缺失键。
+     *
+     * ## 为什么要递归（而不是只补顶层）
+     *
+     * mergeConfigFrom 是**浅合并**：用户 config 里只要有 `foundation` 这个键，
+     * 包内 foundation 的其它子键（operation_log / login_log / dict）
+     * 就全都拿不到默认值，新功能会静默失效 ——
+     * 而且用户是在升级后才发布的配置，症状表现为
+     * 「升级了但新功能没出现」，极难归因。
+     *
+     * @param  array<string, mixed>  $current
+     * @param  array<string, mixed>  $defaults
+     * @return array{0: array<string, mixed>, 1: bool}
+     */
+    protected function fillMissing(array $current, array $defaults): array
+    {
         $changed = false;
 
         foreach ($defaults as $key => $value) {
             if (! array_key_exists($key, $current)) {
                 $current[$key] = $value;
                 $changed = true;
+
+                continue;
+            }
+
+            // 双方都是数组才递归；用户若显式写了标量，尊重用户
+            if (is_array($value) && is_array($current[$key])) {
+                /** @var array<string, mixed> $child */
+                $child = $current[$key];
+
+                [$merged, $childChanged] = $this->fillMissing($child, $value);
+
+                if ($childChanged) {
+                    $current[$key] = $merged;
+                    $changed = true;
+                }
             }
         }
 
-        if ($changed) {
-            config(['aimanong' => $current]);
-        }
+        return [$current, $changed];
     }
 
     /**
@@ -166,6 +203,11 @@ class AimanongServiceProvider extends ServiceProvider
 
         if (config('aimanong.foundation.login_log.enable', true)) {
             $registry->register(Foundation\Resources\LoginLogResource::class);
+        }
+
+        if (config('aimanong.foundation.dict.enable', true)) {
+            $registry->register(Foundation\Resources\DictTypeResource::class);
+            $registry->register(Foundation\Resources\DictItemResource::class);
         }
     }
 

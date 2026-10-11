@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Aimanong\Grid;
 
+use Aimanong\Exceptions\DictNotFoundException;
+use Aimanong\Foundation\Dict\Dictionary;
 use Aimanong\Schema\Ast\ColumnNode;
 
 /**
@@ -109,6 +111,47 @@ class Column
 
         $this->formatter = 'map';
         $this->props['map'] = $object;
+
+        return $this;
+    }
+
+    /**
+     * 用数据字典渲染这一列：自动取「值 → 文案」映射与语义色。
+     *
+     * ```php
+     * $grid->column('status', '状态')->dict('order_status');
+     * ```
+     *
+     * 为什么要有它：没有它，同一个枚举会在列表页写一遍 map()、
+     * 表单页写一遍 options() —— 改一个文案要改 N 处，
+     * 而 AI 也无从判断两处是否一致（本项目的头号错误来源）。
+     *
+     * @throws DictNotFoundException 字典不存在
+     */
+    public function dict(string $code): static
+    {
+        $dictionary = new Dictionary;
+
+        if (! $dictionary->has($code)) {
+            $available = array_keys($dictionary->all());
+
+            throw new DictNotFoundException(
+                "数据字典 [{$code}] 不存在（或没有任何启用中的条目）。",
+                $code,
+                array_map('strval', $available)
+            );
+        }
+
+        $this->map($dictionary->map($code));
+        $this->badge();
+
+        $this->props['dict'] = $code;
+
+        $colors = $dictionary->colors($code);
+
+        if ($colors !== []) {
+            $this->props['dictColors'] = $colors;
+        }
 
         return $this;
     }

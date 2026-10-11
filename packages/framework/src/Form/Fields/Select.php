@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace Aimanong\Form\Fields;
 
+use Aimanong\Form\Concerns\ResolvesDictionary;
+
 class Select extends Field
 {
+    use ResolvesDictionary;
+
     protected string $type = 'select';
 
     /**

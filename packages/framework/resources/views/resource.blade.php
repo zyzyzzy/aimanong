@@ -197,7 +197,11 @@
               <option value="">请选择市</option>
               <option v-for="c in ensureRegion(f.name).cities" :key="c.code" :value="c.code">@{{ c.name }}</option>
             </select>
-            <select v-if="(f.props.level || 3) === 3" v-model="ensureRegion(f.name).district" class="am-select">
+            {{-- 区级也必须 @change 回写：漏了它，area 只会存到「市」。
+                 实测：选完省/市/区，数据库里是「北京市/市辖区」——
+                 区没了，而且不报错、页面看着完全正常。 --}}
+            <select v-if="(f.props.level || 3) === 3" v-model="ensureRegion(f.name).district"
+                    @change="syncRegionValue(f.name)" class="am-select">
               <option value="">请选择区</option>
               <option v-for="d in ensureRegion(f.name).districts" :key="d.code" :value="d.code">@{{ d.name }}</option>
             </select>
@@ -210,8 +214,10 @@
                   :style="{cursor:'pointer',fontSize:'18px',color:(form[f.name] >= n) ? 'var(--warning-solid)' : 'var(--border-strong)'}">★</span>
           </div>
           <div v-else-if="f.type === 'daterange'" class="am-flex am-gap-2">
-            <input type="date" v-model="form[f.name + '_start']" class="am-input">
-            <input type="date" v-model="form[f.name + '_end']" class="am-input">
+            {{-- 真实列名由 ->columns('start_at','end_at') 声明；
+                 未声明时退化为 {字段名}_start / _end（老行为）。 --}}
+            <input type="date" v-model="form[f.props.startColumn || (f.name + '_start')]" class="am-input">
+            <input type="date" v-model="form[f.props.endColumn || (f.name + '_end')]" class="am-input">
           </div>
 
           <textarea v-else-if="f.type === 'textarea'" v-model="form[f.name]" class="am-textarea" :rows="f.props.rows || 4"></textarea>
@@ -359,6 +365,9 @@ const app = createApp({
          * 但让用户点到一个必然失败的按钮是设计缺陷。
          */
         const readonly = computed(() => schema.readonly === true);
+
+        /** 数值类字段：留空会被 ConvertEmptyStringsToNull 变成 null，必须给 0 */
+        const NUMERIC_TYPES = ['number', 'decimal', 'money', 'rate', 'slider'];
 
         /** 是否是上传类字段（image / images / file / files） */
         function isUploadField(f) {
@@ -588,7 +597,16 @@ const app = createApp({
                 '!=': v !== target,
             }[hl.operator] ?? false;
 
-            return hit ? 'hl-' + (hl.level || 'danger') : '';
+            /*
+             * ⚠️ 类名必须与 design-system.css 完全一致（am-hl-*）。
+             *
+             * 这里曾经返回 `hl-danger`，而 CSS 定义的是 `.am-hl-danger` ——
+             * 于是 dangerWhen()/dangerBelow()/warningAbove() 这个
+             * 「真实场景验证」专门加出来的能力，**从来没有过任何视觉效果**：
+             * DOM 里类名正确、CSS 也写得好好的，肉眼看却什么都不会变。
+             * 真实场景验证（CRM 商机金额超 100 万标红）时抓到的。
+             */
+            return hit ? 'am-hl-' + (hl.level || 'danger') : '';
         }
 
         /** 表单输入框的 HTML input type */
@@ -707,10 +725,23 @@ const app = createApp({
              * 以为框是坏的。同理 checkbox 需要数组、其余需要空串。
              */
             for (const f of (schema.form?.fields ?? [])) {
-                if (f.type === 'multiselect' || f.type === 'checkbox') {
+                // 多值字段一律初始化成数组：multiselect / checkbox 是选项多选，
+                // images / files 是上传多值。少一个都会让组件把数组当字符串处理。
+                if (['multiselect', 'checkbox', 'images', 'files'].includes(f.type)) {
                     form.value[f.name] = [];
                 } else if (f.type === 'switch') {
                     form.value[f.name] = f.default ?? false;
+                } else if (NUMERIC_TYPES.includes(f.type) && f.default == null) {
+                    /*
+                     * 数值类字段必须初始化成 0，不能是空串。
+                     *
+                     * 空串经 Laravel 的 ConvertEmptyStringsToNull 会变成 null，
+                     * 而 `amount` / `probability` 这类列几乎总是 NOT NULL ——
+                     * 提交时报 `NOT NULL constraint failed: xxx.probability`，
+                     * 用户看到一句 SQL，完全不知道是自己没动那个滑块。
+                     * （真实场景验证：CRM 商机的「赢单率」滑块 catch 到的）
+                     */
+                    form.value[f.name] = 0;
                 } else {
                     form.value[f.name] = f.default ?? '';
                 }
@@ -771,9 +802,9 @@ const app = createApp({
              */
             for (const f of (schema.form?.fields ?? [])) {
                 if (form.value[f.name] === undefined || form.value[f.name] === null) {
-                    form.value[f.name] = (f.type === 'multiselect' || f.type === 'checkbox')
+                    form.value[f.name] = ['multiselect', 'checkbox', 'images', 'files'].includes(f.type)
                         ? []
-                        : (f.type === 'switch' ? false : '');
+                        : (f.type === 'switch' ? false : (NUMERIC_TYPES.includes(f.type) ? 0 : ''));
                 }
             }
 
@@ -898,7 +929,8 @@ const app = createApp({
             isStepped, steps, currentStep, visibleFields,
             inputType, mapLabel, tagClass, formatMoney, cellValue, cellClass, normalizeCell,
             toasts, toast, dismissToast, confirmState, doDelete,
-            regionProvinces, regionTree, regionForm, onProvinceChange, onCityChange, ensureRegion, openCreate, goStep,
+            regionProvinces, regionTree, regionForm, onProvinceChange, onCityChange, ensureRegion,
+            syncRegionValue, openCreate, goStep,
             fieldOptions, readonly, isUploadField, uploadUrl, uploadName,
             isNumeric,
         };

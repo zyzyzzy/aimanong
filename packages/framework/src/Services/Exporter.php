@@ -126,7 +126,14 @@ class Exporter
         $v = $this->rawValue($item, $name);
 
         // 套用展示规则，保证导出与界面一致
-        if ($formatter === 'map' || $formatter === 'enum') {
+        /*
+         * badge 也要走映射。
+         *
+         * `->badge()->map([...])` 与 `->map([...])->badge()` 这两种写法
+         * 都有人写，后者会把 formatter 覆盖成 'badge' ——
+         * 只要 props 里带了 map，导出就应该套用它，不该看写法脸色。
+         */
+        if ($formatter === 'map' || $formatter === 'enum' || $formatter === 'badge') {
             $map = $props['map'] ?? null;
 
             if ($map instanceof \stdClass) {

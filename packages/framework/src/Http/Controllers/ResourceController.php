@@ -226,7 +226,7 @@ class ResourceController extends Controller
         try {
             $model = $this->repository($node)->create($data);
         } catch (QueryException $e) {
-            return $this->handleConstraintViolation($e);
+            return $this->handleConstraintViolation($e, $node);
         }
 
         if ($relations !== []) {
@@ -252,7 +252,7 @@ class ResourceController extends Controller
         try {
             $model = $this->repository($node)->update($id, $data);
         } catch (QueryException $e) {
-            return $this->handleConstraintViolation($e);
+            return $this->handleConstraintViolation($e, $node);
         }
 
         if ($relations !== []) {
@@ -283,9 +283,37 @@ class ResourceController extends Controller
      * 而用户看到 500 不会知道"是编码重复了"。
      * 这里识别唯一索引冲突，返回 422 + 明确提示。
      */
-    protected function handleConstraintViolation(QueryException $e): JsonResponse
+    protected function handleConstraintViolation(QueryException $e, ?ResourceNode $node = null): JsonResponse
     {
         $message = $e->getMessage();
+
+        /*
+         * NOT NULL 违约。
+         *
+         * 真实场景验证（CRM 商机的「赢单率」滑块）踩到：
+         * 数值字段没填时是空串，经 ConvertEmptyStringsToNull 变成 null，
+         * 直接撞 NOT NULL。原先这里把原始 SQL 抛给用户 ——
+         * 「NOT NULL constraint failed: crm_opportunities.probability」
+         * 对使用者完全不构成指引。
+         *
+         * 现在指出**是哪个字段**，并给出两种改法。
+         */
+        if (str_contains($message, 'NOT NULL constraint failed')
+            || str_contains($message, 'Column \'') && str_contains($message, 'cannot be null')) {
+            $column = $this->notNullColumn($message);
+
+            return response()->json([
+                'message' => $column !== null
+                    ? "字段「{$this->fieldLabel($node, $column)}」不能为空。"
+                    : '有必填字段没有填写。',
+                'error' => 'NOT_NULL_VIOLATION',
+                'field' => $column,
+                'hint' => $column !== null
+                    ? "在 form() 中为 {$column} 声明 ->default(0)（数值）或 ->required()，"
+                        .'数据库该列也不允许为空'
+                    : '检查数值类字段是否被留空',
+            ], 422);
+        }
 
         $isUnique = str_contains($message, 'UNIQUE constraint failed')
             || str_contains($message, 'Duplicate entry')
@@ -314,6 +342,35 @@ class ResourceController extends Controller
                 ? "在 form() 中声明 ->rules('unique:表名,{$field}') 可在提交前校验"
                 : '在 form() 中声明 unique 规则可在提交前校验',
         ], 422);
+    }
+
+    /**
+     * 从 NOT NULL 报错里抠出列名。
+     */
+    protected function notNullColumn(string $message): ?string
+    {
+        if (preg_match('/NOT NULL constraint failed:\s*[\w.]*?(\w+)$/m', $message, $m) === 1
+            || preg_match('/Column \'(\w+)\' cannot be null/', $message, $m) === 1) {
+            return $m[1];
+        }
+
+        return null;
+    }
+
+    /**
+     * 列名 → 表单字段的中文标签（拿不到就用列名）。
+     */
+    protected function fieldLabel(?ResourceNode $node, string $column): string
+    {
+        if ($node !== null) {
+            foreach ($node->fields as $field) {
+                if ($field->name === $column) {
+                    return $field->label !== '' ? $field->label : $column;
+                }
+            }
+        }
+
+        return $column;
     }
 
     /**

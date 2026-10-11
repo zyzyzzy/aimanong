@@ -112,13 +112,38 @@
           }
 
           /** 上传前的即时反馈（服务端仍会再校验一次） */
+          /**
+           * 允许的扩展名。
+           *
+           * ⚠️ 字段自己的 ->accept() **优先于**全局白名单。
+           *
+           * 最初这里只看全局白名单，于是 `->accept('pdf,jpg,png,docx')` 的字段
+           * 会在客户端把 png 拦下来（全局白名单里没有 png）——
+           * 而服务端用 extensionsFor(kind, accept) 是允许的。
+           * 结果：用户选了文件、界面毫无反应，服务端一次请求都没收到。
+           * 真实场景验证（CRM 跟进记录上传现场照片）抓到的。
+           */
+          function allowedExtensions() {
+            if (props.accept) {
+              const out = [];
+              String(props.accept).split(',').forEach(function (t) {
+                t = t.trim().toLowerCase();
+                if (t.indexOf('/') >= 0) t = t.replace('image/', '');
+                t = t.replace(/^\./, '');
+                if (/^[a-z0-9]{1,12}$/.test(t)) out.push(t);
+              });
+              if (out.length) return out;
+            }
+            return (props.kind === 'image' ? AU.config.imageExtensions : AU.config.fileExtensions) || [];
+          }
+
           function precheck(file) {
               if (limit.value > 0 && file.size > limit.value * 1024) {
                   return '「' + file.name + '」超过 ' + limit.value + ' KB';
               }
               const dot = file.name.lastIndexOf('.');
               const ext = dot >= 0 ? file.name.substring(dot + 1).toLowerCase() : '';
-              const allowed = (props.kind === 'image' ? AU.config.imageExtensions : AU.config.fileExtensions) || [];
+              const allowed = allowedExtensions();
               if (allowed.length && ext && !allowed.includes(ext)) {
                   return '「' + file.name + '」类型不在允许列表（' + allowed.join('/') + '）';
               }

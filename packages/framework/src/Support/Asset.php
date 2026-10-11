@@ -52,7 +52,19 @@ class Asset
     {
         // 用 Aimanong::url() 而非直接读 config —— 后者在多应用下
         // 会被最后一次 switch() 污染（与 guard()/Session 同源的坑）
-        return url(Aimanong::url('assets/'.ltrim($path, '/')));
+        $url = url(Aimanong::url('assets/'.ltrim($path, '/')));
+
+        /*
+         * 带上版本号做缓存击穿。
+         *
+         * 资源路由返回的是 `Cache-Control: public`，浏览器会长期缓存 ——
+         * 用户升级框架后**仍然加载旧 CSS**，表现为「改的样式没生效」，
+         * 而服务端查什么都对（实测踩过：修好的高亮样式在浏览器里
+         * 依旧是旧规则，排查了很久）。
+         *
+         * 用版本号而不是 mtime：多应用/多机部署时文件时间戳不一致。
+         */
+        return $url.'?v='.rawurlencode(Aimanong::version());
     }
 
     /**

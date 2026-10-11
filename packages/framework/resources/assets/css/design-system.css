@@ -1457,10 +1457,19 @@ hr {
   text-align: right;
 }
 
-/* 条件高亮（库存不足等） */
-.am-hl-danger { color: var(--danger-text); font-weight: var(--fw-semibold); }
-.am-hl-warning { color: var(--warning-text); font-weight: var(--fw-semibold); }
-.am-hl-success { color: var(--success-text); font-weight: var(--fw-semibold); }
+/*
+ * 条件高亮（库存不足、大额商机等）。
+ *
+ * ⚠️ 选择器必须带上 `td`。
+ *
+ * `.am-table td { color: var(--text-primary) }` 的特异度是 (0,1,1)，
+ * 而单独的 `.am-hl-danger` 只有 (0,1,0) —— 颜色会被表格规则覆盖。
+ * 症状极具迷惑性：类名加上了、字重也生效了（那条没被覆盖），
+ * 只有颜色不变，看起来像「高亮只是加粗」。
+ */
+.am-table td.am-hl-danger { color: var(--danger-text); font-weight: var(--fw-semibold); }
+.am-table td.am-hl-warning { color: var(--warning-text); font-weight: var(--fw-semibold); }
+.am-table td.am-hl-success { color: var(--success-text); font-weight: var(--fw-semibold); }
 
 /* ==========================================================================
  * 9. 弹窗 / 抽屉 / Toast

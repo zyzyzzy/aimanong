@@ -155,8 +155,19 @@ class Column
             );
         }
 
-        $this->map($dictionary->map($code));
+        /*
+         * ⚠️ 顺序不能反：必须「先 badge 再 map」。
+         *
+         * badge() 会把 formatter 覆盖成 'badge'，而导出器只在
+         * formatter 为 map / enum 时才套用中文映射 ——
+         * 于是界面上是「商务谈判」，导出的 CSV 里却是 negotiation。
+         * 前端三种 formatter 都走 mapLabel，所以**只有导出会坏**，
+         * 界面完全看不出来（真实场景验证：运营拿导出文件汇报时发现）。
+         *
+         * 正确顺序下 formatter 最终是 'map'，前端照样渲染成徽章。
+         */
         $this->badge();
+        $this->map($dictionary->map($code));
 
         $this->props['dict'] = $code;
 

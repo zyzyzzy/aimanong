@@ -242,6 +242,31 @@ class Verifier
                 continue;
             }
 
+            /*
+             * 一个字段对应**多个**真实列的，逐个检查它们，
+             * 而不是检查字段名本身。
+             *
+             * 典型是 daterange：它对应 start_at / end_at 两列，
+             * 「period」这个名字在表里当然不存在 —— 不特判就会
+             * 报一个看似莫名其妙的 SUSPECT_FIELD('period')，
+             * 掩盖真正的问题（比如 start_at 拼错了）。
+             */
+            if ($f->type === 'daterange') {
+                foreach (['startColumn', 'endColumn'] as $key) {
+                    $column = $f->props[$key] ?? null;
+
+                    if (! is_string($column) || $column === '') {
+                        continue;
+                    }
+
+                    if (! in_array($column, $real, true)) {
+                        $suspects[] = $column.'（来自 '.$f->name.' 的 daterange）';
+                    }
+                }
+
+                continue;
+            }
+
             if (in_array($f->name, $real, true)) {
                 continue;
             }

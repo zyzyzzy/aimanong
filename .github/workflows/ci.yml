@@ -105,8 +105,49 @@ jobs:
         with:
           node-version: '20'
 
+      #
+      # 三套依赖都要装 —— 缺一套就会有一批检查失败：
+      #   framework   → PHPUnit / PHPStan / Pint / 版本号一致性
+      #   docs        → 文档站构建
+      #   demo        → 端到端
+      #
+      # 回归：e2e job 第一版漏了 framework 的 composer install，
+      # 结果 PHPUnit / PHPStan / Pint **全部报错**，
+      # 而报错信息（「PHPUnit 失败」）完全指不到「依赖没装」。
+      #
+      - name: 安装框架依赖
+        working-directory: packages/framework
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: 安装文档站依赖
+        working-directory: docs
+        run: npm ci || npm install
+
       - name: 准备 demo 项目
         run: bash scripts/setup-demo.sh
+
+      #
+      # 启动 demo 服务。
+      #
+      # ⚠️ 必须真的起服务 —— `pre-release.sh --with-e2e` 要跑
+      # http-e2e（真实 HTTP 行为），而它需要 localhost:8899 上有服务。
+      # 只建项目不起服务，http-e2e 会被判定为失败。
+      #
+      - name: 启动 demo 服务
+        run: |
+          cd "${{ github.workspace }}/../demo-app"
+          nohup php artisan serve --port=8899 > /tmp/serve.log 2>&1 &
+          # 等服务就绪（最多 30 秒）
+          for i in $(seq 1 30); do
+            if curl -s -o /dev/null "http://localhost:8899/admin/auth/login"; then
+              echo "✓ demo 服务已就绪（${i}s）"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "❌ demo 服务启动超时"
+          cat /tmp/serve.log
+          exit 1
 
       - name: 运行发布前检查（含三项端到端）
         env:

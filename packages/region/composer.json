@@ -1,11 +1,22 @@
 {
     "name": "aimanong/region",
+    "version": "1.0.0",
     "description": "Aimanong 官方扩展 —— 中国省市区三级联动选择器",
     "type": "library",
-    "keywords": ["aimanong", "region", "china", "province", "city", "district"],
+    "keywords": [
+        "aimanong",
+        "region",
+        "china",
+        "province",
+        "city",
+        "district"
+    ],
     "license": "MIT",
     "authors": [
-        { "name": "Aimanong", "email": "zyzyzzy@vip.qq.com" }
+        {
+            "name": "Aimanong",
+            "email": "zyzyzzy@vip.qq.com"
+        }
     ],
     "require": {
         "php": "^8.2",

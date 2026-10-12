@@ -13,6 +13,29 @@
     <div class="am-page-head__actions">
       <input v-if="hasSearch" v-model="keyword" @keyup.enter="load(1)"
              class="am-input am-input--search" style="width:220px" placeholder="搜索…">
+
+      {{-- ══ 筛选器（->filter() 声明的列）══
+           有 map / dict 时渲染下拉（选项已知），否则渲染输入框（等值匹配）。
+           后端协议 ?filters[列名]=值 早已可用，这里补的是 UI。 --}}
+      <template v-for="col in filterableColumns" :key="col.name">
+        <select v-if="filterOptions(col)"
+                v-model="filterValues[col.name]"
+                @change="load(1)"
+                class="am-select" style="width:auto;min-width:120px">
+          <option value="">@{{ col.label }}：全部</option>
+          <option v-for="opt in filterOptions(col)" :key="opt.value" :value="opt.value">@{{ opt.label }}</option>
+        </select>
+
+        <input v-else
+               v-model="filterValues[col.name]"
+               @keyup.enter="load(1)"
+               class="am-input" style="width:150px"
+               :placeholder="`按${col.label}筛选`">
+
+        <button v-if="hasFilter(col)" class="am-btn am-btn--icon"
+                :title="`清除${col.label}筛选`"
+                @click="clearFilter(col)">×</button>
+      </template>
       <button class="am-btn" @click="load(currentPage)">
         @include('aimanong::partials.icon', ['name' => 'refresh', 'size' => 15]) 刷新
       </button>
@@ -327,6 +350,58 @@ const app = createApp({
         const currentPage = ref(1);
         const lastPage = ref(1);
         const keyword = ref('');
+
+        /*
+         * 筛选器状态。
+         *
+         * 后端协议 `?filters[列名]=值` 早已可用（EloquentRepository::applyFilters），
+         * 但前端一直没有控件 —— 于是 `->filter()` 声明了却不渲染任何东西，
+         * 成了「幽灵能力」（第六轮 AI 实测的真实反馈：
+         * 「留着只会骗下一个读 schema 的人」）。
+         *
+         * 这里补上 UI，让声明与界面一致。
+         */
+        const filterValues = ref({});
+
+        /** 声明了 ->filter() 的列 */
+        const filterableColumns = computed(() =>
+            columns.value.filter(c => c.filterable)
+        );
+
+        /** 某列的筛选项：有 map / dict 就给下拉，否则输入框 */
+        function filterOptions(col) {
+            const m = col.props?.map;
+
+            if (Array.isArray(m)) {
+                return m.map(x => (Array.isArray(x) ? { value: String(x[0]), label: String(x[1] ?? x[0]) } : { value: String(x), label: String(x) }));
+            }
+
+            if (m && typeof m === 'object') {
+                return Object.entries(m).map(([value, label]) => ({ value: String(value), label: String(label) }));
+            }
+
+            const d = col.props?.dict;
+
+            if (Array.isArray(d)) {
+                return d.map(x => (typeof x === 'object' && x !== null
+                    ? { value: String(x.value), label: String(x.label ?? x.value) }
+                    : { value: String(x), label: String(x) }));
+            }
+
+            return null;
+        }
+
+        /** 该列是否有「清空筛选」的必要（有值才显示） */
+        function hasFilter(col) {
+            const v = filterValues.value[col.name];
+
+            return v !== undefined && v !== null && v !== '';
+        }
+
+        function clearFilter(col) {
+            filterValues.value[col.name] = '';
+            load(1);
+        }
         const sortField = ref('');
         const direction = ref('asc');
         const showCreate = ref(false);
@@ -401,6 +476,12 @@ const app = createApp({
             if (sortField.value) {
                 params.set('sort', sortField.value);
                 params.set('direction', direction.value);
+            }
+            // 筛选：?filters[列名]=值（后端 applyFilters 已支持）
+            for (const [col, val] of Object.entries(filterValues.value)) {
+                if (val !== undefined && val !== null && val !== '') {
+                    params.set(`filters[${col}]`, String(val));
+                }
             }
             try {
                 const res = await fetch(`${base}?${params}`, {
@@ -904,6 +985,7 @@ const app = createApp({
 
         return {
             rows, loading, total, currentPage, lastPage, keyword,
+            filterValues, filterableColumns, filterOptions, hasFilter, clearFilter,
             sortField, direction, showCreate, editing, form,
             columns, formFields, hasSearch,
             load, toggleSort, formatDate, edit, save, remove,

@@ -598,7 +598,39 @@ foreach ($apps->enabled() ? $apps->names() : ['admin'] as $name) {
 t("guard 可被真实解析", $failed === [] && $resolved !== [],
     $failed ? implode('; ', $failed) : implode(',', $resolved));
 
-// ── 9.13 业务语言可检索（第六轮 AI 实测的回归）──
+// ── 9.13 筛选器：声明 ->filter() 必须有 UI（幽灵能力回归）──
+/*
+ * 回归：`->filter()` 曾经是**幽灵能力** ——
+ * schema 老实产出 `"filterable": true`，后端 `?filters[x]=y` 也真生效，
+ * 但页面上一个筛选控件都不渲染。
+ *
+ * 第六轮 AI 实测的真实反馈：「我最后移除了这个声明 ——
+ * 留着只会骗下一个读 schema 的人」。
+ */
+$tpl = (string) file_get_contents(dirname(__DIR__, 2)
+    .'/packages/framework/resources/views/resource.blade.php');
+
+t("筛选器有 UI（filterableColumns）",
+    str_contains($tpl, 'filterableColumns')
+    && str_contains($tpl, 'filterOptions'),
+    '工具栏会渲染筛选控件');
+
+t("筛选值会传给后端",
+    preg_match('/filters\s*\[\s*\$\{|filters\[/', $tpl) === 1,
+    '?filters[列]=值');
+
+t("有 map/dict 时用下拉框",
+    str_contains($tpl, 'filterOptions(col)'),
+    '选项已知 → 下拉；否则输入框');
+
+// 后端协议本身（早已可用，这里锁死防退化）
+t("后端支持 filters 参数",
+    str_contains(
+        (string) file_get_contents($fw.'/src/Repository/EloquentRepository.php'),
+        'applyFilters'
+    ));
+
+// ── 9.14 业务语言可检索（第六轮 AI 实测的回归）──
 $searchDocs = new \Aimanong\Mcp\Tools\SearchDocs();
 $bizHits = 0;
 foreach (['运营希望自己改文案', '处理留痕', '现场照片要能传多张'] as $q) {

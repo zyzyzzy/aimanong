@@ -314,7 +314,6 @@ class Capabilities
                 .'写法: $grid->batchActions([\'delete\', \'export\']); '
                 .'未声明的动作名会在编译期报错',
 
-
             // 导出（写在 grid() 中）
             'export' => '开启 CSV 导出，写法: $grid->export(); 未开启时导出接口返回 403',
             'exportExcept' => '导出时排除的列，参数: 数组。如 exportExcept([\'cover_url\'])',

@@ -112,7 +112,7 @@ php artisan view:cache
 > 会导致**整个后台 500**（`Auth driver [admin] is not defined` /
 > `Target class [admin.admin] does not exist`）。原因是多应用模式的
 > guard 与中间件组是**运行时注册**的，而缓存会跳过那段代码。
-> 已于 v1.7.2 修复并有 e2e 断言锁定。
+> 已于 v1.8.0 修复并有 e2e 断言锁定。
 >
 > 如果你用的是更早的版本，**请先升级**，或暂时不跑这两条命令。
 

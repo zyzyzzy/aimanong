@@ -7,7 +7,7 @@
 
 基于 **Laravel 12 + Vue 3**，专为 AI Agent 设计，同时为人类保留完整文档。
 
-[![Version](https://img.shields.io/badge/version-1.7.1-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.8.0-blue.svg)](./CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 [![PHP](https://img.shields.io/badge/PHP-%5E8.2-blue.svg)](https://www.php.net)
 [![Laravel](https://img.shields.io/badge/Laravel-%5E12.0-red.svg)](https://laravel.com)
@@ -30,7 +30,7 @@ Aimanong 为此明确牺牲部分"灵活性"来换取"确定性"：
 
 ## 快速开始
 
-**最新版本 v1.7.1** —— 全部里程碑（M0–M6）完成，
+**最新版本 v1.8.0** —— 全部里程碑（M0–M6）完成，
 且已补齐「带地基的平台」六项基座能力（登录日志 / 操作日志 / 数据字典 /
 文件上传 / 个人中心 / 管理员账号）。
 

@@ -30,7 +30,7 @@ export default defineConfig({
           text: '入门',
           items: [
             // 非程序员入口放在最前 —— 这是最需要引导的一类读者
-            { text: '不懂编程也能用', link: '/guide/no-code' },
+            { text: '用 AI 开发你的后台', link: '/guide/ai-workflow' },
             { text: '快速开始（开发者）', link: '/guide/quickstart' },
             { text: '核心概念', link: '/guide/concepts' },
           ],

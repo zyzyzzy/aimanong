@@ -1,9 +1,9 @@
 # 快速开始
 
-> **完全不懂编程？** 请先看 [不懂编程也能用](./no-code) ——
-> 那份文档不需要任何编程基础。
+> **想先看完整工作流？** 请先看 [用 AI 开发你的后台](./ai-workflow)。
 >
-> 本页面向会 PHP / Laravel 的开发者。
+> 本页面向**有编程基础的程序员**（参照[项目宪法](https://github.com/zyzyzzy/aimanong/blob/main/CONSTITUTION.md)）——
+> 你负责需求与验收，编码交给 AI。
 
 ## 环境要求
 
@@ -198,5 +198,5 @@ Resource 是否已注册、有没有拼错的列名。
 | 查列表页选项 | [列展示器](/api/columns) |
 | 用内置能力（日志/字典/上传/个人中心） | [基座能力](/guide/foundation) |
 | 让 AI Agent 帮你写 | [AI 协作指南](/guide/ai-collaboration) |
-| **不懂编程** | [不懂编程也能用](/guide/no-code) |
+| **完整工作流（怎么提需求 / 怎么验收）** | [用 AI 开发你的后台](/guide/ai-workflow) |
 | **部署到服务器** | [生产部署](/guide/deploy) |

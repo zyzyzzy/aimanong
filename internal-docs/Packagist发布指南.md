@@ -174,8 +174,26 @@ composer require aimanong/framework:^1.8
 | tag 推到主仓库 commit | Composer 只看到 `dev-main`，不识别版本 | 在拆分分支的对应 commit 上重新打 tag |
 | SSH 安装需认证 | `Could not authenticate` | 真实用户走 Packagist 无需认证；或仓库设 Public + 用 zip dist |
 
+### Packagist 状态（2026-10-12 已完成）
+
+- ✅ **已提交并收录**：https://packagist.org/packages/aimanong/framework
+- ✅ **Webhook 已配置并验证生效**：GitHub 投递记录 status=202
+- ✅ **直接安装可用**：`composer require aimanong/framework`（无需配 repositories）
+
+### 当前安装方式（最终形态）
+
+```bash
+composer require aimanong/framework
+php artisan aimanong:install
+```
+
+### 后续发版流程（每次发新版）
+
+1. 主仓库照常开发、打 tag、推双远端
+2. 运行 `scripts/publish-framework.sh`（拆分 + 打 tag + 推送发布仓库）
+3. Webhook 自动通知 Packagist，无需手动操作
+
 ### 待办
 
-- [ ] **提交到 Packagist**（需用户网页操作）：https://packagist.org/packages/submit
-- [ ] 配 Packagist Webhook（tag 推送自动更新）
-- [ ] 发版脚本化（`scripts/publish-framework.sh`）
+- [ ] 发版脚本化（`scripts/publish-framework.sh`）—— 把本次手工步骤固化
+- [ ] region 插件同样流程（建 `aimanong-region` 仓库并发布）

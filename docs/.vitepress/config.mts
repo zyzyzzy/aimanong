@@ -29,7 +29,9 @@ export default defineConfig({
         {
           text: '入门',
           items: [
-            { text: '快速开始', link: '/guide/quickstart' },
+            // 非程序员入口放在最前 —— 这是最需要引导的一类读者
+            { text: '不懂编程也能用', link: '/guide/no-code' },
+            { text: '快速开始（开发者）', link: '/guide/quickstart' },
             { text: '核心概念', link: '/guide/concepts' },
           ],
         },

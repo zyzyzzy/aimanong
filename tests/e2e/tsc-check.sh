@@ -22,8 +22,25 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DEMO="${1:-${DEMO_PATH:-$ROOT/../demo-app}}"
 TYPES="$DEMO/resources/aimanong/types.ts"
 
+#
+# types.ts 不存在时**自动生成**，而不是报错退出。
+#
+# 回归：CI 里报「找不到 types.ts」—— 因为搭建脚本没有生成它。
+# 而报错只说「请先执行 php artisan aimanong:schema」，
+# 让人以为是环境问题，实际是**缺少一步**。
+#
+# 脚本自己保证前置条件，调用方就不需要记住这一串命令。
+#
 if [ ! -f "$TYPES" ]; then
-  echo "⚠️  找不到 $TYPES —— 先在该项目执行 php artisan aimanong:schema"
+  echo "→ types.ts 不存在，自动生成…"
+  if [ -f "$DEMO/artisan" ]; then
+    (cd "$DEMO" && php artisan aimanong:schema >/dev/null 2>&1) || true
+  fi
+fi
+
+if [ ! -f "$TYPES" ]; then
+  echo "❌ 仍找不到 $TYPES —— 请确认 demo 项目已正确搭建"
+  echo "   DEMO=$DEMO"
   exit 1
 fi
 

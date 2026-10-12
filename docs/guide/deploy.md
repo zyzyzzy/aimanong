@@ -261,7 +261,7 @@ php artisan aimanong:permission sync
 ### 回滚
 
 ```bash
-composer require aimanong/framework:1.7.1   # 指定回退到的版本
+composer require aimanong/framework:1.7.0   # 指定回退到的版本
 php artisan migrate:rollback --step=1        # 如果新版本加了迁移
 php artisan optimize:clear
 ```

@@ -126,3 +126,56 @@ subtree split 是社区标准做法。
 
 主仓库照常开发。**每次发版时**跑一次拆分 + 推送（我会写进 `pre-release.sh`，
 一条命令搞定）。
+
+---
+
+## 九、已完成（2026-10-12）
+
+### 成果
+
+`composer require aimanong/framework` **已验证可用**。
+
+| 验证项 | 结果 |
+|---|---|
+| Composer 解析版本号 | ✅ `1.0.0 ~ 1.8.0` 共 14 个全部识别 |
+| 锁定安装 | ✅ `Locking aimanong/framework (1.8.0)`，72 个依赖 |
+| 真实安装 | ✅ 在干净的 Laravel 12 项目里装好 |
+| 框架可用 | ✅ `aimanong:install` 正常创建管理员账号 |
+
+### 仓库
+
+- **发布仓库**：https://github.com/zyzyzzy/aimanong-framework
+- **安装方式**（当前）：
+
+```bash
+composer config repositories.aimanong vcs git@github.com:zyzyzzy/aimanong-framework.git
+composer require aimanong/framework:^1.8
+```
+
+### 关键实现细节
+
+**subtree split 的 tag 处理**：
+
+直接把主仓库的 tag 推到发布仓库是**错的**——那些 tag 指向主仓库 commit，
+不含 `packages/framework/composer.json`，Composer 无法解析版本号。
+
+正确做法（已写成脚本逻辑）：
+
+1. `git subtree split --prefix=packages/framework -b fw-release`
+2. 对每个版本，在主仓库 tag 上取 `packages/framework/composer.json` 的 blob
+3. 在拆分分支历史里找**包含相同 blob** 的 commit
+4. 在**那个 commit** 上打 tag 并推送
+
+### 踩坑记录
+
+| 坑 | 现象 | 解法 |
+|---|---|---|
+| 直连 GitHub 不通 | `Empty reply from server` | 用 SSH（`git@github.com:...`）而非 https |
+| tag 推到主仓库 commit | Composer 只看到 `dev-main`，不识别版本 | 在拆分分支的对应 commit 上重新打 tag |
+| SSH 安装需认证 | `Could not authenticate` | 真实用户走 Packagist 无需认证；或仓库设 Public + 用 zip dist |
+
+### 待办
+
+- [ ] **提交到 Packagist**（需用户网页操作）：https://packagist.org/packages/submit
+- [ ] 配 Packagist Webhook（tag 推送自动更新）
+- [ ] 发版脚本化（`scripts/publish-framework.sh`）

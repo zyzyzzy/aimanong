@@ -22,7 +22,7 @@ hero:
 features:
   - icon: 🤖
     title: 为 AI 而设计
-    details: 自省接口 + MCP Server + 可自愈错误。AI 不需要读文档猜 API，直接调工具。三轮 AI 实测，一次成功率 1.0。
+    details: 自省接口 + MCP Server + 可自愈错误。AI 不需要读文档猜 API，直接调工具。六轮 AI 实测，一次成功率 1.0。
 
   - icon: 📐
     title: 一份声明，永不漂移
@@ -33,8 +33,8 @@ features:
     details: 不只是"语法合法"。传入需求清单，它会逐条核对并告诉你缺了什么、怎么改 —— 避免 AI 拿着绿灯交残次品。
 
   - icon: 🎨
-    title: 26 个字段类型
-    details: 文本、数值、选择、日期、颜色、评分、滑块等开箱即用，配 6 个列展示器（徽章、金额、进度条、布尔标签等）。
+    title: 30 个字段类型
+    details: 文本、数值、选择、日期、颜色、评分、滑块、上传（image/images/file/files）等开箱即用，配 10 个列展示器（徽章、金额、进度条、布尔标签、图片、文件、链接等）。
 
   - icon: ⚡
     title: 基于 Laravel 12

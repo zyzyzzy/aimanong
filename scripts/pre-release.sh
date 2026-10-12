@@ -218,6 +218,34 @@ for pkg in framework region; do
   fi
 done
 
+# ⚠️ 最容易漏的一步：tag 推了主仓库，但忘了跑 publish-framework.sh。
+# 此时 Packagist 还是旧版本，且**不会报错** —— 用户装到的是旧代码。
+# 所以这里显式比对版本号。
+echo ""
+echo "  版本同步状态（本地 composer.json vs Packagist）："
+for pkg in framework region; do
+  local_ver=$(python3 -c "import json;print(json.load(open('$ROOT/packages/${pkg}/composer.json')).get('version',''))" 2>/dev/null || echo "")
+  if [ -z "$local_ver" ]; then continue; fi
+
+  remote_ver=$(curl -s --max-time 10 "https://repo.packagist.org/p2/aimanong/${pkg}.json" 2>/dev/null \
+      | python3 -c "import sys,json
+try:
+    d=json.load(sys.stdin)
+    vs=[v['version'].lstrip('v') for v in d['packages']['aimanong/${pkg}'] if not v['version'].startswith('dev')]
+    print(sorted(vs)[-1] if vs else '')
+except: print('')" 2>/dev/null || echo "")
+
+  if [ "$local_ver" = "$remote_ver" ]; then
+    ok "${pkg}: 本地 $local_ver = Packagist $remote_ver"
+  else
+    # 用 bad 而非 warn：这是**发版遗漏**，必须拦住。
+    # 只 warn 的话 pre-release 仍显示"全部通过"，
+    # 而 Packagist 上用户装到的还是旧代码。
+    bad "${pkg}: 本地 $local_ver ≠ Packagist ${remote_ver:-（空）}"
+    echo "       → 需运行: ./scripts/publish-framework.sh ${pkg}"
+  fi
+done
+
 # ─────────────────────────────────────────────────
 printf "\n${C_B}"
 if [ "$FAIL" -eq 0 ]; then

@@ -12,6 +12,7 @@ use Aimanong\Console\InstallCommand;
 use Aimanong\Console\PermissionCommand;
 use Aimanong\Extend\ExtensionManager;
 use Aimanong\Support\Asset;
+use Illuminate\Auth\AuthManager;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -270,6 +271,8 @@ class AimanongServiceProvider extends ServiceProvider
                 $app['request']
             );
         });
+
+        $this->markGuardDriverRegistered($guardName);
     }
 
     /**
@@ -320,17 +323,49 @@ class AimanongServiceProvider extends ServiceProvider
      */
     protected function bootApplication(): void
     {
+        /** @var ApplicationManager $apps */
+        $apps = $this->app->make('aimanong.application');
+
+        /*
+         * ⚠️ 注册中间件组与 guard 的部分**不能**被路由缓存跳过。
+         *
+         * ## 回归（生产部署必踩，且报错完全指不到根因）
+         *
+         * 原实现是：
+         *
+         *     if ($this->app->routesAreCached()) { return; }   // 整段跳过
+         *     ...注册中间件组 + guard...
+         *
+         * 而 `php artisan route:cache` 把路由里的中间件**存成组名字符串**
+         * （如 `admin.admin`）。缓存加载时若没重新注册这个组，
+         * 解析就失败：
+         *
+         *     Target class [admin.admin] does not exist  → 整个后台 500
+         *
+         * 实测：config:cache 单独跑没问题；加上 route:cache 立刻 500。
+         * 而 Laravel 官方部署文档的第一步就是这两个命令。
+         *
+         * 所以拆成两段：
+         *   - registerApplicationRuntime()：中间件组 + guard（**总是执行**）
+         *   - 路由文件加载：仅在没有路由缓存时执行
+         */
+        if ($apps->enabled()) {
+            foreach ($apps->names() as $name) {
+                $this->registerApplicationRuntime($name, $apps);
+            }
+        }
+
+        // 扩展与 AI 路由不受路由缓存影响（它们注册自己的路由）
+        $this->bootExtensions();
+        $this->bootAiRoutes();
+        $this->bootMcpServer();
+
         if ($this->app->routesAreCached()) {
             return;
         }
 
-        /** @var ApplicationManager $apps */
-        $apps = $this->app->make('aimanong.application');
-
         if ($apps->enabled()) {
-            // 多应用：为每个应用挂载独立的路由前缀与 guard
             foreach ($apps->names() as $name) {
-                $this->registerApplicationGuard($name, $apps);
                 $this->registerApplicationRoutes($name, $apps);
             }
         } else {
@@ -340,10 +375,25 @@ class AimanongServiceProvider extends ServiceProvider
                 ->name('aimanong.')
                 ->group(__DIR__.'/../routes/admin.php');
         }
+    }
 
-        $this->bootExtensions();
-        $this->bootAiRoutes();
-        $this->bootMcpServer();
+    /**
+     * 注册某个应用的**运行时**依赖：中间件组 + guard。
+     *
+     * 与路由文件加载分离 —— 前者必须在路由缓存时也执行，
+     * 否则缓存里的组名无法解析（见 bootApplication 的说明）。
+     */
+    protected function registerApplicationRuntime(string $name, ApplicationManager $apps): void
+    {
+        $this->registerApplicationGuard($name, $apps);
+
+        $guard = $apps->guard($name);
+        $group = 'admin.'.$name;
+
+        $this->app->make('router')->middlewareGroup(
+            $group,
+            $this->adminMiddlewareGroup('admin.auth:'.$guard)
+        );
     }
 
     /**
@@ -434,10 +484,29 @@ class AimanongServiceProvider extends ServiceProvider
         $model = is_string($auth['model'] ?? null) ? $auth['model'] : Models\Administrator::class;
         $provider = 'aimanong_'.$name;
 
-        // 已注册则跳过（避免重复 define）
+        /*
+         * ⚠️ 只有 **driver 也已注册** 时才允许跳过。
+         *
+         * ## 回归（生产部署必踩的坑）
+         *
+         * 原判断只看 `config('auth.guards.'.$guard)` 是否存在 ——
+         * 而 `config:cache` 会把 guard 配置**写进缓存文件**，
+         * 于是重跑时这里判定「已注册」直接 return，
+         * **跳过了下面的 Auth::extend()**。
+         *
+         * 但 `Auth::extend()` 注册的是**运行时**的 customCreators，
+         * 缓存文件里没有它。结果：
+         *
+         *   Auth driver [admin] for guard [admin] is not defined
+         *   → 整个后台 500
+         *
+         * 而 Laravel 官方部署文档第一步就是 `php artisan config:cache`。
+         * 实测：无缓存时 customCreators = [admin, merchant]，
+         *       有缓存时只剩 [merchant]。
+         */
         $existing = config('auth.guards.'.$guard);
 
-        if (is_array($existing)) {
+        if (is_array($existing) && $this->guardDriverRegistered($guard)) {
             return;
         }
 
@@ -456,6 +525,43 @@ class AimanongServiceProvider extends ServiceProvider
 
             return new AdminGuard($n, $userProvider, $app['session.store'], $app['request']);
         });
+
+        $this->markGuardDriverRegistered($guard);
+    }
+
+    /**
+     * 本进程里**已经注册过**的 guard driver。
+     *
+     * ## 为什么自己记，而不是问 Laravel
+     *
+     * `AuthManager::customCreators` 是 protected，而 Laravel 12
+     * **没有** `hasCustomCreator()` 方法 —— 我第一版正是这么写的，
+     * 结果检测永远返回 false（e2e 断言当场假红）。
+     *
+     * 自己记是可靠的：provider 的 register() 每进程只跑一次，
+     * 走到 `Auth::extend()` 就记一笔。
+     *
+     * @var array<string, bool>
+     */
+    protected static array $registeredGuardDrivers = [];
+
+    /**
+     * 某个 guard 的自定义 driver 是否已在**本进程运行时**注册。
+     *
+     * 配置里存在 guard 不代表 driver 可用 —— 配置可能来自
+     * `config:cache` 的缓存文件，而 customCreators 是运行时状态。
+     */
+    protected function guardDriverRegistered(string $driver): bool
+    {
+        return self::$registeredGuardDrivers[$driver] ?? false;
+    }
+
+    /**
+     * 记录一个已注册的 guard driver。
+     */
+    protected function markGuardDriverRegistered(string $driver): void
+    {
+        self::$registeredGuardDrivers[$driver] = true;
     }
 
     /**
@@ -470,22 +576,9 @@ class AimanongServiceProvider extends ServiceProvider
         $guard = $apps->guard($name);
         $title = $apps->config($name)['title'] ?? $name;
 
-        // 该应用专属的中间件组，认证走它自己的 guard
+        // 该应用专属的中间件组。它的注册在 registerApplicationRuntime()
+        // 里完成 —— 那里在路由缓存时也会执行，此处不重复注册。
         $group = 'admin.'.$name;
-
-        /*
-         * admin.session 必须排在 web **之前**。
-         *
-         * web 组内部含 StartSession —— 若它先执行，
-         * session 会用旧的 cookie path 启动，之后改配置无效，
-         * 表现为登录态丢失 / CSRF 419 / 无限重定向。
-         * 我们的 Session 中间件只改 config，不依赖 session 实例，
-         * 因此可以安全地前置。
-         */
-        $this->app->make('router')->middlewareGroup(
-            $group,
-            $this->adminMiddlewareGroup('admin.auth:'.$guard)
-        );
 
         Route::middleware($group)
             ->prefix($prefix)

@@ -512,7 +512,93 @@ if (is_string($adminModel) && class_exists($adminModel)) {
     }
 }
 
-// ── 9.12 业务语言可检索（第六轮 AI 实测的回归）──
+// ── 9.12 生产部署缓存兼容性（P0 回归）──
+/*
+ * ## 为什么必须锁死
+ *
+ * Laravel 官方部署文档的第一步就是：
+ *
+ *     php artisan config:cache
+ *     php artisan route:cache
+ *     php artisan view:cache
+ *
+ * 而框架曾经在跑完这两条后**整个后台 500**：
+ *
+ *   1. config:cache  → Auth driver [admin] ... is not defined
+ *      根因：多应用 guard 的注册被「配置里已有该 guard」的判断跳过，
+ *            而 Auth::extend() 注册的是**运行时**状态，缓存不含它
+ *
+ *   2. route:cache   → Target class [admin.admin] does not exist
+ *      根因：bootApplication() 在 routesAreCached() 时整段 return，
+ *            连中间件组都没注册 —— 而缓存文件里存的是组名字符串
+ *
+ * 两个都不报在编译期、不在单测里、不在 e2e 里，
+ * 因为它们都**只在生产部署路径上出现**。
+ */
+$providerSrc = (string) file_get_contents($fw.'/src/AimanongServiceProvider.php');
+
+t("guard 注册不被配置缓存跳过",
+    str_contains($providerSrc, 'guardDriverRegistered'),
+    '检查运行时 driver 是否真的注册了');
+
+t("中间件组注册不被路由缓存跳过",
+    str_contains($providerSrc, 'registerApplicationRuntime'),
+    '运行时注册与路由加载分离');
+
+// 行为验证：当前进程里，每个已注册的应用都应有对应的中间件组
+$router = app('router');
+$groups = (function (): array {
+    /** @var array<string, array<int, string>> $g */
+    $g = $this->middlewareGroups;
+
+    return $g;
+})->call($router);
+
+$apps = \Aimanong\Aimanong::application();
+
+if ($apps->enabled()) {
+    $missing = [];
+    foreach ($apps->names() as $name) {
+        if (! isset($groups['admin.'.$name])) {
+            $missing[] = 'admin.'.$name;
+        }
+    }
+    t("每个应用都有中间件组", $missing === [],
+        $missing ? '缺: '.implode(',', $missing) : implode(',', $apps->names()));
+} else {
+    t("单后台中间件组存在", isset($groups['admin']), 'admin');
+}
+
+/*
+ * guard 的 driver 必须真的注册在运行时。
+ *
+ * ⚠️ 不能用 `AuthManager::hasCustomCreator()` —— Laravel 12 没这个方法
+ * （第一版就这么写的，断言假红）。改用**行为验证**：
+ * 真的去解析一次 guard，能拿到实例才算注册成功。
+ */
+$resolved = [];
+$failed = [];
+
+foreach ($apps->enabled() ? $apps->names() : ['admin'] as $name) {
+    $guard = $apps->enabled() ? $apps->guard($name) : 'admin';
+
+    try {
+        $instance = app('auth')->guard($guard);
+
+        if ($instance instanceof \Aimanong\Auth\AdminGuard) {
+            $resolved[] = $guard;
+        } else {
+            $failed[] = $guard.' → '.get_class($instance);
+        }
+    } catch (\Throwable $e) {
+        $failed[] = $guard.' → '.$e->getMessage();
+    }
+}
+
+t("guard 可被真实解析", $failed === [] && $resolved !== [],
+    $failed ? implode('; ', $failed) : implode(',', $resolved));
+
+// ── 9.13 业务语言可检索（第六轮 AI 实测的回归）──
 $searchDocs = new \Aimanong\Mcp\Tools\SearchDocs();
 $bizHits = 0;
 foreach (['运营希望自己改文案', '处理留痕', '现场照片要能传多张'] as $q) {

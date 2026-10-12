@@ -35,7 +35,20 @@ if [ -d "$DEMO" ] && [ -f "$DEMO/artisan" ]; then
   echo "  ✓ 已存在，跳过创建"
 else
   echo "  → 创建 Laravel 项目…"
-  composer create-project laravel/laravel "$DEMO" --no-interaction --prefer-dist --quiet
+
+  # ⚠️ 必须锁定骨架版本。
+  #
+  # 不锁的话拿到的是**最新** laravel/laravel 骨架 ——
+  # 而框架的依赖链（laravel/mcp ^0.4）目前只支持 Laravel 12：
+  #
+  #   - laravel/mcp v0.4.2 requires illuminate/container ^12.41.1
+  #   - 骨架若给到 Laravel 13 → 依赖无解 → composer 报
+  #     "Your requirements could not be resolved"
+  #
+  # 本地不容易发现（composer 缓存常给出旧版），CI 干净环境必踩。
+  # 这正是 e2e job 从加进去就红着的原因。
+  composer create-project "laravel/laravel:^12.0" "$DEMO" \
+    --no-interaction --prefer-dist --quiet
 fi
 
 cd "$DEMO"

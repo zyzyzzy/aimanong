@@ -199,3 +199,4 @@ Resource 是否已注册、有没有拼错的列名。
 | 用内置能力（日志/字典/上传/个人中心） | [基座能力](/guide/foundation) |
 | 让 AI Agent 帮你写 | [AI 协作指南](/guide/ai-collaboration) |
 | **不懂编程** | [不懂编程也能用](/guide/no-code) |
+| **部署到服务器** | [生产部署](/guide/deploy) |

@@ -49,6 +49,12 @@ export default defineConfig({
           ],
         },
         {
+          text: '部署与运维',
+          items: [
+            { text: '生产部署', link: '/guide/deploy' },
+          ],
+        },
+        {
           text: '开发',
           items: [
             { text: '字段类型', link: '/api/fields' },

@@ -192,11 +192,20 @@
         </div>
 
         <div v-for="f in visibleFields" :key="f.name" class="am-field" v-show="!f.hidden">
-          <label class="am-field__label">
+          {{-- 分隔线不带标准 label（标题本身就是它要显示的内容） --}}
+          <label v-show="f.type !== 'divider'" class="am-field__label">
             @{{ f.label }}<span v-if="f.required || (f.props.requiredOnCreate && !editing)" class="am-field__required">*</span>
           </label>
 
-          <select v-if="f.type === 'select'" v-model="form[f.name]" class="am-select">
+          {{-- ══ 分隔线 / 分组标题 ══
+               宪法第三条：`$form->divider('分组标题')` 必须有可见效果。
+               它原先被 hidden(true) 过滤掉了 —— 界面上一个字都没有 ✗
+               现在独立渲染成一条带标题的分隔线 ✓ --}}
+          <div v-if="f.type === 'divider'" class="am-field__divider">
+            <span>@{{ f.label }}</span>
+          </div>
+
+          <select v-else-if="f.type === 'select'" v-model="form[f.name]" class="am-select">
             <option value="">请选择…</option>
             <option v-for="o in fieldOptions(f)" :key="o.value" :value="o.value">@{{ o.label }}</option>
           </select>

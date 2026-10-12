@@ -158,20 +158,48 @@ class SingleSourceOfTruthTest extends TestCase
     }
 
     /**
-     * 回归（第五轮）：draggable 是幽灵能力，必须在编译产物中标明。
+     * 回归（第五轮 + 宪法第三条）：draggable 不得在产物里**谎报可用**。
+     *
+     * 旧行为：`draggable()` → schema 写 `draggable: true`，
+     *   同时写 `draggable_supported: false` —— **两个字段自相矛盾** ✗
+     *   AI 读到 `draggable: true` 就会以为拖拽可用 ✗
+     *
+     * 新行为（宪法第三条 · 零隐式）：
+     *   ① 默认 false（不谎报）
+     *   ② `draggable_supported` 仍为 false（口径一致）
+     *   ③ **不允许显式声明 true** —— 做不到就不能说能做
      */
     public function test_draggable_is_marked_unsupported(): void
     {
         $tree = new Tree;
-        $tree->draggable();
 
         $arr = $tree->toArray();
 
-        $this->assertTrue($arr['draggable']);
+        $this->assertFalse(
+            $arr['draggable'],
+            '默认不得谎报可拖拽（前端无拖拽 UI）'
+        );
         $this->assertFalse(
             $arr['draggable_supported'],
             '拖拽 UI 尚未实现，必须明确标注，避免"声明了却以为能用"'
         );
+
+        // ③ 显式声明 true = 声称一个做不到的事 → 必须报错
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessageMatches('/尚未实现/');
+        $tree->draggable(true);
+    }
+
+    /**
+     * 显式关闭拖拽（draggable(false)）应正常生效。
+     */
+    public function test_draggable_false_is_allowed(): void
+    {
+        $tree = new Tree;
+        $tree->draggable(false);
+
+        $this->assertFalse($tree->toArray()['draggable']);
+        $this->assertFalse($tree->toArray()['draggable_supported']);
     }
 
     /**

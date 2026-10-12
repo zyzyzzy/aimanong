@@ -732,6 +732,33 @@ hr {
   line-height: var(--lh-tight);
 }
 .am-field__required { color: var(--danger-text); font-weight: var(--fw-normal); }
+
+/*
+ * 表单内的「分组标题 / 分隔线」（$form->divider('分组标题')）
+ *
+ * 宪法第三条：声明了就必须有可见效果。
+ * 它原先被 hidden(true) 过滤掉 —— 界面上一个字都没有 ✗
+ */
+.am-field__divider {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin: var(--sp-5) 0 var(--sp-3);
+}
+.am-field__divider::before,
+.am-field__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-subtle);
+}
+.am-field__divider > span {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
 .am-field__help {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);

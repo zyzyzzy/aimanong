@@ -716,7 +716,78 @@ t("导出带上当前筛选条件",
     str_contains($tplSrc, 'applyListParams'),
     '否则「导出与界面一致」不成立');
 
-// ── 9.16 业务语言可检索（第六轮 AI 实测的回归）──
+// ── 9.16 宪法审计发现的第三条违规（2026-10-12）──
+/*
+ * 依据《CONSTITUTION.md》第三条（零隐式）审计时发现两条幽灵能力。
+ * 第三条是条款里**优先级最高**的一条：声明不可信，一切都垮。
+ */
+
+// ① divider：声明了必须真的可见（原先被 hidden(true) 过滤，界面上一个字都没有）
+$dividerSrc = (string) file_get_contents($fw.'/src/Form/Fields/Divider.php');
+$tplSrc2 = (string) file_get_contents($fw.'/resources/views/resource.blade.php');
+
+/*
+ * ⚠️ 必须先剥掉注释再检查 ✗→✓
+ *
+ * 第一版直接 `str_contains($dividerSrc, '$this->hidden(true)')` 会**假红** ——
+ * 因为我在解释「为什么改」的注释里正好写了这段字面文字 ✓。
+ * 注释不是代码 ✓（同理：Blade 注释里的指令也会被引擎解析）。
+ */
+$dividerCode = (string) preg_replace(
+    '#/\*.*?\*/|//[^\n]*|\s*\*[^\n]*#s',
+    '',
+    $dividerSrc
+);
+
+t("divider 不再被隐藏",
+    ! str_contains($dividerCode, 'hidden(true)'),
+    '否则 visibleFields 会把它过滤掉 ✗（已剥注释比对）');
+
+t("divider 前端有渲染分支",
+    str_contains($tplSrc2, "f.type === 'divider'"),
+    '否则声明了也看不见');
+
+t("divider 有可见样式",
+    str_contains(
+        (string) file_get_contents($fw.'/resources/assets/css/design-system.css'),
+        '.am-field__divider'
+    ),
+    '有结构没样式 = 还是看不见');
+
+// ② draggable：不得在产物里谎报可用
+$treeSrc = (string) file_get_contents($fw.'/src/Tree/Tree.php');
+
+t("draggable 默认不谎报",
+    str_contains($treeSrc, 'protected bool $draggable = false'),
+    '默认 true 会让每个树形资源都写 draggable:true ✗');
+
+t("draggable 不允许声称做不到的事",
+    str_contains($treeSrc, 'InvalidArgumentException'),
+    'UI 没实现就不该允许声明 true');
+
+t("draggable_supported 仍为 false",
+    str_contains($treeSrc, "'draggable_supported' => false"),
+    '与 draggable 口径一致');
+
+// 行为验证：真实产物里不得出现 draggable:true
+$schemaPath = $demo.'/resources/aimanong/schema.json';
+$typesPath = $demo.'/resources/aimanong/types.ts';
+
+if (is_file($schemaPath)) {
+    $schemaRaw = (string) file_get_contents($schemaPath);
+    t("产物 schema.json 不谎报 draggable",
+        ! str_contains($schemaRaw, '"draggable":true'),
+        'AI 读这份产物，谎报会导致它写出点不动的代码');
+}
+
+if (is_file($typesPath)) {
+    $typesRaw = (string) file_get_contents($typesPath);
+    t("产物 types.ts 不谎报 draggable",
+        ! str_contains($typesRaw, 'draggable: true'),
+        '同上');
+}
+
+// ── 9.17 业务语言可检索（第六轮 AI 实测的回归）──
 $searchDocs = new \Aimanong\Mcp\Tools\SearchDocs();
 $bizHits = 0;
 foreach (['运营希望自己改文案', '处理留痕', '现场照片要能传多张'] as $q) {

@@ -19,7 +19,21 @@ class Tree
 
     protected string $titleColumn = 'name';
 
-    protected bool $draggable = true;
+    /*
+     * ⚠️ 默认值曾是 **true** ✗（违反宪法第三条 · 零隐式）
+     *
+     * 后果：schema.json / types.ts 里每个树形资源都写着 `draggable: true` ✗
+     *   —— 而**前端根本没有拖拽交互** ✗（模板里 draggable 出现 0 次）
+     *   → AI 读到 schema 就会以为「拖拽可用」，写出点不动的代码 ✗✗
+     *
+     * 更糟的是：同一份 schema 里还写着 `draggable_supported: false`，
+     *   两个字段**自相矛盾** ✓→✗ AI 不知道该信哪个。
+     *
+     * 现在默认 false ✓：与 `draggable_supported: false` 口径一致，
+     *   AI 读到的是「拖拽不可用」这个**真话** ✓。
+     * 等拖拽 UI 真正实现后，再把这里改回 true 并同步 `draggable_supported`。
+     */
+    protected bool $draggable = false;
 
     protected int $maxDepth = 0;
 
@@ -56,15 +70,28 @@ class Tree
     /**
      * 是否允许拖拽排序。
      *
-     * ⚠️ 尚未实现：该声明会被编译进 schema（draggable: true），
-     * 但前端目前**没有拖拽交互**。调整层级请通过编辑表单的
-     * 父级字段，或调用 PUT /admin/api/{uri}/{id}/move 接口。
+     * ⚠️ **尚未实现**：前端目前没有拖拽交互 ✗
      *
-     * 保留该方法是为了不破坏已有声明；实际拖拽 UI 待后续版本实现。
+     * 因此本方法**不接受 true** —— 传 true 会抛异常并说清原因。
+     * 这不是限制，而是宪法第三条的要求：
+     * 既然界面上做不到，schema 里就不能写「可以」。
+     *
+     * 需要调整层级时，请通过编辑表单的父级字段，
+     * 或调用 PUT /admin/api/{uri}/{id}/move 接口（后端**已可用** ✓）。
+     *
+     * 等拖拽 UI 实现后，本方法恢复接受 true。
      */
     public function draggable(bool $value = true): static
     {
-        $this->draggable = $value;
+        if ($value === true) {
+            throw new \InvalidArgumentException(
+                '拖拽排序（draggable）尚未实现：当前前端没有拖拽 UI，'
+                .'声明 true 会让 schema 产出不可用的能力。'
+                .'调整层级请用编辑表单的父级字段，或 PUT /admin/api/{uri}/{id}/move 接口。'
+            );
+        }
+
+        $this->draggable = false;
 
         return $this;
     }

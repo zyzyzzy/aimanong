@@ -70,22 +70,16 @@ rm -f .env.bak
 echo "  → 安装框架"
 php artisan aimanong:install --no-interaction 2>/dev/null || php artisan aimanong:install --force --no-interaction
 
-# ── 管理员账号（e2e 要用 admin/admin123 登录）──
-echo "  → 创建管理员账号"
-php artisan tinker --execute='
-use Aimanong\Models\Administrator;
-use Aimanong\Models\Role;
-$u = Administrator::firstOrCreate(
-    ["username" => "admin"],
-    ["name" => "超级管理员", "password" => "admin123", "enabled" => true]
-);
-$r = Role::firstOrCreate(
-    ["slug" => "super_admin"],
-    ["name" => "超级管理员", "is_super" => true]
-);
-$u->roles()->syncWithoutDetaching([$r->id]);
-echo "admin 就绪\n";
-'
+# ── 管理员账号 ──
+#
+# ⚠️ 正常情况下**不需要**这一段 —— `aimanong:install` 自己会创建。
+#
+# 但 e2e 测试要求固定的账号密码（admin/admin123），而安装命令
+# 默认生成随机强密码。所以这里显式指定，用非交互参数的正式路径，
+# 而不是绕过安装命令手工写库。
+echo "  → 创建管理员账号（非交互）"
+php artisan aimanong:install --force --admin-user=admin --admin-password=admin123 \
+  --no-interaction >/dev/null 2>&1 || true
 
 # ── 权限节点（内置 Resource 的节点要写库）──
 echo "  → 同步权限节点"

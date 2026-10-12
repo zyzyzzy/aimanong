@@ -448,7 +448,67 @@ if (class_exists(\Aimanong\Region\RegionExtension::class)) {
     echo "  ⏭  跳过「region 插件 UI」：本项目未安装该插件\n";
 }
 
-// ── 9.11 业务语言可检索（第六轮 AI 实测的回归）──
+// ── 9.11 安装命令必须能创建管理员账号（P0 死锁回归）──
+/*
+ * 回归：`aimanong:install` 原先**不创建任何账号**，
+ * 而后台必须登录才能进 —— 形成闭环死锁：
+ *
+ *   装完 → admin_users 为空 → 跳登录页 → 没账号可登 → 进不去
+ *        → 也无法用「管理员账号」界面创建第一个账号
+ *
+ * 使用者唯一的出路是手工跑 tinker 脚本，而那不在任何文档里。
+ *
+ * 这条断言检查安装命令**具备**建号能力且幂等。
+ */
+$installSrc = (string) file_get_contents($fw.'/src/Console/InstallCommand.php');
+
+/*
+ * ⚠️ 必须检查**调用**而不是方法存在。
+ *
+ * 第一版断言只查 `str_contains($installSrc, 'createAdmin')` ——
+ * 把调用删掉、只留方法定义，断言照样通过（反向测试时发现的）。
+ * 这类「检查了错误的东西」的断言比没有断言更危险：它给假绿灯。
+ */
+t("安装命令会创建管理员账号",
+    preg_match('/\$\w+\s*=\s*\$this->createAdmin\(\)/', $installSrc) === 1
+    && str_contains($installSrc, 'forceFill')
+    && str_contains($installSrc, '->save()'),
+    'createAdmin() 被真正调用并落库');
+
+t("安装命令支持非交互参数",
+    str_contains($installSrc, '--admin-user')
+    && str_contains($installSrc, '--admin-password'),
+    'CI / 脚本可用');
+
+t("安装命令可跳过建号",
+    str_contains($installSrc, '--no-admin'),
+    '--no-admin');
+
+t("安装命令幂等（不重置已有密码）",
+    str_contains($installSrc, '已存在管理员账号，跳过创建'),
+    '重跑安装不会改密码');
+
+t("安装命令默认生成随机密码",
+    str_contains($installSrc, 'Str::password'),
+    '避免 admin123 式的公开后门');
+
+t("安装命令绑定超管角色",
+    str_contains($installSrc, 'assignSuperRole'),
+    '否则登进去菜单为空');
+
+// 应用侧：本项目的账号确实存在且可用
+$adminModel = config('aimanong.auth.model', \Aimanong\Models\Administrator::class);
+
+if (is_string($adminModel) && class_exists($adminModel)) {
+    try {
+        $count = $adminModel::query()->count();
+        t("当前项目已有管理员账号", $count > 0, "{$count} 个");
+    } catch (\Throwable $e) {
+        t("当前项目已有管理员账号", false, $e->getMessage());
+    }
+}
+
+// ── 9.12 业务语言可检索（第六轮 AI 实测的回归）──
 $searchDocs = new \Aimanong\Mcp\Tools\SearchDocs();
 $bizHits = 0;
 foreach (['运营希望自己改文案', '处理留痕', '现场照片要能传多张'] as $q) {

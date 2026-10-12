@@ -53,5 +53,8 @@ if OUT=$("$TSC" --noEmit --strict --target ES2020 "$WORK/types.ts" 2>&1); then
 fi
 
 echo "❌ types.ts 编译失败："
-echo "$OUT" | head -30
+echo "   使用的 tsc: $TSC"
+"$TSC" --version 2>/dev/null | sed 's/^/   /'
+echo "   ── 错误前 40 行 ──"
+echo "$OUT" | head -40 | sed 's/^/   /'
 exit 1

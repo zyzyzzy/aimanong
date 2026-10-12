@@ -83,13 +83,15 @@ if ./vendor/bin/phpunit > /tmp/amn-ut.log 2>&1; then
   UT_LINE=$(grep -oE 'OK \([0-9]+ tests, [0-9]+ assertions\)' /tmp/amn-ut.log | head -1)
   ok "PHPUnit ${UT_LINE:-(通过)}"
 else
-  bad "PHPUnit 失败（见 /tmp/amn-ut.log）"
+  bad "PHPUnit 失败"
+  sed 's/^/      /' /tmp/amn-ut.log | tail -15
 fi
 
 if ./vendor/bin/phpstan analyse --no-progress > /tmp/amn-st.log 2>&1; then
   ok "PHPStan Level 8"
 else
-  bad "PHPStan 有错误（见 /tmp/amn-st.log）"
+  bad "PHPStan 有错误"
+  sed 's/^/      /' /tmp/amn-st.log | head -15
 fi
 
 if ./vendor/bin/pint --test > /tmp/amn-pt.log 2>&1; then
@@ -126,7 +128,8 @@ done
 if (cd "$ROOT/docs" && DOCS_BASE=/aimanong/ npm run build > /tmp/amn-db.log 2>&1); then
   ok "文档站可构建"
 else
-  bad "文档站构建失败（见 /tmp/amn-db.log）"
+  bad "文档站构建失败"
+  sed 's/^/      /' /tmp/amn-db.log | tail -15
 fi
 
 # ─────────────────────────────────────────────────
@@ -142,7 +145,9 @@ if [ "$WITH_E2E" = "1" ]; then
     R=$(grep -oE '通过 [0-9]+ / [0-9]+' /tmp/amn-e2e.log | tail -1)
     ok "framework-e2e ${R:-通过}"
   else
-    bad "framework-e2e 失败（见 /tmp/amn-e2e.log）"
+    bad "framework-e2e 失败"
+    # 只列出失败项 —— 全量日志太长，且 CI 上无意义
+    grep -E '❌|Fatal|Error' /tmp/amn-e2e.log | head -20 | sed 's/^/      /'
   fi
 
   # 生成的 types.ts 能否通过真实 tsc 编译。
@@ -150,7 +155,9 @@ if [ "$WITH_E2E" = "1" ]; then
   if bash tests/e2e/tsc-check.sh > /tmp/amn-tsc.log 2>&1; then
     ok "$(tail -1 /tmp/amn-tsc.log)"
   else
-    bad "tsc-check 失败（见 /tmp/amn-tsc.log）"
+    bad "tsc-check 失败"
+    # 回显内容 —— 只说「见 /tmp/xxx.log」在 CI 上等于什么都看不到
+    sed 's/^/      /' /tmp/amn-tsc.log | head -20
   fi
 
   #
@@ -169,7 +176,8 @@ if [ "$WITH_E2E" = "1" ]; then
       R2=$(grep -oE '通过 [0-9]+ / [0-9]+' /tmp/amn-http.log | tail -1)
       ok "http-e2e ${R2:-通过}"
     else
-      bad "http-e2e 失败（见 /tmp/amn-http.log）"
+      bad "http-e2e 失败"
+      grep -E '❌|Fatal|Error' /tmp/amn-http.log | head -15 | sed 's/^/        /'
     fi
   elif [ "${AMN_SKIP_HTTP_E2E:-0}" = "1" ]; then
     warn "demo 服务未运行，且已显式设置 AMN_SKIP_HTTP_E2E=1，跳过 http-e2e"

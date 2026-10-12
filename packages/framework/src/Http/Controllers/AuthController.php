@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\Http\Controllers;
 
 use Aimanong\Aimanong;
+use Aimanong\Auth\LoginThrottle;
 use Aimanong\Foundation\Audit\AuditRecorder;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
@@ -42,13 +43,29 @@ class AuthController extends Controller
         ]);
 
         /** @var array{username: string, password: string} $credentials */
+
+        /*
+         * 限流：先检查是否已被锁，再尝试登录。
+         *
+         * 顺序很重要 —— 若先 attempt 再检查，被限流期间
+         * 每一次请求仍然会真的去查一次数据库 + 校验密码。
+         * 那等于「限流了但没真的省力」，爆破仍在进行。
+         */
+        LoginThrottle::ensureNotLockedOut($request, $credentials);
+
         if (! Aimanong::guard()->attempt($credentials)) {
+            // 失败：计数（下次就会被拦）
+            LoginThrottle::hit($request, $credentials);
+
             $audit->recordLogin($credentials['username'], false, null, '用户名或密码错误', $request);
 
             throw ValidationException::withMessages([
                 'username' => ['用户名或密码错误'],
             ]);
         }
+
+        // 成功：清零（否则用户手滑几次后正常登录也会被算进窗口）
+        LoginThrottle::clear($request, $credentials);
 
         // 记录「最后登录时间/IP」——用户管理列表要用
         $this->markLoggedIn($request);

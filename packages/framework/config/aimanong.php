@@ -37,6 +37,36 @@ return [
         // 是否启用内置 RBAC（角色/权限）。关闭时所有操作放行。
         'rbac' => env('AIMANONG_RBAC', false),
 
+        /*
+         * 登录限流。
+         *
+         * ## 为什么必须有
+         *
+         * 没有它，攻击者可以对登录接口**无限次**尝试密码 ——
+         * 登录日志会记录每次失败，但日志不能阻止攻击。
+         * 一个暴露公网的后台，弱密码账号会在可接受时间内被攻破。
+         *
+         * ## 两个维度
+         *
+         * - 按 **IP**：防单机爆破（一个 IP 打很多账号）
+         * - 按 **IP + 账号**：防针对性爆破（多个 IP 打同一个账号时，
+         *   至少每个 IP 对每个账号仍受限）
+         *
+         * 单位：`次数/分钟`。设 0 关闭该维度。
+         */
+        'throttle' => [
+            'enable' => env('AIMANONG_LOGIN_THROTTLE', true),
+
+            // 每个 IP 每分钟最多尝试次数
+            'per_ip' => (int) env('AIMANONG_LOGIN_THROTTLE_IP', 20),
+
+            // 同一 IP 针对同一账号每分钟最多尝试次数
+            'per_account' => (int) env('AIMANONG_LOGIN_THROTTLE_ACCOUNT', 5),
+
+            // 被限流后需要等待的秒数（= 窗口长度）
+            'window' => (int) env('AIMANONG_LOGIN_THROTTLE_WINDOW', 60),
+        ],
+
         'except' => [
             'auth/login',
             'auth/logout',

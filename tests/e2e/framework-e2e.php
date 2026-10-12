@@ -630,7 +630,37 @@ t("后端支持 filters 参数",
         'applyFilters'
     ));
 
-// ── 9.14 业务语言可检索（第六轮 AI 实测的回归）──
+// ── 9.14 登录限流（安全基线回归）──
+/*
+ * 回归：登录接口原本**没有任何速率限制** ——
+ * 实测连续 10 次错误密码全部 422，零拦截。
+ *
+ * 攻击者可对暴露公网的后台无限次尝试密码；
+ * 登录日志会记录失败，但日志不能阻止攻击。
+ */
+$authSrc = (string) file_get_contents($fw.'/src/Http/Controllers/AuthController.php');
+$throttleSrc = is_file($fw.'/src/Auth/LoginThrottle.php')
+    ? (string) file_get_contents($fw.'/src/Auth/LoginThrottle.php')
+    : '';
+
+t("存在登录限流器", $throttleSrc !== '', 'LoginThrottle');
+
+t("登录前先检查是否被锁",
+    str_contains($authSrc, 'ensureNotLockedOut'),
+    '先检查再 attempt —— 否则限流了但每次仍查库+校验密码');
+
+t("失败会计数", str_contains($authSrc, 'LoginThrottle::hit'));
+t("成功会清零", str_contains($authSrc, 'LoginThrottle::clear'));
+
+t("限流双维度（IP + IP×账号）",
+    str_contains($throttleSrc, 'per_ip') && str_contains($throttleSrc, 'per_account'),
+    '只按 IP 挡不住分布式');
+
+t("限流可配置开关",
+    str_contains((string) file_get_contents($fw.'/config/aimanong.php'), 'throttle'),
+    'auth.throttle.enable');
+
+// ── 9.15 业务语言可检索（第六轮 AI 实测的回归）──
 $searchDocs = new \Aimanong\Mcp\Tools\SearchDocs();
 $bizHits = 0;
 foreach (['运营希望自己改文案', '处理留痕', '现场照片要能传多张'] as $q) {

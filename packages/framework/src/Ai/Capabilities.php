@@ -100,6 +100,7 @@ class Capabilities
     {
         $operationOn = $this->configFlag('aimanong.foundation.operation_log.enable');
         $loginOn = $this->configFlag('aimanong.foundation.login_log.enable');
+        $throttleOn = $this->configFlag('aimanong.auth.throttle.enable');
 
         return [
             'readonly' => [
@@ -193,6 +194,17 @@ class Capabilities
                 'auto' => '框架在登录控制器内自动记录，无需声明',
                 'config' => "config('aimanong.foundation.login_log')",
                 'use_when' => '排查「登不上」或「有人在爆破」',
+            ],
+            'login_throttle' => [
+                'summary' => '登录限流：每 IP 与「每 IP×每账号」双维度计数',
+                'enabled' => $throttleOn,
+                'auto' => '框架在登录控制器内自动生效，无需声明',
+                'config' => "config('aimanong.auth.throttle')",
+                'use_when' => '担心后台被爆破密码；或用户反馈「登录总提示尝试过于频繁」',
+                'also_known_as' => '防爆破 / 登录失败次数限制 / 密码爆破保护 / 尝试过于频繁',
+                'caveat' => '超限后抛的是校验异常（HTTP 422），'
+                    .'不是 429；关闭用 auth.throttle.enable=false，'
+                    .'单维度关闭把对应上限设为 0',
             ],
         ];
     }

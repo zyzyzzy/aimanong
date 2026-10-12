@@ -1,5 +1,10 @@
 # 快速开始
 
+> **完全不懂编程？** 请先看 [不懂编程也能用](./no-code) ——
+> 那份文档不需要任何编程基础。
+>
+> 本页面向会 PHP / Laravel 的开发者。
+
 ## 环境要求
 
 | 项 | 要求 |
@@ -22,11 +27,61 @@ composer require aimanong/framework
 php artisan aimanong:install
 ```
 
-安装命令会自动完成：
+安装命令会完成五件事：
 
-- 注册服务提供者到 `bootstrap/providers.php`（Laravel 11+ 的正确方式）
-- 发布配置文件 `config/aimanong.php`
-- 发布并执行数据库迁移
+| 步骤 | 说明 |
+|---|---|
+| 注册服务提供者 | 写入 `bootstrap/providers.php`（Laravel 11+ 的正确方式） |
+| 发布配置文件 | `config/aimanong.php` |
+| 发布并执行迁移 | 建出用户 / 角色 / 权限 / 日志 / 字典等表 |
+| **创建管理员账号** | 交互式询问账号密码，并绑定超级管理员角色 |
+| **同步权限节点** | 把内置 Resource 的权限点写入数据库 |
+| 打印登录信息 | 账号、密码、访问地址 |
+
+> 权限节点是**自动推导**出来的（`{uri}.{action}`），但必须执行
+> sync 才写入数据库。install 已自动帮你做这一步；之后新增
+> Resource 时要手动跑一次：
+>
+> ```bash
+> php artisan aimanong:permission sync
+> ```
+>
+> 不跑的话，新 Resource 的权限在「角色 → 分配权限」界面里看不到，
+> 也就无法分配给任何角色（超管绕过判定，不受影响）。
+
+### 关于管理员账号
+
+安装过程会问你账号和密码：
+
+```
+── 创建第一个管理员账号 ──
+ 账号 [admin]:
+ 密码（直接回车则使用随机强密码）:
+```
+
+- **直接回车** → 生成 16 位随机强密码并打印出来，请立刻记下
+- 已有账号时**跳过**，不会重置你改过的密码
+- 安装完成后请立即登录并修改密码（个人中心 → 修改密码）
+
+> ⚠️ 不创建账号的话，装完是**进不去后台的** ——
+> 而「管理员账号」界面本身也要先登录才能打开，
+> 所以这是必须的一步。
+
+### 非交互安装（CI / 脚本）
+
+```bash
+php artisan aimanong:install \
+  --admin-user=admin \
+  --admin-password='换成强密码' \
+  --no-interaction
+```
+
+| 参数 | 说明 |
+|---|---|
+| `--admin-user=` | 指定账号，不传则交互询问 |
+| `--admin-password=` | 指定密码，不传则交互询问 / 随机生成 |
+| `--no-admin` | 跳过创建账号（后续可重跑 `--force` 补建） |
+| `--force` | 覆盖已存在的配置文件 |
 
 ## 创建第一个 Resource
 
@@ -125,9 +180,22 @@ php artisan serve
 你的 Resource 会自动出现在 `/admin/users`，包含**列表、新增、编辑、删除、搜索、排序、分页** ——
 **这些都不需要写任何控制器或前端代码。**
 
+## 验证装好了没
+
+```bash
+php artisan ai:verify
+```
+
+输出 `✅ 全部通过` 即可。它会检查：声明是否合法、
+Resource 是否已注册、有没有拼错的列名。
+
 ## 下一步
 
-- [核心概念](/guide/concepts) —— 理解 Schema 编译与数据流
-- [字段类型](/api/fields) —— 全部 26 种字段
-- [列展示器](/api/columns) —— 列表页可用选项
-- [AI 协作指南](/guide/ai-collaboration) —— 如何让 AI Agent 使用本框架
+| 想做什么 | 看哪份 |
+|---|---|
+| 理解框架原理 | [核心概念](/guide/concepts) |
+| 查字段怎么用 | [字段类型](/api/fields) |
+| 查列表页选项 | [列展示器](/api/columns) |
+| 用内置能力（日志/字典/上传/个人中心） | [基座能力](/guide/foundation) |
+| 让 AI Agent 帮你写 | [AI 协作指南](/guide/ai-collaboration) |
+| **不懂编程** | [不懂编程也能用](/guide/no-code) |

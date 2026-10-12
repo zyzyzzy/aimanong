@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Console;
 
+use Aimanong\Auth\PermissionGate;
 use Aimanong\Models\Administrator;
 use Aimanong\Models\Role;
 use Illuminate\Console\Command;
@@ -53,6 +54,19 @@ class InstallCommand extends Command
          * （这正是本文档写作时的真实情况，见 internal-docs/文档与易用性评估.md）
          */
         $admin = $this->createAdmin();
+
+        /*
+         * 同步权限节点。
+         *
+         * 内置的五个 Resource（管理员 / 操作日志 / 登录日志 /
+         * 数据字典 / 字典条目）注册后会**自动推导**出权限节点名，
+         * 但必须执行 sync 才写入数据库。
+         *
+         * 不 sync 的后果：RBAC 开启时这些菜单在权限配置界面里
+         * 根本看不到，管理员无法把它们分配给任何角色。
+         * （超管绕过判定，所以第一个账号不受影响 —— 但下一个账号就会。）
+         */
+        $this->syncPermissions();
 
         $this->newLine();
         $this->info('✅ 安装完成');
@@ -179,6 +193,27 @@ class InstallCommand extends Command
             $this->line('   请检查数据库权限，或手动创建后重试');
 
             return null;
+        }
+    }
+
+    /**
+     * 同步权限节点到数据库。
+     *
+     * 失败不阻断安装 —— 权限可以稍后手动 sync。
+     */
+    protected function syncPermissions(): void
+    {
+        try {
+            $result = PermissionGate::sync();
+
+            $this->info(sprintf(
+                '✓ 权限节点已同步（新增 %d，已存在 %d）',
+                $result['created'],
+                $result['existing']
+            ));
+        } catch (\Throwable $e) {
+            $this->warn('  权限节点同步失败（可稍后手动执行 aimanong:permission sync）：'
+                .Str::limit($e->getMessage(), 60));
         }
     }
 

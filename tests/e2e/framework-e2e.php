@@ -496,6 +496,10 @@ t("安装命令绑定超管角色",
     str_contains($installSrc, 'assignSuperRole'),
     '否则登进去菜单为空');
 
+t("安装命令会同步权限节点",
+    preg_match('/\$this->syncPermissions\(\)/', $installSrc) === 1,
+    '否则新 Resource 的权限在角色分配界面看不到');
+
 // 应用侧：本项目的账号确实存在且可用
 $adminModel = config('aimanong.auth.model', \Aimanong\Models\Administrator::class);
 

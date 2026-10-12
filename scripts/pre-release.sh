@@ -201,6 +201,24 @@ echo
 echo "  ⚠️  约束：实测期间框架必须冻结，不要并发修改。"
 
 # ─────────────────────────────────────────────────
+head1 "【8】Composer 包发布连通性"
+
+# 背景：文档教的 `composer require aimanong/framework` 曾经**跑不通**
+# （Packagist 无此包 + 仓库根目录无 composer.json）。
+# 这是宪法第六条（对外表述无失实）的违规，且性质严重：
+# 新人按 README 第一步就失败，而内部验证用的是本地 path 仓库所以发现不了。
+#
+# 这里检查 Packagist 上能否真的解析到，防止文档再次失实。
+for pkg in framework region; do
+  if curl -s --max-time 10 "https://repo.packagist.org/p2/aimanong/${pkg}.json" 2>/dev/null \
+      | grep -q '"aimanong/'${pkg}'"'; then
+    ok "Packagist 已收录 aimanong/${pkg}"
+  else
+    bad "Packagist 未收录 aimanong/${pkg} —— 文档里的 composer require 跑不通！"
+  fi
+done
+
+# ─────────────────────────────────────────────────
 printf "\n${C_B}"
 if [ "$FAIL" -eq 0 ]; then
   printf "${C_G}✅ 自动化检查全部通过${C_N}\n"

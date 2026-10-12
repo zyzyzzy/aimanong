@@ -113,7 +113,7 @@ $grid->perPage(20);                   // 每页条数
 $grid->export();                      // 开启 CSV 导出
 $grid->exportExcept(['body']);        // 导出时排除某列
 $grid->actions();                     // 行操作按钮
-$grid->batchActions();                // 批量操作
+$grid->batchActions(['delete', 'export']);   // 批量操作（动作须在此声明）
 ```
 
 > ⚠️ **没有 `$grid->filter()` 这个方法**（曾经写在这里，实测报

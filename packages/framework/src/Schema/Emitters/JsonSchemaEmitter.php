@@ -61,6 +61,15 @@ class JsonSchemaEmitter
         return [
             'perPage' => $node->meta['perPage'] ?? 20,
             'exportable' => $node->meta['exportable'] ?? false,
+            /*
+             * 批量操作按钮。前端据此决定是否渲染选择列与批量按钮。
+             *
+             * ⚠️ 与 Compiler 同样曾经漏掉这一项 —— 于是
+             * `$grid->batchActions([...])` 是一条**完全断掉的链路**：
+             * 声明了、文档写了、能力面也列了，但 schema 里没有、
+             * 界面没有、后端也没有。
+             */
+            'batchActions' => $node->meta['batchActions'] ?? [],
             // tree 为 null 表示非树形 Resource —— 前端据此切换渲染模式
             'tree' => $node->meta['tree'] ?? null,
             'columns' => array_map(

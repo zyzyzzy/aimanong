@@ -660,7 +660,63 @@ t("限流可配置开关",
     str_contains((string) file_get_contents($fw.'/config/aimanong.php'), 'throttle'),
     'auth.throttle.enable');
 
-// ── 9.15 业务语言可检索（第六轮 AI 实测的回归）──
+// ── 9.15 批量操作：声明 -> 编译 -> schema -> 后端 -> 前端 全链路 ──
+/*
+ * 回归：`$grid->batchActions([...])` 曾经是一条**完全断掉的链路** ——
+ * 它在 4 处对外文档里许诺了功能（llms.txt / docs/api/columns.md /
+ * Capabilities / Grid），但：
+ *
+ *   1. Grid 存了值，**Compiler 逐项挑进 meta 时漏了它**
+ *   2. 即使进了 meta，**emitter 也逐项挑，又漏一次**
+ *   3. 后端没有任何 batch 端点
+ *   4. 前端没有任何引用
+ *
+ * 也就是说：声明了、文档写了、能力面列了，实际是个彻底的空操作。
+ * 比 `->filter()` 更糟 —— 后者至少后端能用。
+ */
+$gridSrc = (string) file_get_contents($fw.'/src/Grid/Grid.php');
+$compilerSrc = (string) file_get_contents($fw.'/src/Schema/Compiler.php');
+$emitterSrc = (string) file_get_contents($fw.'/src/Schema/Emitters/JsonSchemaEmitter.php');
+$controllerSrc = (string) file_get_contents($fw.'/src/Http/Controllers/ResourceController.php');
+$routeSrc = (string) file_get_contents($fw.'/routes/admin.php');
+$tplSrc = (string) file_get_contents($fw.'/resources/views/resource.blade.php');
+
+t("Grid 声明并校验批量动作",
+    str_contains($gridSrc, 'BATCH_ACTIONS') && str_contains($gridSrc, 'getBatchActions'),
+    '未声明的动作名编译期报错');
+
+t("Compiler 把批量动作带进 meta",
+    str_contains($compilerSrc, "'batchActions' =>"),
+    '第一层（曾漏）');
+
+t("emitter 把批量动作写进 schema",
+    str_contains($emitterSrc, "'batchActions' =>"),
+    '第二层（曾漏）');
+
+t("后端有 batch 端点",
+    str_contains($routeSrc, "{uri}/batch") && str_contains($controllerSrc, 'BATCH_ACTION_NOT_DECLARED'),
+    '未声明动作 → 403');
+
+t("批量删除复用 destroy 权限",
+    // 不用 $ 的正则 —— PHP 双引号会把它当变量插值（写错过一次）
+    preg_match('/batchDelete.*?authorize_\([^)]*destroy/s', $controllerSrc) === 1,
+    '能删一条就该能删一批');
+
+t("前端渲染选择列与批量按钮",
+    str_contains($tplSrc, 'hasBatch') && str_contains($tplSrc, 'toggleSelectAll')
+    && str_contains($tplSrc, 'runBatch'),
+    '复选框 + 批量按钮');
+
+t("导出选中项复用导出端点",
+    str_contains($controllerSrc, "\$request->query('ids')")
+    && str_contains($tplSrc, "params.append('ids[]'"),
+    '参数化而非新端点');
+
+t("导出带上当前筛选条件",
+    str_contains($tplSrc, 'applyListParams'),
+    '否则「导出与界面一致」不成立');
+
+// ── 9.16 业务语言可检索（第六轮 AI 实测的回归）──
 $searchDocs = new \Aimanong\Mcp\Tools\SearchDocs();
 $bizHits = 0;
 foreach (['运营希望自己改文案', '处理留痕', '现场照片要能传多张'] as $q) {

@@ -201,6 +201,38 @@ $form->time('open_at')->label('营业时间');
 $form->dateRange('period')->label('周期');
 ```
 
+### `image`
+
+- JSON 类型：`string`
+
+```php
+$form->image('field')->label('标签');
+```
+
+### `images`
+
+- JSON 类型：`array`
+
+```php
+$form->images('field')->label('标签');
+```
+
+### `file`
+
+- JSON 类型：`string`
+
+```php
+$form->file('field')->label('标签');
+```
+
+### `files`
+
+- JSON 类型：`array`
+
+```php
+$form->files('field')->label('标签');
+```
+
 ### `color`
 
 - JSON 类型：`string`

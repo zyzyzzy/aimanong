@@ -17,6 +17,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -277,6 +278,89 @@ class ResourceController extends Controller
     }
 
     /**
+     * 批量操作。
+     *
+     * ## 为什么只接受已声明的动作
+     *
+     * `$grid->batchActions([...])` 是**声明**。若后端接受任意动作名，
+     * 就会出现「没声明也能调」的隐式行为 —— 与框架「低歧义、
+     * 零隐式魔法」的定位冲突，也让权限边界变得不可推理。
+     *
+     * 未声明的动作返回 403 + 明确提示，而不是默默忽略。
+     *
+     * ## 为什么是「部分成功」而不是全或无
+     *
+     * 一次删 50 条，其中 3 条被外键约束拦住 —— 全部回滚对用户更糟：
+     * 他得自己找出是哪 3 条。这里逐条执行并回报失败明细。
+     */
+    public function batch(Request $request, string $uri): JsonResponse
+    {
+        $node = $this->resolve($uri);
+
+        /** @var array{action: string, ids: array<int, mixed>} $data */
+        $data = $request->validate([
+            'action' => ['required', 'string'],
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['required'],
+        ]);
+
+        /** @var array<int, string> $declared */
+        $declared = is_array($node->meta['batchActions'] ?? null)
+            ? $node->meta['batchActions']
+            : [];
+
+        if (! in_array($data['action'], $declared, true)) {
+            return response()->json([
+                'error' => 'BATCH_ACTION_NOT_DECLARED',
+                'message' => "Resource [{$uri}] 未声明批量动作 [{$data['action']}]",
+                'hint' => $declared === []
+                    ? '在 grid() 中调用 $grid->batchActions([\'delete\', \'export\']) 声明'
+                    : '已声明：'.implode(', ', $declared),
+            ], 403);
+        }
+
+        return match ($data['action']) {
+            'delete' => $this->batchDelete($uri, $node, $data['ids']),
+            default => response()->json([
+                'error' => 'BATCH_ACTION_NOT_IMPLEMENTED',
+                'message' => "批量动作 [{$data['action']}] 尚未实现",
+            ], 501),
+        };
+    }
+
+    /**
+     * 批量删除。
+     *
+     * @param  array<int, mixed>  $ids
+     */
+    protected function batchDelete(string $uri, ResourceNode $node, array $ids): JsonResponse
+    {
+        // 权限复用单条删除 —— 能删一条就该能删一批，反之亦然
+        $this->authorize_($uri, 'destroy');
+
+        $repository = $this->repository($node);
+        $deleted = 0;
+        $failed = [];
+
+        foreach ($ids as $id) {
+            try {
+                $repository->delete(is_int($id) || is_string($id) ? $id : (string) $id);
+                $deleted++;
+            } catch (\Throwable $e) {
+                $failed[] = [
+                    'id' => $id,
+                    'message' => Str::limit($e->getMessage(), 120),
+                ];
+            }
+        }
+
+        return response()->json([
+            'deleted' => $deleted,
+            'failed' => $failed,
+        ]);
+    }
+
+    /**
      * 把数据库约束冲突转成友好的 422。
      *
      * 第五轮 AI 实测发现：重复的唯一值会返回 500（服务器错误），
@@ -425,6 +509,14 @@ class ResourceController extends Controller
             'direction' => $request->query('direction'),
             'searchable' => $searchable,
             'filters' => $request->query('filters'),
+            /*
+             * 批量导出选中项：?ids[]=1&ids[]=2
+             *
+             * 传了就只导这些行，不传则导全部（与列表参数一致）。
+             * 「导出选中」的参数化比新开端点更好 —— 导出逻辑、列格式化、
+             * 权限校验全都复用同一份，不会出现两套行为。
+             */
+            'ids' => $request->query('ids'),
         ];
 
         return (new Exporter)->csv($node, $this->repository($node), $params);

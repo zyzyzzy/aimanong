@@ -24,6 +24,13 @@ class Grid
     /**
      * @var array<int, string>
      */
+    /**
+     * 内置批量动作。
+     *
+     * @var array<int, string>
+     */
+    public const BATCH_ACTIONS = ['delete', 'export'];
+
     protected array $batchActions = [];
 
     protected int $perPage = 20;
@@ -70,13 +77,54 @@ class Grid
     }
 
     /**
+     * 声明批量操作。
+     *
+     * ```php
+     * $grid->batchActions(['delete', 'export']);
+     * ```
+     *
+     * ## 支持的动作
+     *
+     * | 动作 | 说明 |
+     * |---|---|
+     * | `delete` | 批量删除选中项（复用 destroy 权限） |
+     * | `export` | 导出选中项（复用 export 权限；需先 `$grid->export()`） |
+     *
+     * ## 为什么只支持这两个
+     *
+     * 自定义批量动作需要「一段可执行的业务逻辑」，而框架的声明层
+     * 刻意不接收闭包（AI 生成嵌套闭包错误率高，见 ADR-003）。
+     * 所以这里只提供**内置**动作；未声明的动作名会在编译期报错，
+     * 而不是静默忽略 —— 「声明了却不能用」是本项目最反对的情况。
+     *
      * @param  array<int, string>  $actions
      */
     public function batchActions(array $actions): static
     {
-        $this->batchActions = $actions;
+        $unsupported = array_diff($actions, self::BATCH_ACTIONS);
+
+        if ($unsupported !== []) {
+            throw new \InvalidArgumentException(sprintf(
+                '不支持的批量动作 [%s]。当前仅支持：%s。'
+                .'（自定义批量动作需可执行逻辑，而声明层刻意不接收闭包，见 ADR-003）',
+                implode(', ', $unsupported),
+                implode(', ', self::BATCH_ACTIONS)
+            ));
+        }
+
+        $this->batchActions = array_values($actions);
 
         return $this;
+    }
+
+    /**
+     * 已声明的批量动作。
+     *
+     * @return array<int, string>
+     */
+    public function getBatchActions(): array
+    {
+        return $this->batchActions;
     }
 
     /**

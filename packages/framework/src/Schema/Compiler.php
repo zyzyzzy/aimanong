@@ -98,6 +98,15 @@ class Compiler
                 'exportable' => $grid->isExportable(),
                 'exportColumns' => $grid->exportColumns(),
                 'exportChunkSize' => $grid->getExportChunkSize(),
+                /*
+                 * 批量操作。
+                 *
+                 * ⚠️ 这里曾经**漏了**这一项 —— `Grid::toArray()` 产出了
+                 * batchActions，但 Compiler 是逐项挑进 meta 的，
+                 * 于是它连 schema 都到不了：
+                 * 声明了、对外文档也写了，实际是个彻底的空操作。
+                 */
+                'batchActions' => $grid->getBatchActions(),
                 'tree' => $tree?->toArray(),
                 'stepped' => $form->isStepped(),
                 // 只读 Resource：前端隐藏写按钮、后端拒绝写请求

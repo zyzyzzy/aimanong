@@ -39,7 +39,14 @@
       <button class="am-btn" @click="load(currentPage)">
         @include('aimanong::partials.icon', ['name' => 'refresh', 'size' => 15]) 刷新
       </button>
-      <button class="am-btn" v-if="exportable" @click="doExport">
+      {{-- 批量操作按钮：选中至少一条才出现，避免常驻占位 --}}
+      <template v-if="hasBatch && selectedIds.length">
+        <span class="am-text-sm am-text-muted">已选 @{{ selectedIds.length }} 项</span>
+        <button v-for="act in batchActions" :key="act"
+                class="am-btn" :class="{'am-btn--danger': act === 'delete'}"
+                @click="runBatch(act)">@{{ batchLabels[act] || act }}</button>
+      </template>
+      <button class="am-btn" v-if="exportable" @click="doExport()">
         @include('aimanong::partials.icon', ['name' => 'download', 'size' => 15]) 导出
       </button>
       {{-- 只读资源（如审计日志）不显示新增：按钮点了必然 403 --}}
@@ -74,6 +81,11 @@
       <table class="am-table" :style="{'--col-count': columns.length}">
         <thead>
           <tr>
+            {{-- 批量操作：仅在声明了 batchActions 时出现选择列 --}}
+            <th v-if="hasBatch" class="am-table__select" style="width:40px">
+              <input type="checkbox" :checked="allSelected" @change="toggleSelectAll"
+                     :aria-label="allSelected ? '取消全选' : '全选本页'">
+            </th>
             {{-- 表头：排序状态用 .is-sortable / .is-sorted（设计系统的 API） --}}
             <th v-for="col in columns" :key="col.name"
                 :class="{'is-sortable': col.sortable, 'is-sorted': sortField === col.name, 'am-num': isNumeric(col)}"
@@ -93,7 +105,11 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in rows" :key="row.id">
+          <tr v-for="row in rows" :key="row.id" :class="{'is-selected': isSelected(row.id)}">
+            <td v-if="hasBatch" class="am-table__select" data-l="选择">
+              <input type="checkbox" :checked="isSelected(row.id)" @change="toggleSelect(row.id)"
+                     :aria-label="'选择 ' + rowLabel(row)">
+            </td>
             {{-- :data-l 供窄屏卡片化时生成字段标签（见 design-system 的 --stack 规则）--}}
             <td v-for="col in columns" :key="col.name"
                 :data-l="col.label"
@@ -287,7 +303,7 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
         </span>
-        <span class="am-modal__title">确认删除</span>
+        <span class="am-modal__title">@{{ confirmState.batch ? '批量删除' : '确认删除' }}</span>
       </div>
       <div class="am-modal__body">
         <p style="margin:0 0 8px">即将删除：<strong>@{{ confirmState.label }}</strong></p>
@@ -295,7 +311,7 @@
       </div>
       <div class="am-modal__foot">
         <button class="am-btn" @click="confirmState.open = false">取消</button>
-        <button class="am-btn am-btn--danger" @click="doDelete">确认删除</button>
+        <button class="am-btn am-btn--danger" @click="confirmRun">确认删除</button>
       </div>
     </div>
   </div>
@@ -409,6 +425,41 @@ const app = createApp({
         const form = ref({});
 
         const columns = computed(() => schema.grid?.columns ?? []);
+
+        /*
+         * ══ 批量操作 ══
+         *
+         * 动作来自 Resource 的 `$grid->batchActions([...])` 声明 ——
+         * 前端**只渲染声明过的按钮**，不做任何隐式能力。
+         */
+        const batchActions = computed(() => schema.grid?.batchActions ?? []);
+        const hasBatch = computed(() => batchActions.value.length > 0);
+        const selectedIds = ref([]);
+
+        const batchLabels = { delete: '批量删除', export: '导出选中' };
+
+        const allSelected = computed(() =>
+            rows.value.length > 0 && selectedIds.value.length === rows.value.length
+        );
+
+        function isSelected(id) {
+            return selectedIds.value.includes(id);
+        }
+
+        function toggleSelect(id) {
+            const i = selectedIds.value.indexOf(id);
+            if (i >= 0) selectedIds.value.splice(i, 1);
+            else selectedIds.value.push(id);
+        }
+
+        function toggleSelectAll() {
+            selectedIds.value = allSelected.value ? [] : rows.value.map(r => r.id);
+        }
+
+        /** 翻页时清空选择 —— 否则「选中的」可能已经不在当前页，易误删 */
+        function clearSelection() {
+            selectedIds.value = [];
+        }
         const formFields = computed(() => (schema.form?.fields ?? []).filter(f => !f.hidden));
         const hasSearch = computed(() => columns.value.some(c => c.searchable));
         const exportable = computed(() => schema.grid?.exportable === true);
@@ -471,6 +522,8 @@ const app = createApp({
 
         async function load(page = 1) {
             loading.value = true;
+            // 翻页会换掉整页数据 —— 保留选择容易误删已看不见的行
+            clearSelection();
             const params = new URLSearchParams({ page: String(page) });
             if (keyword.value) params.set('keyword', keyword.value);
             if (sortField.value) {
@@ -536,14 +589,100 @@ const app = createApp({
         }
 
         /** 导出：带上与当前列表相同的筛选条件 */
-        function doExport() {
-            const params = new URLSearchParams();
+        /** 把当前的搜索/排序/筛选参数写进 URLSearchParams */
+        function applyListParams(params) {
             if (keyword.value) params.set('keyword', keyword.value);
             if (sortField.value) {
                 params.set('sort', sortField.value);
                 params.set('direction', direction.value);
             }
+            for (const [col, val] of Object.entries(filterValues.value)) {
+                if (val !== undefined && val !== null && val !== '') {
+                    params.set(`filters[${col}]`, String(val));
+                }
+            }
+            return params;
+        }
+
+        function doExport(ids = null) {
+            const params = applyListParams(new URLSearchParams());
+            if (Array.isArray(ids) && ids.length) {
+                ids.forEach(id => params.append('ids[]', String(id)));
+            }
             window.location.href = `${base}/export?${params}`;
+        }
+
+        /**
+         * 执行批量动作。
+         *
+         * 后端只接受**声明过**的动作，未声明返回 403 ——
+         * 这里不做客户端白名单，避免两端各维护一份规则而漂移。
+         */
+        function runBatch(action) {
+            if (!selectedIds.value.length) return;
+
+            if (action === 'export') {
+                doExport(selectedIds.value);
+
+                return;
+            }
+
+            if (action === 'delete') {
+                // 复用同一个确认弹窗（不另造一套），标 batch 让标题/文案变化
+                confirmState.value = {
+                    open: true,
+                    id: null,
+                    label: `选中的 ${selectedIds.value.length} 条记录`,
+                    batch: true,
+                };
+
+                return;
+            }
+
+            toast('未实现的批量动作', action, 'danger');
+        }
+
+        /** 确认弹窗的统一入口：按是否批量分发 */
+        function confirmRun() {
+            if (confirmState.value.batch) {
+                return doBatchDelete();
+            }
+
+            return doDelete();
+        }
+
+        async function doBatchDelete() {
+            const ids = [...selectedIds.value];
+            confirmState.value.open = false;
+
+            try {
+                const res = await fetch(`${base}/batch`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                    },
+                    body: JSON.stringify({ action: 'delete', ids }),
+                });
+                const json = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    toast('批量删除失败', json.message || '', 'danger');
+                } else {
+                    const failed = json.failed?.length ?? 0;
+                    if (failed) {
+                        toast(`已删除 ${json.deleted} 项`, `${failed} 项失败`, 'warning');
+                    } else {
+                        toast(`已删除 ${json.deleted} 项`, '', 'success');
+                    }
+                }
+            } catch (e) {
+                toast('批量删除失败', e.message || '网络异常', 'danger');
+            }
+
+            clearSelection();
+            load(currentPage.value);
         }
 
         function toggleSort(name) {
@@ -986,6 +1125,8 @@ const app = createApp({
         return {
             rows, loading, total, currentPage, lastPage, keyword,
             filterValues, filterableColumns, filterOptions, hasFilter, clearFilter,
+            batchActions, hasBatch, selectedIds, allSelected, isSelected, toggleSelect,
+            toggleSelectAll, runBatch, confirmRun, batchLabels, rowLabel,
             sortField, direction, showCreate, editing, form,
             columns, formFields, hasSearch,
             load, toggleSort, formatDate, edit, save, remove,

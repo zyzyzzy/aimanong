@@ -7,6 +7,144 @@
 
 > 由 `php artisan aimanong:docs` 自动生成。
 
+## 操作日志
+
+- URI：`admin-operation-logs`
+- 模型：`Aimanong\Foundation\Audit\OperationLog`
+- 类：`Aimanong\Foundation\Resources\OperationLogResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID | ✓ |  |  |
+| `created_at` | 时间 | ✓ |  | `datetime` |
+| `username` | 账号 |  | ✓ |  |
+| `action` | 动作 |  |  | `badge` |
+| `resource_uri` | 资源 |  | ✓ |  |
+| `target_id` | 记录 ID |  |  |  |
+| `method` | 方法 |  |  |  |
+| `status` | 状态码 | ✓ |  |  |
+| `ip` | IP |  |  |  |
+| `duration_ms` | 耗时(ms) | ✓ |  |  |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+
+## 登录日志
+
+- URI：`admin-login-logs`
+- 模型：`Aimanong\Foundation\Audit\LoginLog`
+- 类：`Aimanong\Foundation\Resources\LoginLogResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID | ✓ |  |  |
+| `created_at` | 时间 | ✓ |  | `datetime` |
+| `username` | 账号 |  | ✓ |  |
+| `status` | 结果 |  |  | `map` |
+| `reason` | 原因 |  |  |  |
+| `ip` | IP |  | ✓ |  |
+| `user_agent` | User-Agent |  |  |  |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+
+## 数据字典
+
+- URI：`admin-dict-types`
+- 模型：`Aimanong\Foundation\Dict\DictType`
+- 类：`Aimanong\Foundation\Resources\DictTypeResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID | ✓ |  |  |
+| `code` | 字典 code |  | ✓ |  |
+| `name` | 名称 |  | ✓ |  |
+| `description` | 说明 |  |  |  |
+| `is_locked` | 来源 |  |  | `bool` |
+| `sort` | 排序 | ✓ |  |  |
+| `updated_at` | 更新时间 | ✓ |  | `datetime` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `code` | 字典 code | `text` | ✓ | `required`, `max:100` |
+| `name` | 名称 | `text` | ✓ | `required`, `max:190` |
+| `description` | 说明 | `textarea` |  |  |
+| `sort` | 排序 | `number` |  |  |
+
+## 字典条目
+
+- URI：`admin-dict-items`
+- 模型：`Aimanong\Foundation\Dict\DictItem`
+- 类：`Aimanong\Foundation\Resources\DictItemResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID | ✓ |  |  |
+| `type_code` | 所属字典 |  | ✓ |  |
+| `value` | 值 |  | ✓ |  |
+| `label` | 文案 |  | ✓ |  |
+| `color` | 徽章颜色 |  |  | `map` |
+| `sort` | 排序 | ✓ |  |  |
+| `enabled` | 启用 |  |  | `bool` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `type_code` | 所属字典 | `select` | ✓ | `required` |
+| `value` | 值 | `text` | ✓ | `required`, `max:190` |
+| `label` | 文案 | `text` | ✓ | `required`, `max:190` |
+| `color` | 徽章颜色 | `select` |  |  |
+| `sort` | 排序 | `number` |  |  |
+| `enabled` | 是否启用 | `switch` |  |  |
+
+## 管理员
+
+- URI：`admin-users`
+- 模型：`Aimanong\Models\Administrator`
+- 类：`Aimanong\Foundation\Resources\AdminUserResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID | ✓ |  |  |
+| `username` | 账号 |  | ✓ |  |
+| `name` | 姓名 |  | ✓ |  |
+| `email` | 邮箱 |  | ✓ |  |
+| `roles.name` | 角色 |  |  |  |
+| `enabled` | 状态 |  |  | `bool` |
+| `last_login_at` | 最后登录 | ✓ |  | `datetime` |
+| `last_login_ip` | 登录 IP |  |  |  |
+| `created_at` | 创建时间 | ✓ |  | `datetime` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `username` | 账号 | `text` | ✓ | `required`, `max:190` |
+| `name` | 姓名 | `text` | ✓ | `required`, `max:190` |
+| `email` | 邮箱 | `email` |  | `max:190` |
+| `phone` | 手机号 | `tel` |  |  |
+| `password` | 密码 | `password` |  | `min:6` |
+| `avatar` | 头像 | `image` |  |  |
+| `roles` | 角色 | `multiselect` |  |  |
+| `enabled` | 是否启用 | `switch` |  |  |
+
 ## SEO 元数据
 
 - URI：`seo-meta`
@@ -93,15 +231,18 @@
 ## 收货地址（插件验证）
 
 - URI：`shop-addresses`
-- 模型：`App\Models\ShopProduct`
+- 模型：`App\Models\ShopAddress`
 - 类：`App\Aimanong\ShopAddressResource`
 
 ### 列表页列
 
 | 列 | 标题 | 可排序 | 可搜索 | 展示器 |
 |---|---|---|---|---|
-| `id` | ID |  |  | `badge` |
-| `name` | 商品 |  |  |  |
+| `id` | ID |  |  |  |
+| `name` | 联系人 |  | ✓ |  |
+| `phone` | 电话 |  |  |  |
+| `area` | 省市区 |  |  |  |
+| `city_only` | 仅到市 |  |  |  |
 
 ### 表单字段
 
@@ -110,6 +251,8 @@
 | `name` | 联系人 | `text` | ✓ | `required` |
 | `area` | 所在地区 | `region` |  |  |
 | `city_only` | 仅到市 | `region` |  |  |
+| `phone` | 电话 | `text` |  | `max:32` |
+| `detail` | 详细地址 | `textarea` |  |  |
 
 ## 订单
 
@@ -645,3 +788,247 @@
 | `name` | 名称 | `text` | ✓ | `required`, `max:255` |
 | `group` | group | `text` |  | `max:255` |
 | `description` | 描述 | `textarea` |  |  |
+
+## 上传演示
+
+- URI：`demo-uploads`
+- 模型：`App\Models\DemoUpload`
+- 类：`App\Aimanong\DemoUploadResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID | ✓ |  |  |
+| `title` | 标题 |  | ✓ |  |
+| `cover` | 封面 |  |  | `image` |
+| `attachment` | 附件 |  |  | `file` |
+| `created_at` | 创建时间 | ✓ |  | `datetime` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `title` | 标题 | `text` | ✓ | `required`, `max:190` |
+| `cover` | 封面 | `image` |  |  |
+| `gallery` | 图集 | `images` |  |  |
+| `attachment` | 附件 | `file` |  |  |
+| `attachments` | 多附件 | `files` |  |  |
+
+## 设备报修
+
+- URI：`equipment-repairs`
+- 模型：`App\Models\EquipmentRepair`
+- 类：`App\Aimanong\EquipmentRepairResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID | ✓ |  |  |
+| `repair_no` | 报修单号 |  | ✓ |  |
+| `equipment_name` | 设备名称 |  | ✓ |  |
+| `reporter` | 报修人 |  | ✓ |  |
+| `status` | 状态 |  |  | `map` |
+| `urgency` | 紧急程度 |  |  | `map` |
+| `reported_at` | 报修时间 | ✓ |  | `datetime` |
+| `handler` | 处理人 |  |  |  |
+| `photos` | 现场照片 |  |  | `image` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `repair_no` | 报修单号 | `text` | ✓ | `required`, `max:60` |
+| `equipment_name` | 设备名称 | `text` | ✓ | `required`, `max:190` |
+| `reporter` | 报修人 | `text` | ✓ | `required`, `max:100` |
+| `description` | 故障描述 | `textarea` |  |  |
+| `photos` | 现场照片 | `images` |  |  |
+| `attachments` | 相关附件 | `files` |  |  |
+| `reported_at` | 报修时间 | `datetime` |  |  |
+| `status` | 状态 | `select` | ✓ | `required` |
+| `urgency` | 紧急程度 | `select` | ✓ | `required` |
+| `处理信息` | 处理信息 | `divider` |  |  |
+| `handler` | 处理人 | `text` |  | `max:100` |
+| `handled_at` | 处理时间 | `datetime` |  |  |
+
+## 客户
+
+- URI：`crm-customers`
+- 模型：`App\Models\CrmCustomer`
+- 类：`App\Aimanong\CrmCustomerResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID | ✓ |  |  |
+| `logo` | LOGO |  |  | `image` |
+| `name` | 客户名称 |  | ✓ |  |
+| `level` | 等级 |  |  | `map` |
+| `industry` | 行业 |  |  | `map` |
+| `status` | 状态 |  |  | `map` |
+| `source` | 来源 |  |  | `map` |
+| `owner` | 负责人 |  | ✓ |  |
+| `phone` | 电话 |  |  |  |
+| `contacts.name` | 联系人 |  |  |  |
+| `annual_revenue` | 年营收 |  |  | `money` |
+| `next_follow_at` | 下次跟进 | ✓ |  | `datetime` |
+| `created_at` | 创建时间 | ✓ |  | `datetime` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `name` | 客户名称 | `text` | ✓ | `required`, `max:190` |
+| `short_name` | 简称 | `text` |  | `max:100` |
+| `level` | 客户等级 | `select` |  |  |
+| `industry` | 所属行业 | `select` |  |  |
+| `status` | 客户状态 | `select` |  |  |
+| `source` | 客户来源 | `select` |  |  |
+| `owner` | 负责人 | `text` |  | `max:100` |
+| `logo` | 客户 LOGO | `image` |  |  |
+| `phone` | 联系电话 | `tel` |  |  |
+| `website` | 官网 | `url` |  |  |
+| `area` | 所在地区 | `region` |  |  |
+| `address` | 详细地址 | `text` |  | `max:500` |
+| `next_follow_at` | 下次跟进日期 | `date` |  |  |
+| `annual_revenue` | 年营收 | `money` |  |  |
+| `employee_count` | 员工人数 | `number` |  |  |
+| `remark` | 备注 | `textarea` |  |  |
+
+## 联系人
+
+- URI：`crm-contacts`
+- 模型：`App\Models\CrmContact`
+- 类：`App\Aimanong\CrmContactResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID | ✓ |  |  |
+| `avatar` | 头像 |  |  | `image` |
+| `name` | 姓名 |  | ✓ |  |
+| `customer.name` | 所属客户 |  | ✓ |  |
+| `title` | 职位 |  |  |  |
+| `department` | 部门 |  |  |  |
+| `phone` | 电话 |  | ✓ |  |
+| `email` | 邮箱 |  |  |  |
+| `wechat` | 微信 |  |  |  |
+| `is_primary` | 主要联系人 |  |  | `bool` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `customer_id` | 所属客户 | `select` | ✓ | `required` |
+| `name` | 姓名 | `text` | ✓ | `required`, `max:100` |
+| `title` | 职位 | `text` |  | `max:100` |
+| `department` | 部门 | `text` |  | `max:100` |
+| `phone` | 电话 | `tel` |  |  |
+| `email` | 邮箱 | `email` |  |  |
+| `wechat` | 微信 | `text` |  | `max:100` |
+| `is_primary` | 主要联系人 | `switch` |  |  |
+| `avatar` | 头像 | `image` |  |  |
+| `remark` | 备注 | `textarea` |  |  |
+
+## 商机
+
+- URI：`crm-opportunities`
+- 模型：`App\Models\CrmOpportunity`
+- 类：`App\Aimanong\CrmOpportunityResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID | ✓ |  |  |
+| `title` | 商机名称 |  | ✓ |  |
+| `customer.name` | 客户 |  | ✓ |  |
+| `amount` | 金额 | ✓ |  | `money` |
+| `stage` | 阶段 |  |  | `map` |
+| `probability` | 赢单率 |  |  | `progress` |
+| `expected_close_at` | 预计成交 | ✓ |  | `datetime` |
+| `contacts.name` | 对接人 |  |  |  |
+| `owner` | 负责人 |  |  |  |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `title` | 商机名称 | `text` | ✓ | `required`, `max:190` |
+| `customer_id` | 所属客户 | `select` | ✓ | `required` |
+| `amount` | 预计金额 | `money` |  |  |
+| `stage` | 阶段 | `select` |  |  |
+| `probability` | 赢单率(%) | `slider` |  |  |
+| `expected_close_at` | 预计成交日期 | `date` |  |  |
+| `owner` | 负责人 | `text` |  | `max:100` |
+| `contacts` | 对接人 | `multiselect` |  |  |
+| `remark` | 备注 | `textarea` |  |  |
+
+## 跟进记录
+
+- URI：`crm-followups`
+- 模型：`App\Models\CrmFollowup`
+- 类：`App\Aimanong\CrmFollowupResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID | ✓ |  |  |
+| `followed_at` | 跟进时间 | ✓ |  | `datetime` |
+| `customer.name` | 客户 |  | ✓ |  |
+| `type` | 方式 |  |  | `map` |
+| `subject` | 主题 |  | ✓ |  |
+| `owner` | 跟进人 |  |  |  |
+| `created_at` | 创建时间 | ✓ |  | `datetime` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `customer_id` | 客户 | `select` | ✓ | `required` |
+| `opportunity_id` | 关联商机 | `select` |  |  |
+| `type` | 跟进方式 | `select` |  |  |
+| `subject` | 主题 | `text` | ✓ | `required`, `max:190` |
+| `content` | 跟进内容 | `textarea` |  |  |
+| `attachments` | 附件 | `files` |  |  |
+| `followed_at` | 跟进时间 | `datetime` |  |  |
+| `owner` | 跟进人 | `text` |  | `max:100` |
+
+## 合同
+
+- URI：`crm-contracts`
+- 模型：`App\Models\CrmContract`
+- 类：`App\Aimanong\CrmContractResource`
+
+### 列表页列
+
+| 列 | 标题 | 可排序 | 可搜索 | 展示器 |
+|---|---|---|---|---|
+| `id` | ID | ✓ |  |  |
+| `contract_no` | 合同号 |  | ✓ |  |
+| `title` | 合同名称 |  | ✓ |  |
+| `customer.name` | 客户 |  | ✓ |  |
+| `amount` | 金额 | ✓ |  | `money` |
+| `status` | 状态 |  |  | `map` |
+| `signed_at` | 签署日期 | ✓ |  | `datetime` |
+| `end_at` | 到期日期 | ✓ |  | `datetime` |
+| `attachment` | 扫描件 |  |  | `file` |
+
+### 表单字段
+
+| 字段 | 标签 | 类型 | 必填 | 校验规则 |
+|---|---|---|---|---|
+| `contract_no` | 合同号 | `text` | ✓ | `required`, `max:60` |
+| `title` | 合同名称 | `text` | ✓ | `required`, `max:190` |
+| `customer_id` | 客户 | `select` | ✓ | `required` |
+| `opportunity_id` | 关联商机 | `select` |  |  |
+| `amount` | 合同金额 | `money` |  |  |
+| `status` | 合同状态 | `select` |  |  |
+| `signed_at` | 签署日期 | `date` |  |  |
+| `period` | 有效期 | `daterange` |  |  |
+| `attachment` | 合同扫描件 | `file` |  |  |
+| `remark` | 备注 | `textarea` |  |  |

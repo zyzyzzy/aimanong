@@ -308,7 +308,12 @@ class Capabilities
             // 列表整体配置（写在 grid() 中，不属于任何单列）
             'perPage' => '每页条数，参数: int。写法: $grid->perPage(15); 不传则用框架默认 20',
             'actions' => '是否显示行操作按钮，参数: bool',
-            'batchActions' => '批量操作按钮，参数: 数组',
+            'batchActions' => '批量操作，参数: 动作名数组。'
+                .'支持 delete（批量删除，复用 destroy 权限）与 '
+                .'export（导出选中项，需先 export()）。'
+                .'写法: $grid->batchActions([\'delete\', \'export\']); '
+                .'未声明的动作名会在编译期报错',
+
 
             // 导出（写在 grid() 中）
             'export' => '开启 CSV 导出，写法: $grid->export(); 未开启时导出接口返回 403',

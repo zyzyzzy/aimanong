@@ -79,6 +79,8 @@ class EloquentRepository implements RepositoryContract
         $this->applySearch($query, $params);
         $this->applySort($query, $params);
         $this->applyFilters($query, $params);
+        // 批量导出选中项：按主键集合过滤
+        $this->applyIds($query, $params);
 
         // 优先级：请求参数 > Resource 声明 > 框架默认
         $perPage = is_numeric($params['per_page'] ?? null)
@@ -293,6 +295,24 @@ class EloquentRepository implements RepositoryContract
      * @param  Builder<Model>  $query
      * @param  array<string, mixed>  $params
      */
+    /**
+     * 按主键集合过滤（批量导出选中项用）。
+     *
+     * @param  array<string, mixed>  $params
+     */
+    protected function applyIds(Builder $query, array $params): void
+    {
+        $ids = $params['ids'] ?? null;
+
+        if (! is_array($ids) || $ids === []) {
+            return;
+        }
+
+        /** @var Model $probe */
+        $probe = new $this->model;
+        $query->whereIn($probe->getKeyName(), $ids);
+    }
+
     protected function applyFilters(Builder $query, array $params): void
     {
         $filters = $params['filters'] ?? null;

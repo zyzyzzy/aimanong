@@ -122,6 +122,10 @@ Route::prefix('api')->name('api.')->group(function (): void {
     // 静态子路径必须声明在 {uri}/{id} 之前，否则会被当作 id
     Route::get('{uri}/export', [ResourceController::class, 'export'])->name('export');
     Route::get('{uri}/tree', [ResourceController::class, 'tree'])->name('tree');
+
+    // 批量操作。动作必须在 grid()->batchActions([...]) 里声明过，
+    // 否则 403（不做「没声明也能调」的隐式行为）。
+    Route::post('{uri}/batch', [ResourceController::class, 'batch'])->name('batch');
     Route::put('{uri}/{id}/move', [ResourceController::class, 'move'])->name('move');
 
     Route::get('{uri}/{id}', [ResourceController::class, 'show'])->name('show');

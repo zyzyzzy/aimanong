@@ -38,7 +38,7 @@ error() { echo -e "${RED}❌${NC} $*" >&2; exit 1; }
 command -v git >/dev/null || error "需要 git"
 
 echo "════════════════════════════════════════"
-echo "  发布 Composer 包（core + framework + region）"
+echo "  发布 Composer 包（core + laravel + framework + region + thinkphp）"
 echo "════════════════════════════════════════"
 
 # ── 发布单个包 ──
@@ -227,6 +227,13 @@ fi
 
 if [ "$ONLY" = "region" ] || [ "$ONLY" = "all" ]; then
     publish_one region
+fi
+
+# ThinkPHP 驱动 —— 只依赖 core，所以位置不受 laravel/framework 影响。
+# 放在最后是因为它是**第二条产品线**：Laravel 那条（core/laravel/framework）
+# 先发完，再发它，出问题时影响面小。
+if [ "$ONLY" = "thinkphp" ] || [ "$ONLY" = "all" ]; then
+    publish_one thinkphp
 fi
 
 echo ""

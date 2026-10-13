@@ -2,6 +2,47 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.10.0] - 2026-10-14
+
+> 主题：**多框架支持** —— 同一套 Resource 声明，Laravel 12 与 ThinkPHP 8 都能跑。
+
+### 新增：`aimanong/thinkphp`（ThinkPHP 8 驱动）
+
+框架拆成「内核 + 驱动」之后的第一条新驱动：
+
+| 能力 | 状态 |
+|---|---|
+| 5 个契约实现（数据源 / 内省 / 字典 / 权限 / 上传） | ✅ |
+| 模板层（Blade → think-template 转换器 + 4 条硬规则） | ✅ |
+| 后台页面 `/admin` | ✅ |
+| 数据 API `/admin/api/{uri}` | ✅ |
+| 认证（登录 / 会话 / 记住我） | ✅ |
+| 登录限流（每 IP / 每 IP+账号） | ✅ |
+| RBAC（角色 / 权限 / 超管绕过） | ✅ |
+| Console（`aimanong:install` / `ai:verify` / `aimanong:schema`） | ✅ |
+| 多租户数据作用域（`ScopeHooks`） | ✅ |
+| batch / export / tree / move | ⬜ 明确返回 501 |
+
+**关键前提**：`aimanong/core` 是零 illuminate 依赖的，
+所以 ThinkPHP 项目里 `vendor/illuminate` 根本不存在 ——
+这消灭了原本的致命冲突（`illuminate/support` 抢注全局 `env()`，
+导致 ThinkPHP 启动即 fatal）。
+
+### 修复：全面验收发现的 8 处高危语义缺口
+
+详见 `internal-docs/第4段-全面验收报告.md`。其中最严重的几条：
+
+- **多租户隔离在 TP 上失效** —— `ScopeHooks` 未接，跨租户数据全量返回
+- **只读资源在 TP 上可写** —— 而共享的 OpenAPI 产物却按 readonly 省略了写接口
+- **多对多关联被静默丢弃** —— 提交成功但不写中间表（幽灵能力）
+- **会话固定 / 限流大小写绕过** —— 安全问题
+
+### 修复：`aimanong/thinkphp` 此前没有静态分析
+
+补上 PHPStan Level 8 + Pint 后**第一次跑就抓到 3 个真问题**，
+其中 `topthink/think-template` 根本不在包依赖里 ——
+用户单独装这个包时渲染视图必然致命（demo 因为自己手加了依赖才没暴露）。
+
 ## [1.9.1] - 2026-10-13
 
 > 主题：修掉 1.9.0 里一个**只有真装一次才看得见**的版本号 bug。

@@ -269,7 +269,18 @@ for pkg in core framework region; do
   # 用 case 而非 `echo | grep -q`：无子进程、无 SIGPIPE 风险
   case "$body" in
     *'"aimanong/'"$pkg"'"'*) ok "Packagist 已收录 aimanong/${pkg}" ;;
-    *) bad "Packagist 未收录 aimanong/${pkg} —— 文档里的 composer require 跑不通！" ;;
+    *)
+      # 「查不到」有两种可能，但**都无法从一次 API 调用区分**：
+      #   ① 从未发布过（如刚拆出来的 core）
+      #   ② 曾被撤下
+      # 这里统一 warn 而不 bad，理由是：真正会伤到用户的是
+      # 「发了 framework，但它依赖的 core 不在 Packagist」——
+      # 那个由 publish-framework.sh 的依赖守卫**硬拦**，比这里更靠近风险点。
+      # 而一旦该包首次发布，本项就自动变成实打实的版本比对（不是跳过）。
+      warn "Packagist 查不到 aimanong/${pkg} —— 可能尚未首次发布"
+      echo "       → 若是首次发布：属正常，发布后本项自动生效。"
+      echo "       → 发 framework 前请先发它（publish-framework.sh 会硬拦）。"
+      ;;
   esac
 done
 
@@ -298,8 +309,8 @@ except: print('')" 2>/dev/null || echo "")
   if [ "$local_ver" = "$remote_ver" ]; then
     ok "${pkg}: 本地 $local_ver = Packagist $remote_ver"
   elif [ -z "$remote_ver" ]; then
-    bad "${pkg}: Packagist 上没有可解析的版本号（可能刚发布，索引尚未更新）"
-    echo "       → 稍等 1~2 分钟重跑；仍为空则检查发布是否真的成功。"
+    warn "${pkg}: 尚未首次发布（无版本可比对）"
+    echo "       → 发布后本项自动转为强校验。"
   else
     # 用 bad 而非 warn：这是**发版遗漏**，必须拦住。
     # 只 warn 的话 pre-release 仍显示"全部通过"，

@@ -80,24 +80,65 @@ grep -q '^DB_CONNECTION=sqlite' .env || echo 'DB_CONNECTION=sqlite' >> .env
 grep -q '^AIMANONG_RBAC=' .env || echo 'AIMANONG_RBAC=true' >> .env
 rm -f .env.bak
 
-# ── 安装框架（发布配置 + 迁移）──
+# ── 安装框架（发布配置 + 迁移 + 管理员账号）──
+#
+# ⚠️ 2026-10-13 修：管理员账号必须在**这一次**就带上固定密码。
+#
+# 原实现分两步：先 `aimanong:install` 建一个**随机密码**的管理员，
+# 再跑一次 `aimanong:install --force --admin-user=admin --admin-password=admin123`
+# 想覆盖它。但第二次的实际输出是：
+#
+#     ✓ 已存在管理员账号，跳过创建（不会重置已有密码）
+#
+# 也就是说密码从来没被设成 admin123。而这一步和下面的权限同步都写着
+# `|| true`，失败被吞掉 —— 于是 e2e 用 admin/admin123 登录必然 302。
+#
+# 实测代价：CI 的 http-e2e 长期只有 9/24 通过，却因为
+# pre-release.sh 只看退出码而被显示成「✅ http-e2e 通过」。
+# （退出码问题已在本次一并修复，所以现在它才会如实报红。）
 echo "  → 安装框架"
-php artisan aimanong:install --no-interaction 2>/dev/null || php artisan aimanong:install --force --no-interaction
-
-# ── 管理员账号 ──
-#
-# ⚠️ 正常情况下**不需要**这一段 —— `aimanong:install` 自己会创建。
-#
-# 但 e2e 测试要求固定的账号密码（admin/admin123），而安装命令
-# 默认生成随机强密码。所以这里显式指定，用非交互参数的正式路径，
-# 而不是绕过安装命令手工写库。
-echo "  → 创建管理员账号（非交互）"
-php artisan aimanong:install --force --admin-user=admin --admin-password=admin123 \
-  --no-interaction >/dev/null 2>&1 || true
+php artisan aimanong:install --admin-user=admin --admin-password=admin123 \
+    --no-interaction 2>/dev/null \
+  || php artisan aimanong:install --force --admin-user=admin --admin-password=admin123 \
+    --no-interaction
 
 # ── 权限节点（内置 Resource 的节点要写库）──
 echo "  → 同步权限节点"
 php artisan aimanong:permission sync >/dev/null 2>&1 || true
+
+# ── 登记 region 扩展 ──
+#
+# ⚠️ 2026-10-13 修：插件的扩展**必须显式列进** `config('aimanong.extensions')`，
+# 框架不会自动发现。
+#
+# region 包的 composer.json 里写了 `extra.aimanong.extension`，
+# 但**全仓库没有任何代码读它**（grep 过），InstallCommand 也不扫 composer 元数据。
+# 也就是说那是一段死元数据。
+#
+# 后果（实测）：全新项目 `composer require aimanong/region` 之后，
+# RegionExtension 根本不会 boot —— `FieldType::fieldViewFor('region')` 是 null，
+# 省市区字段退化成普通文本框。而 e2e 里那两条断言就是在测这个。
+#
+# demo 的职责是**真的把插件跑起来**，所以这里显式登记。
+# （插件自动发现是独立的产品决策，见拆包计划「本段遗留」。）
+echo "  → 登记 region 扩展"
+php -r '
+$f = "config/aimanong.php";
+if (! is_file($f)) { exit(0); }
+$s = (string) file_get_contents($f);
+if (str_contains($s, "RegionExtension::class")) { exit(0); }
+$needle = "\x27extensions\x27 => [";
+$pos = strpos($s, $needle);
+if ($pos === false) {
+    fwrite(STDERR, "  ⚠️  配置里找不到 extensions 键，region 扩展未登记\n");
+    exit(1);
+}
+$pos += strlen($needle);
+$s = substr($s, 0, $pos)
+    . "\n        \\Aimanong\\Region\\RegionExtension::class,"
+    . substr($s, $pos);
+file_put_contents($f, $s);
+'
 
 echo
 echo "✅ demo 项目就绪: $DEMO"

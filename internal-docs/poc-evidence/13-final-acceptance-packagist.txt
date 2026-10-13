@@ -1,0 +1,23 @@
+=== 最终验收：纯 Packagist 安装 + 后台可用（2026-10-13）===
+
+## 环境
+  项目：/tmp/ci-repro（composer.json 里**没有任何 aimanong 本地 path 仓库**）
+  安装来源：packagist.org
+
+## 解析结果
+  Locking aimanong/core      (1.0.0)
+  Locking aimanong/framework (1.9.1)   type=metapackage
+  Locking aimanong/laravel   (1.0.1)
+  Locking aimanong/region    (v1.0.0)
+  vendor/aimanong/framework 无目录（metapackage 正常）
+
+## 产品版本号（1.9.0 时这里是错的 1.0.0）
+  Aimanong::version() = 1.9.1  ✅
+
+## 后台端到端（真实 HTTP）
+  $ DEMO_PATH=/tmp/ci-repro php tests/e2e/http-e2e.php
+  通过 24 / 24   exit 0
+
+## 结论
+  从公开包安装即可得到一个完整可用的后台 —— 拆包对使用者无可见影响，
+  而 core 是零 illuminate 依赖的（ThinkPHP 侧不会再碰到全局 env() 冲突）。

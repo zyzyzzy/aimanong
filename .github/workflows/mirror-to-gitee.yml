@@ -2,12 +2,42 @@ name: Mirror to Gitee
 
 # GitHub → Gitee 镜像同步
 #
-# 前置条件（未配置时本 workflow 会跳过而非失败）：
+# ## 前置条件
 #   在 GitHub 仓库 Settings → Secrets and variables → Actions 添加：
-#     GITEE_USERNAME  你的 Gitee 用户名（URL 里的那个，非昵称）
+#     GITEE_USERNAME  Gitee 用户名（URL 里的那个，本项目为 zyzyzzy_admin）
 #     GITEE_TOKEN     Gitee 私人令牌，需 projects 权限
 #
-# 未配置 Secrets 时不影响任何功能 —— 可继续手动 git push gitee main
+# ## ⚠️ 2026-10-13：补上缺失的「同步关卡」
+#
+#   「未配 Secrets 就跳过」是**设计如此**，不是 bug ——
+#   见 internal-docs/CI与同步说明.md 决策 2（2026-10-09）：
+#   同步由协作的 AI Agent 手工负责（`git push gitee main`），
+#   不配 Secrets 是为了减少一个凭据的攻击面。
+#
+#   但那份手工职责**没有任何关卡**。后果（实测）：
+#
+#     Gitee main 停在 4f24056，落后 6 个提交，且完全没有 v1.8.1 tag，
+#     而文档写着「两边 commit 始终一致」—— 那是假的。
+#     翻完整运行历史，**每一次 Mirror 运行都跳过了推送**，
+#     而 `gh run list` 一路显示 success。
+#
+#   所以问题不是「workflow 坏了」，是「职责不可验证」：
+#     手工做完的事，没有任何东西会因为你忘了做而报错。
+#
+#   本文件因此做两件事：
+#
+#   ① 修一个**潜伏的真实 bug**：tag 会推错地方。原来是
+#        git push gitee "HEAD:refs/heads/${GITHUB_REF_NAME}" --force
+#      tag 触发时 GITHUB_REF_NAME 是 tag 名，于是会在 Gitee 上创建
+#      一个**同名分支** v1.8.1，真正的 tag 永远到不了 Gitee。
+#      （因为 Secrets 从未配置，这条路径从未被执行过 —— 属潜伏缺陷。）
+#
+#   ② 新增 **verify job，把「手工同步」变成可验证的职责**：
+#      Gitee 与 GitHub 都是公开仓库，匿名只读即可，
+#      **不需要任何 Secrets**。它检查的是结果 ——
+#      Gitee 上本次触发的 ref 是否等于 GitHub 上的同一个 ref。
+#      不同就 fail。这样「忘了同步」会立刻变成红色，
+#      而不是烂在细节里。同步正常时它是绿的，所以不会成为噪音。
 
 on:
   push:
@@ -31,7 +61,7 @@ jobs:
         run: |
           if [ -z "$GITEE_USERNAME" ] || [ -z "$GITEE_TOKEN" ]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::未配置 GITEE_USERNAME / GITEE_TOKEN，跳过镜像同步。手动同步: git push gitee main"
+            echo "::warning::未配置 GITEE_USERNAME / GITEE_TOKEN，本次【没有】同步到 Gitee。手动同步: git push gitee main --tags"
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
@@ -48,10 +78,72 @@ jobs:
           GITEE_USERNAME: ${{ secrets.GITEE_USERNAME }}
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
         run: |
-          set -e
+          set -euo pipefail
           REMOTE="https://${GITEE_USERNAME}:${GITEE_TOKEN}@gitee.com/${GITEE_USERNAME}/aimanong.git"
 
           git remote add gitee "$REMOTE" 2>/dev/null || git remote set-url gitee "$REMOTE"
-          git push gitee "HEAD:refs/heads/${GITHUB_REF_NAME}" --force
 
-          echo "✅ 已同步 ${GITHUB_REF_NAME} 到 Gitee"
+          # 确保本地有该 tag 的 ref —— annotated tag 要连同 tag 对象一起推，
+          # 只推 commit 会在 Gitee 上变成轻量 tag，两端 SHA 不一致。
+          git fetch --tags --force origin
+
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            # tag：推 tag 本身，不要推成同名分支
+            git push gitee "+refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
+            echo "✅ 已同步 tag ${GITHUB_REF_NAME} 到 Gitee"
+          else
+            git push gitee "+HEAD:refs/heads/${GITHUB_REF_NAME}"
+            echo "✅ 已同步分支 ${GITHUB_REF_NAME} 到 Gitee"
+          fi
+
+  #
+  # 结果验证 —— 这个 job 才是「Gitee 到底同没同步」的判定者。
+  #
+  # 它与 mirror 是否成功、Secrets 是否配置都无关：
+  # 直接匿名读两边的 ref 做比对。mirror 被跳过时它照样跑，
+  # 从而把「静默不同步」变成「明确失败」。
+  #
+  verify:
+    name: 确认 Gitee 已同步
+    needs: mirror
+    if: always() && github.repository == 'zyzyzzy/aimanong'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: 比对触发本次运行的 ref
+        run: |
+          set -uo pipefail
+
+          REF="$GITHUB_REF"
+          GE="https://gitee.com/zyzyzzy_admin/aimanong.git"
+
+          # 远端 ref 广播可能有短暂延迟，重试几次
+          for attempt in 1 2 3 4 5; do
+            gh_sha=$(git ls-remote origin "$REF" 2>/dev/null | cut -f1)
+            ge_sha=$(git ls-remote "$GE" "$REF" 2>/dev/null | cut -f1)
+
+            echo "尝试 $attempt  ref=$REF"
+            echo "  GitHub : ${gh_sha:-（无）}"
+            echo "  Gitee  : ${ge_sha:-（无）}"
+
+            if [ -n "$gh_sha" ] && [ "$gh_sha" = "$ge_sha" ]; then
+              echo "✅ Gitee 已同步 $REF"
+              exit 0
+            fi
+
+            [ "$attempt" -lt 5 ] && sleep 6
+          done
+
+          if [ -z "${gh_sha:-}" ]; then
+            echo "::error::GitHub 上找不到 $REF"
+            exit 1
+          fi
+
+          echo "::error::Gitee 未同步 $REF —— GitHub=$gh_sha Gitee=${ge_sha:-（缺失）}"
+          echo "常见原因：未配置 GITEE_USERNAME / GITEE_TOKEN Secrets（该 workflow 会因此静默跳过推送）"
+          echo "临时手动同步：git push gitee $REF"
+          exit 1

@@ -249,4 +249,69 @@ if (is_resource($proc)) {
     proc_close($proc);
 }
 
+echo "\n=== ⑤ 控制台命令：AI 自检入口与四份产物 ===\n";
+
+/** 跑一条 think 命令，返回 [退出码, 合并输出] */
+$think = function (string $cmd) use ($tp): array {
+    $out = [];
+    $code = 0;
+    exec(sprintf('cd %s && php think %s 2>&1', escapeshellarg($tp), $cmd), $out, $code);
+
+    return [$code, implode("\n", $out)];
+};
+
+[$code, $out] = $think('ai:verify');
+t('ai:verify 退出码 0', $code === 0, "exit={$code}");
+t('ai:verify 报告 Resource 通过', str_contains($out, 'customers'));
+
+[$code, $out] = $think('ai:verify --json');
+$json = json_decode($out, true);
+t('ai:verify --json 可解析', is_array($json));
+t('--json 含 valid/total/failed', is_array($json) && isset($json['valid'], $json['total'], $json['failed']));
+t('--json valid=true', is_array($json) && ($json['valid'] ?? null) === true);
+
+/*
+ * 幽灵列检测 —— 宪法第三条「零隐式」的主要执行者。
+ * 换了框架它必须一样生效，否则声明了不存在的列会静默通过。
+ * 这里直接把 Resource 里的 name 拼错成 nmae 来探测。
+ */
+$res = $tp.'/app/CustomerResource.php';
+$orig = (string) file_get_contents($res);
+file_put_contents($res, str_replace("'name', '名称'", "'nmae', '名称'", $orig));
+
+[$code, $out] = $think('ai:verify');
+$ghostOk = $code === 1 && str_contains($out, 'GHOST_COLUMN') && str_contains($out, 'nmae');
+file_put_contents($res, $orig);
+
+t('幽灵列被检出且退出码 1', $ghostOk);
+t('幽灵列给出 did_you_mean', str_contains($out, 'name'));
+
+[$code, $out] = $think('aimanong:schema');
+t('aimanong:schema 退出码 0', $code === 0, "exit={$code}");
+
+$artifacts = ['schema.json', 'types.ts', 'openapi.json', 'ai-context.md'];
+
+foreach ($artifacts as $a) {
+    $path = $tp.'/aimanong/'.$a;
+    t("产物 {$a} 已生成且非空", is_file($path) && filesize($path) > 0, is_file($path) ? filesize($path).' 字节' : '缺失');
+}
+
+/*
+ * 漂移检测 —— 生成的产物必须与声明一致。
+ * 声明改了不重新生成是最典型的失效方式，而且**不报错**。
+ */
+[$code] = $think('aimanong:schema --check');
+t('--check 无漂移时退出码 0', $code === 0, "exit={$code}");
+
+$origRes = (string) file_get_contents($res);
+file_put_contents($res, str_replace(
+    "\$grid->column('industry', '行业');",
+    "\$grid->column('industry', '行业')->sortable();",
+    $origRes
+));
+[$code] = $think('aimanong:schema --check');
+file_put_contents($res, $origRes);
+
+t('声明变更后 --check 检出轨度', $code === 1, "exit={$code}");
+
 $completed = true;

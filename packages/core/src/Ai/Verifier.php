@@ -8,8 +8,7 @@ use Aimanong\Aimanong;
 use Aimanong\Exceptions\AiReadableException;
 use Aimanong\Resource;
 use Aimanong\Schema\Compiler;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Schema;
+use Aimanong\Support\Drivers;
 
 /**
  * 声明校验器。
@@ -218,15 +217,27 @@ class Verifier
                 return [];
             }
 
-            /** @var Model $instance */
-            $instance = new $model;
-            $table = $instance->getTable();
+            /*
+             * 走 `SchemaIntrospector` 契约，而不是 Eloquent / Schema 门面 ——
+             * 这样同一份校验逻辑在 Laravel 与 ThinkPHP 上都成立。
+             *
+             * 缺驱动时返回空（与内核里「内省缺驱动不抛、跳过」的语义一致）：
+             * 拿不到真实列就无从判断幽灵列，宁可跳过也不误报。
+             */
+            $introspector = Drivers::introspector();
 
-            if (! Schema::hasTable($table)) {
+            if ($introspector === null) {
                 return [];
             }
 
-            $real = Schema::getColumnListing($table);
+            $instance = new $model;
+            $table = $introspector->tableOf($instance);
+
+            if ($table === null || ! $introspector->hasTable($table)) {
+                return [];
+            }
+
+            $real = $introspector->columnsOf($table);
             /** @var class-string<\Aimanong\Contracts\Resource> $class */
             $node = (new Compiler)->compile($class);
         } catch (\Throwable) {
@@ -271,14 +282,11 @@ class Verifier
                 continue;
             }
 
-            // 排除虚拟属性（访问器 / casts / 关系）
-            if ($instance->hasGetMutator($f->name)) {
-                continue;
-            }
-            if ($instance->hasCast($f->name)) {
-                continue;
-            }
-            if (method_exists($instance, $f->name)) {
+            // 排除虚拟属性（访问器 / casts / 关系）—— 同样走契约。
+            // 两端写法不同：Laravel 是 hasGetMutator/hasCast，
+            // ThinkPHP 是 getXxxAttr() 方法与 $type 声明，
+            // 由各自的 SchemaIntrospector 判断。
+            if ($introspector->isVirtualAttribute($instance, $f->name)) {
                 continue;
             }
 

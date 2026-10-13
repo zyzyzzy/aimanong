@@ -1,0 +1,30 @@
+=== ThinkPHP 控制台命令（2026-10-14）===
+
+## 命令
+  ai:verify          AI 生成代码后的第一道防线（--json 供 AI/CI 解析）
+  aimanong:schema    一份声明 → 四份产物（--check 漂移检测）
+
+## 验证（thinkphp-e2e 53/53 中的第 ⑤ 节）
+=== ⑤ 控制台命令：AI 自检入口与四份产物 ===
+  ai:verify 退出码 0                                ✅  exit=0
+  ai:verify 报告 Resource 通过                     ✅
+  ai:verify --json 可解析                           ✅
+  --json 含 valid/total/failed                        ✅
+  --json valid=true                                    ✅
+  幽灵列被检出且退出码 1                     ✅
+  幽灵列给出 did_you_mean                         ✅
+  aimanong:schema 退出码 0                          ✅  exit=0
+  产物 schema.json 已生成且非空                ✅  4152 字节
+  产物 types.ts 已生成且非空                   ✅  5646 字节
+  产物 openapi.json 已生成且非空               ✅  5696 字节
+  产物 ai-context.md 已生成且非空              ✅  420 字节
+  --check 无漂移时退出码 0                      ✅  exit=0
+  声明变更后 --check 检出轨度                 ✅  exit=1
+
+通过 53 / 53
+
+## 顺带：Verifier 搬进 core
+  原先在 laravel 包里，只有 3 处 Laravel 绑定；
+  改用 core 早就有的 SchemaIntrospector 契约后：
+    core 纯度 75 文件 / 6652 行，零 illuminate
+    同一份校验逻辑两个框架通用

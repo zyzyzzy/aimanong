@@ -90,6 +90,16 @@ class AimanongDemoService extends Service
 }
 PHPEOF
 
+cat > "$TARGET/think" <<'PHPEOF'
+#!/usr/bin/env php
+<?php
+// 控制台入口 —— 与 Laravel 的 artisan 对应
+require __DIR__.'/vendor/autoload.php';
+
+(new \think\App())->console->run();
+PHPEOF
+chmod +x "$TARGET/think"
+
 cat > "$TARGET/app/service.php" <<'PHPEOF'
 <?php
 // ThinkPHP 的服务注册入口。

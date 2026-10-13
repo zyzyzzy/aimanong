@@ -49,6 +49,12 @@ class ThinkService extends Service
         \think\facade\Route::group((new ThinkRuntime)->urlPrefix(), function () use ($routeFile): void {
             include $routeFile;
         });
+
+        // 控制台命令 —— TP 的 Service::commands() 会在 console 启动时挂上
+        $this->commands([
+            \Aimanong\ThinkPHP\Console\VerifyCommand::class,
+            \Aimanong\ThinkPHP\Console\SchemaCommand::class,
+        ]);
     }
 
     public function register(): void

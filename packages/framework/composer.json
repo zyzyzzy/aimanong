@@ -1,6 +1,6 @@
 {
     "name": "aimanong/framework",
-    "version": "1.8.0",
+    "version": "1.8.1",
     "description": "Aimanong（AI 码农）—— 为 AI Agent 设计的 Laravel 后台开发框架",
     "type": "library",
     "keywords": [
@@ -33,6 +33,9 @@
         "illuminate/validation": "^12.0|^13.0",
         "illuminate/view": "^12.0|^13.0",
         "laravel/mcp": "^0.4"
+    },
+    "conflict": {
+        "topthink/framework": "*"
     },
     "suggest": {
         "aimanong/region": "中国省市区三级联动字段（->region()）。不装也能用框架，只是没有这个字段类型"

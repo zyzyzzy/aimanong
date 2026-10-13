@@ -2,6 +2,57 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.8.1] - 2026-10-13
+
+> 主题：**堵掉一个「装得上、不报错、然后炸掉宿主」的坑**。
+>
+> 这一版来自多框架适配 PoC 的实测发现，改动只有一行，
+> 但消除的是本项目**最严重的一类缺陷**（宪法第三条「零隐式」）。
+
+### 修复：装进 ThinkPHP 项目会导致对方整个应用起不来
+
+```bash
+$ composer require aimanong/framework     # Composer 报【零冲突】，安装 83 个包「成功」
+$ php -r '... (new think\App())->initialize();'
+PHP Fatal error: Class "PhpOption\Option" not found
+  in vendor/illuminate/support/Env.php:254
+```
+
+**根因**：两个框架都定义全局函数 `env()`，各自用 `function_exists` 保护：
+
+| | 定义位置 | 实现 |
+|---|---|---|
+| ThinkPHP | `topthink/framework/src/helper.php:215` | `think\Env::get()` |
+| Laravel | `illuminate/support/helpers.php:150` | `Illuminate\Support\Env::get()` |
+
+Composer 的 `autoload_files` 先加载 Illuminate 的，ThinkPHP 的被**静默跳过**。
+而 `illuminate/support` 并不依赖 `phpoption/phpoption`（那是完整 `laravel/framework` 才带的），
+所以这个 `env()` 在非 Laravel 项目里**本身就是残缺的** —— 一调用就炸。
+
+全局函数同名冲突共 **7 个**：`env` `tap` `throw_if` `throw_unless`
+`class_basename` `class_uses_recursive` `trait_uses_recursive`。
+
+**修法**：`composer.json` 增加
+
+```json
+"conflict": { "topthink/framework": "*" }
+```
+
+**效果**（真实实测）：
+
+```
+  Problem 1
+    - aimanong/framework 1.8.1 conflicts with topthink/framework *.
+Installation failed, reverting ./composer.json and ./composer.lock to their original content.
+```
+
+从「零冲突 + 静默致命」变成「明确拒绝 + 自动回滚」。
+
+> 更深的根因是：本包依赖零散的 `illuminate/*` 而非 `laravel/framework`，
+> 于是能被装进任何非 Laravel 项目，然后以残缺的 `env()` 炸掉宿主。
+> `conflict` 是止血；根治要等拆包（框架无关内核不依赖 illuminate）。
+> 详见 [多框架适配-PoC报告.md](./internal-docs/多框架适配-PoC报告.md)。
+
 ## [1.8.0] - 2026-10-12
 
 > 主题：**修掉两个生产部署必踩的 P0、补上安全基线、消除两个幽灵能力**。

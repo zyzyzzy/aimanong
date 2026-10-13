@@ -64,11 +64,42 @@ $response->send();
 $http->end($response);
 PHPEOF
 
+# Resource 声明 —— 与 Laravel 侧**同一套写法**。
+# 只有下面那行注册是框架胶水，grid/form/show 全是框架无关的。
+cp "$ROOT/scripts/tp-demo-resource.php.tpl" "$TARGET/app/CustomerResource.php"
+
+cat > "$TARGET/app/AimanongDemoService.php" <<'PHPEOF'
+<?php
+namespace app;
+
+use Aimanong\Aimanong;
+use think\Service;
+
+/**
+ * 演示：在 ThinkPHP 上注册 Resource。
+ *
+ * 与 Laravel 侧的 `AimanongResourceProvider` 是同一行调用 ——
+ * 这正是「同一套声明，两个框架」的意思。
+ */
+class AimanongDemoService extends Service
+{
+    public function register(): void
+    {
+        Aimanong::registry()->register(CustomerResource::class);
+    }
+}
+PHPEOF
+
 cat > "$TARGET/app/service.php" <<'PHPEOF'
 <?php
-// ThinkPHP 的服务注册入口 —— Aimanong 的驱动通过它挂上
+// ThinkPHP 的服务注册入口。
+//
+// ⚠️ 顺序有讲究：`ThinkService` 必须在前面 ——
+// 它的 register() 会绑定 Aimanong 的框架运行时与驱动，
+// 后面的 App 服务才能用 `Aimanong::registry()`。
 return [
     \Aimanong\ThinkPHP\ThinkService::class,
+    \app\AimanongDemoService::class,
 ];
 PHPEOF
 
@@ -143,7 +174,14 @@ return [
     ],
 
     // 权限节点（配置驱动，默认拒绝）
-    'permissions' => ['customers.index'],
+    //
+    // 这是 ThinkPermissionChecker 的最小形态：列出来的即视为拥有。
+    // 完整的 RBAC（角色 / 用户绑定 / 数据库）留到后续增量 ——
+    // 现在这样至少**不谎报**：没配的节点就是 403。
+    'permissions' => [
+        'customers.index', 'customers.show',
+        'customers.create', 'customers.update', 'customers.destroy',
+    ],
 ];
 PHPEOF
 

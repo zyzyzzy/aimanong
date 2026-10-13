@@ -153,11 +153,6 @@ if ($code !== 200) {
     }
 }
 
-if (is_resource($proc)) {
-    proc_terminate($proc);
-    proc_close($proc);
-}
-
 /*
  * 内容断言 —— 这一步才是真正的裁判。
  *
@@ -186,6 +181,72 @@ if ($code === 200) {
     t('switch: color 分支渲染取色器', str_contains($body, 'type="color"'));
     t('switch: radio 分支渲染选项', str_contains($body, '跟随系统') && str_contains($body, '浅色') && str_contains($body, '深色'));
     t('版本号已渲染', (bool) preg_match('/\b1\.\d+\.\d+\b/', $body));
+}
+
+echo "\n=== ④ 数据 API：声明驱动（Resource → JSON 接口）===\n";
+
+/** 发一个请求，返回 [状态码, 解码后的 JSON 或原始文本] */
+$api = function (string $method, string $path, array $data = []) use ($port): array {
+    $ch = curl_init("http://127.0.0.1:{$port}/admin/api/{$path}");
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_CUSTOMREQUEST => $method,
+        CURLOPT_POSTFIELDS => $data === [] ? null : http_build_query($data),
+    ]);
+    $raw = (string) curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $json = json_decode($raw, true);
+
+    return [$status, is_array($json) ? $json : $raw];
+};
+
+[$st, $r] = $api('GET', 'customers');
+t('列表 200', $st === 200, "HTTP {$st}");
+t('列表带 meta.total', is_array($r) && ($r['meta']['total'] ?? null) === 2);
+t('列表返回 data 数组', is_array($r) && count($r['data'] ?? []) === 2);
+
+[$st, $r] = $api('GET', 'customers?keyword='.rawurlencode('杭州'));
+t('搜索生效（searchable 声明驱动）', $st === 200 && ($r['meta']['total'] ?? null) === 1);
+
+[$st, $r] = $api('GET', 'customers?sort=name&direction=desc');
+t('排序生效', $st === 200 && is_array($r));
+
+// AI 常把 direction 猜成 order —— 静默忽略会返回未排序结果而 AI 以为生效了
+[$st, $r] = $api('GET', 'customers?order=name');
+t('未知查询参数有警告', $st === 200 && ($r['warnings'][0]['code'] ?? '') === 'UNKNOWN_QUERY_PARAM');
+
+// ->required() 在 TP 上必须真的生效，否则声明就是幽灵能力
+[$st, $r] = $api('POST', 'customers', ['industry' => '未填名称']);
+t('缺必填 → 422', $st === 422, "HTTP {$st}");
+t('422 指出是哪个字段', is_array($r) && isset($r['errors']['name']));
+
+[$st, $r] = $api('POST', 'customers', ['name' => 'E2E 客户', 'industry' => '测试', 'level' => 'A']);
+t('创建 → 201', $st === 201, "HTTP {$st}");
+$newId = is_array($r) ? ($r['data']['id'] ?? null) : null;
+t('创建返回主键', is_int($newId) || is_string($newId));
+
+if ($newId !== null) {
+    [$st] = $api('GET', "customers/{$newId}");
+    t('详情 200', $st === 200, "HTTP {$st}");
+
+    [$st] = $api('PUT', "customers/{$newId}", ['name' => 'E2E 改名']);
+    t('更新 200', $st === 200, "HTTP {$st}");
+
+    [$st] = $api('DELETE', "customers/{$newId}");
+    t('删除 204', $st === 204, "HTTP {$st}");
+}
+
+[$st] = $api('GET', 'customers/999999');
+t('详情不存在 → 404', $st === 404, "HTTP {$st}");
+
+// 未在 permissions 里授权的 uri 必须 403，而不是悄悄放行
+[$st] = $api('GET', 'orders');
+t('未授权 uri → 403', $st === 403, "HTTP {$st}");
+
+if (is_resource($proc)) {
+    proc_terminate($proc);
+    proc_close($proc);
 }
 
 $completed = true;

@@ -1,0 +1,47 @@
+=== ThinkPHP 数据 API：声明驱动全链路（2026-10-14）===
+
+## 意义
+  Resource 的 grid/form 声明由 core 编译成 ResourceNode，
+  在 ThinkPHP 上执行成 JSON 接口 —— 这是「同一套声明，两个框架」
+  这个核心卖点在 TP 上的完整证明。
+
+## 覆盖
+=== ④ 数据 API：声明驱动（Resource → JSON 接口）===
+  列表 200                                           ✅  HTTP 200
+  列表带 meta.total                                 ✅
+  列表返回 data 数组                             ✅
+  搜索生效（searchable 声明驱动）            ✅
+  排序生效                                         ✅
+  未知查询参数有警告                          ✅
+  缺必填 → 422                                    ✅  HTTP 422
+  422 指出是哪个字段                            ✅
+  创建 → 201                                       ✅  HTTP 201
+  创建返回主键                                   ✅
+  详情 200                                           ✅  HTTP 200
+  更新 200                                           ✅  HTTP 200
+  删除 204                                           ✅  HTTP 204
+  详情不存在 → 404                              ✅  HTTP 404
+  未授权 uri → 403                                ✅  HTTP 403
+
+通过 39 / 39
+
+## 这一轮抓到的 4 个真差异（都是「看着对、实际错」）
+
+1. 权限配置只授了 index，写操作全 403
+   —— 这其实是**正确**行为（默认拒绝），但暴露出演示配置不完整。
+
+2. meta['rules'] 的值是**数组** {"name":["required"]}，不是字符串
+   我按字符串处理 → 每条规则都被跳过 → 校验静默失效，
+   必填字段留空照样能创建（幽灵能力）。
+
+3. ThinkPHP 的 Validate 对「字段完全缺失」的 require **不报错**
+   实测：Validate(['name'=>'require'])->check(['industry'=>'x']) === true
+   而 Laravel 的 required 会报错。故必填改为**自己显式判定**。
+
+4. 路由顺序：':uri' 排在 ':uri/:id' 前面时，TP 会用 ':uri' 吞掉整个
+   /api/customers/999999，详情请求走进列表接口 —— 返回 200 + 列表数据，
+   调用方完全看不出错。把带 :id 的排前面即可。
+
+## 顺带踩到的一个自己写的 bug
+  e2e 里 proc_terminate 放在了 /admin 检查之后、API 检查之前，
+  于是 API 段全部 HTTP 0。这类「顺序错」在测试脚本里同样不报错。

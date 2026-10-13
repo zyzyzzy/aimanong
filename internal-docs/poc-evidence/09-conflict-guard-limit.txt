@@ -1,0 +1,23 @@
+=== conflict 守卫的边界实测（v1.8.1 发布后，用 Packagist 真包）===
+
+场景：干净 ThinkPHP 8.1.4 项目（已装 topthink/framework v8.1.4）
+
+--- ① 显式 pin：生效 ---
+$ composer require aimanong/framework:^1.8.1
+  Problem 1
+    - aimanong/framework 1.8.1 conflicts with topthink/framework *.
+Installation failed, reverting ./composer.json and ./composer.lock to their original content.
+
+--- ② 默认写法：回退到 1.8.0，守卫失效 ---
+$ composer require aimanong/framework
+  - Installing aimanong/framework (1.8.0): Extracting archive
+  Using version ^1.8 for aimanong/framework
+
+--- ③ Packagist 元数据：1.8.0 没有 conflict，且不可追溯修改 ---
+
+
+  1.8.1 -> conflict: {'topthink/framework': '*'}
+  1.8.0 -> conflict: __unset
+  1.7.1 -> conflict: (none)
+结论：已发布版本不可变，1.8.0 永远挡不住。
+      要彻底堵住：删除 Packagist 上的 v1.8.0，或完成拆包。

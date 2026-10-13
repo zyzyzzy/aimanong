@@ -38,19 +38,43 @@ Composer 的 `autoload_files` 先加载 Illuminate 的，ThinkPHP 的被**静默
 "conflict": { "topthink/framework": "*" }
 ```
 
-**效果**（真实实测）：
+**效果**（真实实测，用 Packagist 上发布的包）：
 
 ```
+$ composer require aimanong/framework:^1.8.1     # 在 ThinkPHP 8.1 项目里
   Problem 1
     - aimanong/framework 1.8.1 conflicts with topthink/framework *.
 Installation failed, reverting ./composer.json and ./composer.lock to their original content.
 ```
 
-从「零冲突 + 静默致命」变成「明确拒绝 + 自动回滚」。
+### ⚠️ 这条守卫的边界（务必知道）
+
+**它只对 1.8.1 及以后的版本生效，挡不住 1.8.0。**
+Packagist 上已发布的版本是**不可变**的，1.8.0 的 composer.json 里没有这个 conflict，
+也无法追溯补上。而 Composer 求解器在 1.8.1 冲突后会**向下回退**：
+
+| 命令 | 结果 |
+|---|---|
+| `composer require aimanong/framework:^1.8.1` | ✅ 明确拒绝，自动回滚 |
+| `composer require aimanong/framework`（默认写法） | ❌ 回退解析到 **1.8.0**，照常装上 |
+
+所以：**默认写法仍然能把这个包装进 ThinkPHP 项目并炸掉它。**
+要彻底堵住，只有两条路：
+
+1. 从 Packagist 删除 `v1.8.0`（它会迫使解析落到 1.8.1）——
+   代价是锁定了 1.8.0 的用户 `composer install` 会报包不存在
+2. 完成**拆包**（框架无关内核不依赖 `illuminate/*`），从根上消除冲突
+
+初次发布时只验证了「pin 版本能拒绝」，没验证「默认写法会回退」，
+属于论证不充分 —— 这里如实记下来。
 
 > 更深的根因是：本包依赖零散的 `illuminate/*` 而非 `laravel/framework`，
 > 于是能被装进任何非 Laravel 项目，然后以残缺的 `env()` 炸掉宿主。
-> `conflict` 是止血；根治要等拆包（框架无关内核不依赖 illuminate）。
+> 顺带一提，靠「补上 `vlucas/phpdotenv` 让 `env()` 能用」是**行不通的**：
+> Illuminate 的 `Env` 读的是进程环境变量，而 ThinkPHP 从不把 `.env`
+> 灌进那里 —— 结果是 `env('DB_DRIVER')` 返回默认值 `mysql`，
+> 把「响亮的崩溃」换成「静默连错数据库」，更糟。
+>
 > 详见 [多框架适配-PoC报告.md](./internal-docs/多框架适配-PoC报告.md)。
 
 ## [1.8.0] - 2026-10-12

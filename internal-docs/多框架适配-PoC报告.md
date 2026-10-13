@@ -337,6 +337,31 @@ aimanong/framework  元包（require core + laravel）
 加这一行，Composer 会明确拒绝并说明原因 —— 从「零隐式」变成「显式拒绝」。
 成本一行，收益是消除一个真实的、会炸掉别人项目的雷。
 
+> #### ⚠️ 实测补充：这条守卫的边界（发布 v1.8.1 后才发现，上面这段论证不充分）
+>
+> 上面只验证了「pin 版本能拒绝」，**没验证默认写法会怎样**。
+> 用 Packagist 上真实发布的包重测：
+>
+> | 命令 | 结果 |
+> |---|---|
+> | `composer require aimanong/framework:^1.8.1` | ✅ 明确拒绝 + 自动回滚 |
+> | `composer require aimanong/framework`（默认写法） | ❌ **回退解析到 1.8.0**，照常装上 |
+>
+> 因为 **Packagist 上已发布的版本不可变**，1.8.0 的 composer.json 里没有
+> conflict，也无法追溯补上；Composer 求解器在 1.8.1 冲突后**向下回退**。
+>
+> 也就是说：**默认写法仍然能把这个包装进 ThinkPHP 项目并炸掉它。**
+>
+> 要彻底堵住只有两条路：
+> 1. 从 Packagist 删除 `v1.8.0`（迫使解析落到 1.8.1）——
+>    代价是锁定了 1.8.0 的用户 `composer install` 会报包不存在
+> 2. 完成**拆包**，从根上消除冲突
+>
+> 另外，「补 `vlucas/phpdotenv` 让 `env()` 能用」这条看似可行的路**是错的**：
+> Illuminate 的 `Env` 读的是**进程环境变量**，而 ThinkPHP 从不把 `.env`
+> 灌进那里 —— 结果是 `env('DB_DRIVER')` 返回默认值 `mysql`，
+> 把「响亮的崩溃」换成「静默连错数据库」，更糟。
+
 > 顺带暴露的更深问题：`aimanong/framework` 用零散 `illuminate/*` 而不是
 > `laravel/framework`，导致它**能装到任何非 Laravel 项目**，然后以一个
 > 缺依赖的 `env()` 炸掉宿主。`conflict` 只是止血；根治就是拆包后的 `core`

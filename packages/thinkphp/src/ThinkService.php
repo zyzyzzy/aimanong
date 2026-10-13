@@ -50,6 +50,21 @@ class ThinkService extends Service
             include $routeFile;
         });
 
+        /*
+         * 会话中间件。
+         *
+         * ⚠️ 登录态依赖它。TP 默认**不开**会话（没有 app/middleware.php 时
+         * SessionInit 不在全局中间件里），此时 `Session::set()` 不报错、
+         * 但下一次请求读不到 —— 表现为「登录成功却立刻又跳回登录页」。
+         * 实测踩到过，而且它不抛异常，只体现为一次多余的跳转。
+         *
+         * 这里代用户挂上：框架要用会话，就不该让用户去猜要配什么。
+         * 已经在全局中间件里时不重复添加。
+         */
+        if (! $this->hasGlobalMiddleware(\think\middleware\SessionInit::class)) {
+            $this->app->middleware->add(\think\middleware\SessionInit::class);
+        }
+
         // 控制台命令 —— TP 的 Service::commands() 会在 console 启动时挂上
         $this->commands([
             \Aimanong\ThinkPHP\Console\InstallCommand::class,
@@ -67,6 +82,23 @@ class ThinkService extends Service
 
         // 公开入口 Aimanong\Aimanong 在 core，它需要的框架设施接在这里
         \Aimanong\Aimanong::bindRuntime(new ThinkRuntime);
+    }
+
+    /**
+     * 全局中间件里是否已经有它。
+     */
+    protected function hasGlobalMiddleware(string $class): bool
+    {
+        try {
+            $list = $this->app->middleware->getGlobal();
+
+            return in_array($class, array_map(
+                fn (mixed $m): string => is_string($m) ? $m : (is_object($m) ? $m::class : ''),
+                is_array($list) ? $list : []
+            ), true);
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     /**

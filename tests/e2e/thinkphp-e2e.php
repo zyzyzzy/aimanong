@@ -109,6 +109,10 @@ t('内省：$type 声明的列算真实列', $intro->isVirtualAttribute(new app\
 echo "\n=== ③ 真实 HTTP：/admin 能打开 ===\n";
 
 $port = 8897;
+
+// 登录态用的 cookie jar —— 认证已启用，后续所有请求都要带上
+$jar = sys_get_temp_dir().'/amn-tp-jar-'.getmypid();
+@unlink($jar);
 $serve = sprintf('%s -S 127.0.0.1:%d -t %s/public', PHP_BINARY, $port, escapeshellarg($tp));
 $log = sys_get_temp_dir().'/amn-tp-serve.log';
 
@@ -127,9 +131,22 @@ for ($i = 0; $i < 20; $i++) {
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 15,
         CURLOPT_FOLLOWLOCATION => false,
+        // 认证已经启用 —— 不带 cookie 会拿到 302 而不是页面
+        CURLOPT_COOKIEJAR => $jar,
+        CURLOPT_COOKIEFILE => $jar,
     ]);
     $body = (string) curl_exec($ch);
     $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+    /*
+     * ⚠️ 必须 **unset** 句柄，不能只 curl_close。
+     *
+     * curl 是在句柄**被销毁**时才把 cookie jar 落盘的；PHP 8 起
+     * `curl_close()` 是空操作。留着句柄，jar 文件在整个脚本期间都不存在，
+     * 于是后面的请求全是未登录状态。
+     * （实测踩到：登录明明返回 302 成功，页面却还是 302。）
+     */
+    unset($ch);
 
     if ($code > 0) {
         break;
@@ -138,7 +155,192 @@ for ($i = 0; $i < 20; $i++) {
     usleep(500000);
 }
 
+/*
+ * 认证已启用，所以先登入 —— 否则页面检查会拿到 302 重定向，
+ * 报「/admin 返回 200 失败」，而在浏览器里这其实是正确行为。
+ */
+$login = curl_init("http://127.0.0.1:{$port}/admin/auth/login");
+curl_setopt_array($login, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT => 15,
+    CURLOPT_POST => true,
+    CURLOPT_POSTFIELDS => http_build_query(['username' => 'admin', 'password' => 'admin123']),
+    CURLOPT_COOKIEJAR => $jar,
+    CURLOPT_COOKIEFILE => $jar,
+]);
+curl_exec($login);
+unset($login);   // 同上：必须让句柄销毁，jar 才会落盘
+
+// ⚠️ 必须**重新请求**页面 —— 上面轮询拿到的 $code 是登录前的 302。
+//    （第一版就漏了这一步，断言一直在看旧值。）
+$page = curl_init($url);
+curl_setopt_array($page, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT => 15,
+    CURLOPT_FOLLOWLOCATION => false,
+    CURLOPT_COOKIEJAR => $jar,
+    CURLOPT_COOKIEFILE => $jar,
+]);
+$body = (string) curl_exec($page);
+$code = (int) curl_getinfo($page, CURLINFO_HTTP_CODE);
+unset($page);
+
 t('/admin 返回 200', $code === 200, "HTTP {$code}");
+
+echo "\n=== ③ 真实 HTTP：/admin 能打开 ===\n";
+
+$port = 8897;
+
+// 登录态用的 cookie jar —— 认证已启用，后续所有请求都要带上
+$jar = sys_get_temp_dir().'/amn-tp-jar-'.getmypid();
+@unlink($jar);
+$serve = sprintf('%s -S 127.0.0.1:%d -t %s/public', PHP_BINARY, $port, escapeshellarg($tp));
+$log = sys_get_temp_dir().'/amn-tp-serve.log';
+
+exec(sprintf('pkill -f "127.0.0.1:%d" 2>/dev/null; true', $port));
+$pid = null;
+$proc = proc_open($serve, [1 => ['file', $log, 'w'], 2 => ['file', $log, 'a']], $pipes);
+usleep(2500000);
+
+$url = "http://127.0.0.1:{$port}/admin";
+$body = '';
+$code = 0;
+
+for ($i = 0; $i < 20; $i++) {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_FOLLOWLOCATION => false,
+        // 认证已经启用 —— 不带 cookie 会拿到 302 而不是页面
+        CURLOPT_COOKIEJAR => $jar,
+        CURLOPT_COOKIEFILE => $jar,
+    ]);
+    $body = (string) curl_exec($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+    /*
+     * ⚠️ 必须 **unset** 句柄，不能只 curl_close。
+     *
+     * curl 是在句柄**被销毁**时才把 cookie jar 落盘的；PHP 8 起
+     * `curl_close()` 是空操作。留着句柄，jar 文件在整个脚本期间都不存在，
+     * 于是后面的请求全是未登录状态。
+     * （实测踩到：登录明明返回 302 成功，页面却还是 302。）
+     */
+    unset($ch);
+
+    if ($code > 0) {
+        break;
+    }
+
+    usleep(500000);
+}
+
+/*
+ * 认证已启用，所以先登入 —— 否则页面检查会拿到 302 重定向，
+ * 报「/admin 返回 200 失败」，而在浏览器里这其实是正确行为。
+ */
+$login = curl_init("http://127.0.0.1:{$port}/admin/auth/login");
+curl_setopt_array($login, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT => 15,
+    CURLOPT_POST => true,
+    CURLOPT_POSTFIELDS => http_build_query(['username' => 'admin', 'password' => 'admin123']),
+    CURLOPT_COOKIEJAR => $jar,
+    CURLOPT_COOKIEFILE => $jar,
+]);
+curl_exec($login);
+unset($login);   // 同上：必须让句柄销毁，jar 才会落盘
+
+// ⚠️ 必须**重新请求**页面 —— 上面轮询拿到的 $code 是登录前的 302。
+//    （第一版就漏了这一步，断言一直在看旧值。）
+$page = curl_init($url);
+curl_setopt_array($page, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT => 15,
+    CURLOPT_FOLLOWLOCATION => false,
+    CURLOPT_COOKIEJAR => $jar,
+    CURLOPT_COOKIEFILE => $jar,
+]);
+$body = (string) curl_exec($page);
+$code = (int) curl_getinfo($page, CURLINFO_HTTP_CODE);
+unset($page);
+
+t('/admin 返回 200', $code === 200, "HTTP {$code}");
+
+echo "\n=== ⑦ 认证：登录 / 会话 / 拦截 / 登出 ===\n";
+
+/** 带 cookie jar 发请求，返回 [状态码, 响应体, 跳转目标] */
+$auth = function (string $method, string $path, array $data = [], bool $useJar = true) use ($port, &$jar): array {
+    $ch = curl_init("http://127.0.0.1:{$port}{$path}");
+    $opts = [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_CUSTOMREQUEST => $method,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_HEADER => false,
+    ];
+    if ($useJar) {
+        $opts[CURLOPT_COOKIEJAR] = $jar;
+        $opts[CURLOPT_COOKIEFILE] = $jar;
+    }
+    if ($data !== []) {
+        $opts[CURLOPT_POSTFIELDS] = http_build_query($data);
+    }
+    curl_setopt_array($ch, $opts);
+    $body = (string) curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $loc = (string) curl_getinfo($ch, CURLINFO_REDIRECT_URL);
+    unset($ch);   // 同上：句柄销毁才会把 jar 落盘
+
+    return [$status, $body, $loc];
+};
+
+/*
+ * 先把状态归零：上面为了检查页面已经登入过了，
+ * 而这一段要验证的是**未登录**的行为。
+ */
+$auth('POST', '/admin/auth/logout');
+
+// 未登录必须被拦 —— 否则「装完就能用」等于「装完就被人用」
+[$st, , $loc] = $auth('GET', '/admin');
+t('未登录访问 /admin → 302', $st === 302, "HTTP {$st}");
+t('跳转到登录页', str_contains($loc, 'auth/login'), $loc);
+
+[$st, $body] = $auth('GET', '/admin/auth/login');
+t('登录页 200', $st === 200, "HTTP {$st}");
+t('登录页含表单', str_contains($body, '<form') || str_contains($body, 'password'));
+
+[$st] = $auth('GET', '/admin/api/customers');
+t('未登录访问 API → 302', $st === 302, "HTTP {$st}");
+
+$auth('GET', '/admin'); // 刷新 cookie jar
+
+[$st] = $auth('POST', '/admin/auth/login', ['username' => 'admin', 'password' => '错误密码']);
+t('密码错误 → 401', $st === 401, "HTTP {$st}");
+
+[$st] = $auth('POST', '/admin/auth/login', ['username' => 'admin', 'password' => 'admin123']);
+t('密码正确 → 302', $st === 302, "HTTP {$st}");
+
+[$st, $body] = $auth('GET', '/admin');
+t('登录后 /admin → 200', $st === 200, "HTTP {$st}");
+t('登录后页面有内容', str_contains($body, 'Aimanong'));
+
+[$st, $body] = $auth('GET', '/admin/api/customers');
+t('登录后 API → 200 且有数据', $st === 200 && str_contains($body, '"data"'), "HTTP {$st}");
+
+[$st] = $auth('POST', '/admin/auth/logout');
+t('登出 → 302', $st === 302, "HTTP {$st}");
+
+[$st] = $auth('GET', '/admin');
+t('登出后被拦截 → 302', $st === 302, "HTTP {$st}");
+
+/*
+ * 后续段落（页面 / 数据 API）现在都需要登录态 ——
+ * 这里重新登入并保留 cookie jar。
+ */
+$auth('POST', '/admin/auth/login', ['username' => 'admin', 'password' => 'admin123']);
+
 
 if ($code !== 200) {
     // 失败时把错误页的关键信息摘出来 —— 否则只有一个 500 无从下手
@@ -159,6 +361,24 @@ if ($code !== 200) {
  * 只看状态码不够：模板渲染出错时 TP 会返回一个 **200 的错误页**
  * 或者在错误处理器里返回 500，但即使 200，页面也可能是空壳。
  */
+/*
+ * 内容检查自己重新抓一次页面。
+ *
+ * 不复用上面的 $body：认证段跑过登录/登出，中途 $body 被别的请求
+ * 覆盖过好几次（实测踩到：内容断言全挂在 JSON 响应上）。
+ * 这里显式重取，断言看到的才一定是这个页面。
+ */
+$check = curl_init("http://127.0.0.1:{$port}/admin");
+curl_setopt_array($check, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT => 15,
+    CURLOPT_FOLLOWLOCATION => false,
+    CURLOPT_COOKIEJAR => $jar,
+    CURLOPT_COOKIEFILE => $jar,
+]);
+$body = (string) curl_exec($check);
+unset($check);
+
 if ($code === 200) {
     t('不是错误页', ! str_contains($body, '系统发生错误') && ! str_contains($body, 'Exception trace'));
     t('含 <title>', (bool) preg_match('/<title>/', $body));
@@ -186,16 +406,20 @@ if ($code === 200) {
 echo "\n=== ④ 数据 API：声明驱动（Resource → JSON 接口）===\n";
 
 /** 发一个请求，返回 [状态码, 解码后的 JSON 或原始文本] */
-$api = function (string $method, string $path, array $data = []) use ($port): array {
+$api = function (string $method, string $path, array $data = []) use ($port, $jar): array {
     $ch = curl_init("http://127.0.0.1:{$port}/admin/api/{$path}");
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 15,
         CURLOPT_CUSTOMREQUEST => $method,
         CURLOPT_POSTFIELDS => $data === [] ? null : http_build_query($data),
+        // 同样需要登录态
+        CURLOPT_COOKIEJAR => $jar,
+        CURLOPT_COOKIEFILE => $jar,
     ]);
     $raw = (string) curl_exec($ch);
     $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    unset($ch);
     $json = json_decode($raw, true);
 
     return [$status, is_array($json) ? $json : $raw];
@@ -351,9 +575,14 @@ t('重复执行幂等（不重复登记）', substr_count($svc2, 'ThinkService')
  * 「没做的」必须明说 —— 一个装完说「安装完成」、实际后台进不去的命令，
  * 比没有这个命令更糟。
  */
+/*
+ * install 现在真的建表、建管理员（认证已实现），
+ * 但**仍要明说没做的**：一个装完说「安装完成」、实际不能对外用的命令，
+ * 比没有这个命令更糟。
+ */
 [$code, $out] = $think('aimanong:install --dir='.escapeshellarg($fresh));
-t('明说跳过的步骤', str_contains($out, '尚未实现') && str_contains($out, '创建管理员'));
-t('明说后台无需登录（仅本地开发）', str_contains($out, '认证层尚未实现'));
+t('明说尚未实现的步骤', str_contains($out, '尚未实现') && str_contains($out, '登录限流'));
+t('明说不应对外暴露（仅本地开发）', str_contains($out, '不应对外暴露') && str_contains($out, '本地开发'));
 
 exec('rm -rf '.escapeshellarg($fresh));
 

@@ -7,6 +7,7 @@ namespace Aimanong\ThinkPHP;
 use Aimanong\Contracts\FrameworkRuntime;
 use Aimanong\Registry;
 use Aimanong\Support\Asset;
+use Aimanong\ThinkPHP\Auth\ThinkGuard;
 use think\facade\Config;
 
 /**
@@ -33,6 +34,8 @@ use think\facade\Config;
 final class ThinkRuntime implements FrameworkRuntime
 {
     protected ?Registry $registry = null;
+
+    protected ?ThinkGuard $guardInstance = null;
 
     public function urlPrefix(): string
     {
@@ -70,28 +73,22 @@ final class ThinkRuntime implements FrameworkRuntime
      */
     public function user(): ?object
     {
-        try {
-            $id = session('aimanong_admin_id');
-
-            if ($id === null || $id === '') {
-                return null;
-            }
-
-            $model = $this->config('aimanong.auth.model');
-
-            if (! is_string($model) || ! class_exists($model)) {
-                return null;
-            }
-
-            return $model::find($id);
-        } catch (\Throwable) {
-            return null;
-        }
+        return $this->guard()->user();
     }
 
-    public function guard(): object
+    /**
+     * 会话守卫。
+     *
+     * 单例：登录态在一次请求里应当一致 —— 每次 new 一个会在
+     * 「守卫内部做了 logout 清理」之后拿到不一致的结果。
+     */
+    public function guard(): ThinkGuard
     {
-        return new NullGuard;
+        $key = $this->config('aimanong.auth.session_key');
+
+        return $this->guardInstance ??= new ThinkGuard(
+            is_string($key) && $key !== '' ? $key : 'aimanong_admin_id'
+        );
     }
 
     public function context(): object

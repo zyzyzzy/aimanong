@@ -1,0 +1,94 @@
+=== ThinkPHP 认证（2026-10-14）===
+
+## 已实现 / 未实现（如实）
+  ✅ 登录 / 登出 / 会话 / 记住我（remember_token 存 sha256） / 被禁用账号提示
+  ⬜ 登录限流（防暴力破解）—— 因此后台不应对外暴露
+  ⬜ 完整 RBAC（当前权限由 config 的 permissions 数组声明，默认拒绝）
+
+## 密码哈希跨框架兼容
+  Laravel 用 Hash::make()（bcrypt），TP 用 password_hash()（bcrypt）；
+  底层都是 PHP 原生实现 → 同一个哈希两边都能校验，迁移不用重设密码。
+  这是刻意保证的，不是巧合。
+
+## 验证（thinkphp-e2e 75/75 的第 ⑦ 节）
+=== ⑦ 认证：登录 / 会话 / 拦截 / 登出 ===
+  未登录访问 /admin → 302                       ✅  HTTP 302
+  跳转到登录页                                   ✅  http://127.0.0.1:8897/admin/auth/login
+  登录页 200                                        ✅  HTTP 200
+  登录页含表单                                   ✅
+  未登录访问 API → 302                          ✅  HTTP 302
+  密码错误 → 401                                 ✅  HTTP 401
+  密码正确 → 302                                 ✅  HTTP 302
+  登录后 /admin → 200                             ✅  HTTP 200
+  登录后页面有内容                             ✅
+  登录后 API → 200 且有数据                   ✅  HTTP 200
+  登出 → 302                                       ✅  HTTP 302
+  登出后被拦截 → 302                           ✅  HTTP 302
+  不是错误页                                      ✅
+  含 <title>                                          ✅
+  标题含品牌名                                   ✅  控制台 · Aimanong
+  侧边栏已渲染                                   ✅
+  主题面板已渲染                                ✅
+  SVG 图标已渲染                                  ✅
+  switch: color 分支渲染取色器                  ✅
+  switch: radio 分支渲染选项                     ✅
+  版本号已渲染                                   ✅
+
+=== ④ 数据 API：声明驱动（Resource → JSON 接口）===
+  列表 200                                           ✅  HTTP 200
+  列表带 meta.total                                 ✅
+  列表返回 data 数组                             ✅
+  搜索生效（searchable 声明驱动）            ✅
+  排序生效                                         ✅
+  未知查询参数有警告                          ✅
+  缺必填 → 422                                    ✅  HTTP 422
+  422 指出是哪个字段                            ✅
+  创建 → 201                                       ✅  HTTP 201
+  创建返回主键                                   ✅
+  详情 200                                           ✅  HTTP 200
+  更新 200                                           ✅  HTTP 200
+  删除 204                                           ✅  HTTP 204
+  详情不存在 → 404                              ✅  HTTP 404
+  未授权 uri → 403                                ✅  HTTP 403
+
+=== ⑤ 控制台命令：AI 自检入口与四份产物 ===
+  ai:verify 退出码 0                                ✅  exit=0
+  ai:verify 报告 Resource 通过                     ✅
+  ai:verify --json 可解析                           ✅
+  --json 含 valid/total/failed                        ✅
+  --json valid=true                                    ✅
+  幽灵列被检出且退出码 1                     ✅
+  幽灵列给出 did_you_mean                         ✅
+  aimanong:schema 退出码 0                          ✅  exit=0
+  产物 schema.json 已生成且非空                ✅  4152 字节
+  产物 types.ts 已生成且非空                   ✅  5646 字节
+  产物 openapi.json 已生成且非空               ✅  5696 字节
+  产物 ai-context.md 已生成且非空              ✅  420 字节
+  --check 无漂移时退出码 0                      ✅  exit=0
+  声明变更后 --check 检出轨度                 ✅  exit=1
+
+=== ⑥ 安装命令：全新项目能闭环 ===
+  install 退出码 0                                  ✅  exit=0
+  发布了 config/aimanong.php                        ✅
+  配置含 prefix/dict/permissions 等键             ✅
+  创建了 app/service.php                            ✅
+  service.php 登记了 ThinkService                   ✅
+  插到已有服务之前（第一项）              ✅
+  重复执行幂等（不重复登记）              ✅
+  明说尚未实现的步骤                          ✅
+  明说不应对外暴露（仅本地开发）        ✅
+
+通过 75 / 75
+
+## 这一轮踩到的 5 个坑（全是「不报错但不对」）
+
+1. TP 默认不开会话 → Session::set() 不报错但下次请求读不到，
+   表现是「登录成功却立刻又跳回登录页」。由 ThinkService 代挂 SessionInit。
+2. NullErrors 写成 final → 登录失败时匿名类继承它，PHP Fatal error。
+   改为具名 ViewErrors 继承 NullErrors。
+3. 【测试脚本】curl 的 cookie jar 是在句柄**销毁**时才落盘，
+   而 PHP 8 起 curl_close() 是空操作 → jar 文件整个脚本期间都不存在，
+   于是「登录 302 成功、页面却还是 302」。必须 unset 句柄。
+4. 【测试脚本】就把绪轮询的句柄不关，稍后销毁会覆盖掉登录后的 jar。
+5. 【测试脚本】内容断言复用了被后续请求覆盖的 $body，
+   结果全挂在 JSON 响应上。改为自行重取页面。

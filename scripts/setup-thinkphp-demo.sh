@@ -209,6 +209,9 @@ $pdo->exec("CREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT, industry 
 $pdo->exec("INSERT INTO customers VALUES (1,\"深圳宏远精密\",\"制造业\",\"A\",30,\"2026-10-12 10:00:00\"),(2,\"杭州云图数据\",\"服务业\",\"B\",15,\"2026-10-12 11:00:00\")");
 ' "$TARGET/runtime/aimanong-e2e.sqlite"
 
+# 框架数据表与管理员交给 install 命令建 —— 走真实路径，不用另写一套 SQL
+php "$TARGET/think" aimanong:install --dir="$TARGET" --admin-user=admin --admin-password=admin123 >/dev/null 2>&1 || true
+
 # ⚠️ 关键断言：装了 ThinkPHP 驱动**不能**把 illuminate 拖进来。
 #    PoC 阶段实测过：illuminate/support 会抢注全局 env()，
 #    导致 TP 启动即致命（Class "PhpOption\Option" not found）。

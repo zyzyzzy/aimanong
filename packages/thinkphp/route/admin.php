@@ -14,12 +14,25 @@ declare(strict_types=1);
  * 铺开但打不开的一片更有信息量：缺什么会立刻暴露。
  */
 
+use Aimanong\ThinkPHP\Http\AuthController;
 use Aimanong\ThinkPHP\Http\HomeController;
 use Aimanong\ThinkPHP\Http\ResourceController;
 use think\facade\Route;
 
-// 首页：/admin
-Route::get('/', [HomeController::class, 'index']);
+/*
+| 登录 / 登出 —— 必须挂在鉴权中间件**之外**，
+| 否则跳登录页时又要求登录，形成无限重定向。
+*/
+Route::get('auth/login', [AuthController::class, 'showLoginForm']);
+Route::post('auth/login', [AuthController::class, 'login']);
+Route::post('auth/logout', [AuthController::class, 'logout']);
+
+/*
+| 其余路由统一要求登录。
+*/
+Route::group(function (): void {
+    // 首页：/admin
+    Route::get('/', [HomeController::class, 'index']);
 
 /*
 | 数据 API —— JSON，供前端 Vue 与 AI Agent 调用
@@ -30,15 +43,16 @@ Route::get('/', [HomeController::class, 'index']);
 | 不在这里挂着 —— 它们会被 TP 当成默认控制器路由，报「控制器不存在」，
 | 那是个让人摸不着头脑的错误。真要调时由 unimplemented() 明确回 501。
 */
-Route::group('api', function (): void {
-    // ⚠️ 顺序：带 :id 的**必须**排在前面。
-    //    实测踩到：写成 ':uri' 在前时，TP 会用 ':uri' 匹配掉
-    //    `/api/customers/999999` 整个路径（多余的段被吞），
-    //    于是详情请求走进了列表接口 —— 返回 200 + 列表数据，
-    //    调用方完全看不出错。
-    Route::get(':uri/:id', [ResourceController::class, 'show']);
-    Route::get(':uri', [ResourceController::class, 'index']);
-    Route::post(':uri', [ResourceController::class, 'store']);
-    Route::put(':uri/:id', [ResourceController::class, 'update']);
-    Route::delete(':uri/:id', [ResourceController::class, 'destroy']);
-});
+    Route::group('api', function (): void {
+        // ⚠️ 顺序：带 :id 的**必须**排在前面。
+        //    实测踩到：写成 ':uri' 在前时，TP 会用 ':uri' 匹配掉
+        //    `/api/customers/999999` 整个路径（多余的段被吞），
+        //    于是详情请求走进了列表接口 —— 返回 200 + 列表数据，
+        //    调用方完全看不出错。
+        Route::get(':uri/:id', [ResourceController::class, 'show']);
+        Route::get(':uri', [ResourceController::class, 'index']);
+        Route::post(':uri', [ResourceController::class, 'store']);
+        Route::put(':uri/:id', [ResourceController::class, 'update']);
+        Route::delete(':uri/:id', [ResourceController::class, 'destroy']);
+    });
+})->middleware(\Aimanong\ThinkPHP\Http\Middleware\Authenticate::class);

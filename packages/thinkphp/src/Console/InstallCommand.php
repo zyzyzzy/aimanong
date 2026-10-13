@@ -42,9 +42,8 @@ final class InstallCommand extends Command
      * @var array<string, string>
      */
     public const NOT_IMPLEMENTED = [
-        '建表' => '框架的数据表（管理员 / 角色 / 权限）随认证层一起提供，尚未移植',
-        '创建管理员' => '认证未实现，现在建了也无法登录',
-        '同步权限节点' => '权限目前由 config/aimanong.php 的 permissions 数组声明（默认拒绝）',
+        'RBAC 数据表' => '角色 / 权限表随完整 RBAC 一起提供，尚未移植（当前权限由 config 的 permissions 数组声明）',
+        '登录限流' => '防暴力破解的手段，尚未实现 —— 因此后台**不应对外暴露**',
     ];
 
     protected function configure(): void
@@ -52,6 +51,9 @@ final class InstallCommand extends Command
         $this->setName('aimanong:install')
             ->addOption('force', null, Option::VALUE_NONE, '覆盖已存在的配置')
             ->addOption('dir', null, Option::VALUE_REQUIRED, '项目根目录，默认当前目录')
+            ->addOption('admin-user', null, Option::VALUE_REQUIRED, '管理员账号（不传则不创建）')
+            ->addOption('admin-password', null, Option::VALUE_REQUIRED, '管理员密码')
+            ->addOption('no-admin', null, Option::VALUE_NONE, '跳过创建管理员账号')
             ->setDescription('安装 Aimanong（ThinkPHP 版：仅脚手架，不建表/不建管理员）');
     }
 
@@ -71,6 +73,8 @@ final class InstallCommand extends Command
 
         $failed += $this->publishConfig($output, $root, $force);
         $failed += $this->registerService($output, $root);
+        $failed += $this->migrate($output);
+        $failed += $this->createAdmin($output, $input);
         $this->reportSkipped($output);
 
         $output->writeln('');
@@ -81,7 +85,7 @@ final class InstallCommand extends Command
         $output->writeln('  4. php think aimanong:schema    生成 JSON / TS / OpenAPI / AI 上下文');
         $output->writeln('  5. 打开 /admin 看后台，/admin/api/{uri} 取数据');
         $output->writeln('');
-        $output->writeln('<comment>⚠️ 认证层尚未实现：后台目前无需登录即可访问，仅适合本地开发。</comment>');
+        $output->writeln('<comment>⚠️ 登录限流尚未实现（防暴力破解）。后台不应对外暴露，仅适合本地开发。</comment>');
 
         return $failed > 0 ? 1 : 0;
     }
@@ -169,6 +173,117 @@ final class InstallCommand extends Command
 
         file_put_contents($path, $patched);
         $output->writeln('<info>✓ 已在 app/service.php 首项登记 ThinkService</info>');
+
+        return 0;
+    }
+
+    /**
+     * 建框架需要的数据表。
+     *
+     * ThinkPHP 没有内置迁移系统（think-migration 是独立包），
+     * 所以这里直接用 DDL。用 `CREATE TABLE IF NOT EXISTS` 保证幂等。
+     */
+    protected function migrate(Output $output): int
+    {
+        $driver = $this->dbDriver();
+        $isSqlite = $driver === 'sqlite';
+
+        $id = $isSqlite ? 'INTEGER PRIMARY KEY AUTOINCREMENT' : 'BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY';
+        $json = $isSqlite ? 'TEXT' : 'JSON';
+
+        $sql = "CREATE TABLE IF NOT EXISTS admin_users (
+            id {$id},
+            username VARCHAR(190) NOT NULL,
+            name VARCHAR(255) NULL,
+            password VARCHAR(255) NOT NULL,
+            avatar VARCHAR(255) NULL,
+            enabled TINYINT NOT NULL DEFAULT 1,
+            remember_token VARCHAR(100) NULL,
+            preferences {$json} NULL,
+            created_at DATETIME NULL,
+            updated_at DATETIME NULL,
+            UNIQUE (username)
+        )";
+
+        try {
+            \think\facade\Db::execute($sql);
+        } catch (\Throwable $e) {
+            $output->writeln('<error>✗ 建表失败: '.$e->getMessage().'</error>');
+
+            return 1;
+        }
+
+        $output->writeln('<info>✓ 已创建数据表 admin_users</info>');
+
+        return 0;
+    }
+
+    protected function dbDriver(): string
+    {
+        try {
+            /** @var mixed $default */
+            $default = \think\facade\Config::get('database.default');
+
+            /** @var mixed $type */
+            $type = \think\facade\Config::get('database.connections.'.(string) $default.'.type');
+
+            return is_string($type) && $type !== '' ? $type : (string) $default;
+        } catch (\Throwable) {
+            return 'mysql';
+        }
+    }
+
+    /**
+     * 创建第一个管理员。
+     *
+     * ⚠️ 没有账号是**闭环死锁**：能打开后台却登不进去，
+     * 而唯一的出路是手工写 SQL —— 那不在任何文档里。
+     */
+    protected function createAdmin(Output $output, Input $input): int
+    {
+        if ((bool) $input->getOption('no-admin')) {
+            $output->writeln('<comment>⊘ 按要求跳过创建管理员（--no-admin）</comment>');
+            $output->writeln('    ⚠️ 没有账号就登不进去，请稍后自行创建。');
+
+            return 0;
+        }
+
+        $model = \Aimanong\ThinkPHP\Models\Administrator::class;
+
+        try {
+            if ($model::count() > 0) {
+                $output->writeln('<comment>⊘ 已存在管理员账号，跳过创建（不会重置已有密码）</comment>');
+
+                return 0;
+            }
+        } catch (\Throwable $e) {
+            $output->writeln('<error>✗ 查询管理员失败: '.$e->getMessage().'</error>');
+
+            return 1;
+        }
+
+        $username = (string) ($input->getOption('admin-user') ?: 'admin');
+        $password = (string) ($input->getOption('admin-password') ?: bin2hex(random_bytes(6)));
+
+        try {
+            $user = new $model;
+            $user->save([
+                'username' => $username,
+                'name' => '管理员',
+                'password' => $model::hashPassword($password),
+                'enabled' => 1,
+            ]);
+        } catch (\Throwable $e) {
+            $output->writeln('<error>✗ 创建管理员失败: '.$e->getMessage().'</error>');
+
+            return 1;
+        }
+
+        $output->writeln("<info>✓ 已创建管理员：{$username}</info>");
+
+        if ($input->getOption('admin-password') === null) {
+            $output->writeln("    <comment>随机密码: {$password}（请立即保存）</comment>");
+        }
 
         return 0;
     }

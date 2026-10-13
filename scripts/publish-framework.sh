@@ -3,9 +3,12 @@
 # 发布 Composer 包到 Packagist（subtree split 方式）
 #
 # 用法：
-#   ./scripts/publish-framework.sh           # 发布 framework + region
+#   ./scripts/publish-framework.sh           # 发布 core + framework + region
+#   ./scripts/publish-framework.sh core      # 只发布 core（拆包后的内核）
 #   ./scripts/publish-framework.sh framework # 只发布 framework
 #   ./scripts/publish-framework.sh region    # 只发布 region
+#
+# ⚠️ core 必须先发 —— framework 依赖它。只传 framework 时依赖守卫会拦。
 #
 # 原理：
 #   monorepo 里的 packages/<pkg> 拆成独立可发布单元。
@@ -34,7 +37,7 @@ error() { echo -e "${RED}❌${NC} $*" >&2; exit 1; }
 command -v git >/dev/null || error "需要 git"
 
 echo "════════════════════════════════════════"
-echo "  发布 Composer 包（framework + region）"
+echo "  发布 Composer 包（core + framework + region）"
 echo "════════════════════════════════════════"
 
 # ── 发布单个包 ──
@@ -144,6 +147,30 @@ for k in d.get('require', {}):
         fi
     done
     info "同步了 $count 个版本 tag"
+
+    # 4.5 首次发布：包仓库上还没有任何版本 tag 时，用 composer.json 的
+    #     version 建一个。
+    #
+    #    为什么需要：Packagist 的「稳定版本」来自 git tag，不是 composer.json
+    #     的 version 字段 —— 没有 tag 时它只认 dev-main，
+    #     用户 `composer require aimanong/core:^1.0` 会解析失败。
+    #     （历史 tag 同步逻辑只覆盖「主仓库已有对应 tag」的情况，
+    #      新拆出来的包没有历史 tag，所以会漏掉这一步。）
+    #
+    #    只在「一个版本 tag 都没有」时执行 —— 之后照常走版本 tag 同步，
+    #    不会因为忘记升版本号而重复打 tag。
+    local existing_tags
+    existing_tags=$(git ls-remote --tags "$remote" 2>/dev/null | grep -c 'refs/tags/' || true)
+
+    if [ "${existing_tags:-0}" -eq 0 ]; then
+        local ver_tag="v${ver}"
+        echo "  → 包仓库还没有版本 tag，用 composer.json 的 version 建 ${ver_tag}"
+        if git push -q "$remote" "$(git rev-parse "$branch"):refs/tags/${ver_tag}" 2>/dev/null; then
+            info "已创建 ${ver_tag}"
+        else
+            warn "创建 ${ver_tag} 失败 —— 请手动在包仓库上打 tag，否则 Packagist 只认 dev-main"
+        fi
+    fi
     if [ "$skipped" -gt 0 ]; then
         # 两种可能，必须都提到，否则会误导：
         #   ① 该 tag 属于另一个包（如 v1.0.0-region）—— 正常
@@ -161,6 +188,15 @@ for k in d.get('require', {}):
 }
 
 # ── 主流程 ──
+#
+# ⚠️ 顺序有意义：**core 必须最先发**。
+# framework 依赖 aimanong/core，先发 framework 会得到一个
+# 「永远装不上」的包（发布过程本身却一切正常）。
+# publish_one 里的依赖守卫也会硬拦这种情况，这里是第一道。
+if [ "$ONLY" = "core" ] || [ "$ONLY" = "all" ]; then
+    publish_one core
+fi
+
 if [ "$ONLY" = "framework" ] || [ "$ONLY" = "all" ]; then
     publish_one framework
 fi

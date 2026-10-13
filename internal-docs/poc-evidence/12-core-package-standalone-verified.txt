@@ -1,0 +1,27 @@
+=== packages/core 拆分产物独立可用性验证（2026-10-13）===
+
+## 已验证：拆出来的 core 是自包含的
+
+隔离项目（只 require aimanong/core，VCS 指向 aimanong-core 仓库）：
+  $ composer install
+    Lock file operations: 1 install, 0 updates, 0 removals
+    - Locking aimanong/core (1.0.0)
+    - Installing aimanong/core (1.0.0): Extracting archive
+
+  → 只有 1 个依赖（它自己）。**零 illuminate 传递依赖。**
+
+## 装进去真的能用（无 Laravel 环境）
+  可加载类: 8 / 8
+  illuminate 是否被装进来: 否
+  编译一个 Resource: ✅ 成功（uri=demo 列数=1）
+
+## 远端仓库内容
+  https://github.com/zyzyzzy/aimanong-core
+  refs/heads/main  → 50bbc0d36ee4c101694c212ae3f6a52fca0f9200
+  refs/tags/v1.0.0 → 50bbc0d36ee4c101694c212ae3f6a52fca0f9200
+  内容: composer.json + src/（70 个 php 文件，零 Illuminate 导入）
+
+## 结论
+  第 2 段的目标——把框架无关内核拆成可独立安装的包——已达成并实测。
+  ThinkPHP 侧只要能拿到这个包，就不会碰到 illuminate/*，
+  也就不会重现 PoC 发现的那个全局 env() 冲突。

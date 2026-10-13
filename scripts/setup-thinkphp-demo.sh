@@ -177,6 +177,9 @@ return [
     'auth' => [
         'model' => '',   // 用默认的 Administrator
         'throttle' => ['enable' => true, 'per_ip' => 20, 'per_account' => 5, 'window' => 60],
+
+        // 演示里打开 RBAC —— e2e 要验证超管绕过与普通角色的 403
+        'rbac' => true,
     ],
 
     // 数据字典（配置声明式，与 Laravel 侧同一份格式）
@@ -217,6 +220,22 @@ $pdo->exec("INSERT INTO customers VALUES (1,\"深圳宏远精密\",\"制造业\"
 
 # 框架数据表与管理员交给 install 命令建 —— 走真实路径，不用另写一套 SQL
 php "$TARGET/think" aimanong:install --dir="$TARGET" --admin-user=admin --admin-password=admin123 >/dev/null 2>&1 || true
+
+# 再建一个「普通角色」用户 —— e2e 要用它验证 RBAC 真的会拒
+# （只有超管能过的话，「权限生效」是验不出来的）
+php -r '
+require $argv[1]."/vendor/autoload.php";
+(new think\App())->initialize();
+use think\facade\Db;
+$rm = Aimanong\ThinkPHP\Models\Role::class;
+$um = Aimanong\ThinkPHP\Models\Administrator::class;
+$role = $rm::where("slug","viewer")->find();
+if (! $role) { $role = new $rm; $role->save(["slug"=>"viewer","name"=>"只读角色","is_super"=>0]); }
+$user = $um::where("username","viewer")->find();
+if (! $user) { $user = new $um; $user->save(["username"=>"viewer","name"=>"只读用户","password"=>$um::hashPassword("viewer123"),"enabled"=>1]); }
+Db::name("admin_role_user")->where("user_id",$user->getKey())->delete();
+Db::name("admin_role_user")->insert(["role_id"=>$role->getKey(),"user_id"=>$user->getKey()]);
+' "$TARGET" >/dev/null 2>&1 || true
 
 # ⚠️ 关键断言：装了 ThinkPHP 驱动**不能**把 illuminate 拖进来。
 #    PoC 阶段实测过：illuminate/support 会抢注全局 env()，

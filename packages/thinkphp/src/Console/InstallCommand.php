@@ -42,7 +42,7 @@ final class InstallCommand extends Command
      * @var array<string, string>
      */
     public const NOT_IMPLEMENTED = [
-        '完整 RBAC' => '角色 / 权限表尚未移植；当前权限由 config/aimanong.php 的 permissions 数组声明（默认拒绝）',
+        '权限节点同步命令' => '按 Resource 声明批量写入权限节点的命令尚未移植；当前请手工维护 admin_permissions',
     ];
 
     protected function configure(): void
@@ -84,8 +84,8 @@ final class InstallCommand extends Command
         $output->writeln('  4. php think aimanong:schema    生成 JSON / TS / OpenAPI / AI 上下文');
         $output->writeln('  5. 打开 /admin 看后台，/admin/api/{uri} 取数据');
         $output->writeln('');
-        $output->writeln('<comment>说明：登录限流（每 IP / 每 IP+账号 两个维度）已启用，防暴力破解。</comment>');
-        $output->writeln('<comment>      尚未实现的是完整 RBAC —— 当前权限由 config 的 permissions 数组声明。</comment>');
+        $output->writeln('<comment>说明：登录限流（两个维度）已启用；RBAC 表与超管角色已就绪。</comment>');
+        $output->writeln('<comment>      要启用 RBAC：config/aimanong.php → auth.rbac = true。</comment>');
 
         return $failed > 0 ? 1 : 0;
     }
@@ -205,15 +205,55 @@ final class InstallCommand extends Command
             UNIQUE (username)
         )";
 
+        $bigint = $isSqlite ? 'INTEGER' : 'BIGINT UNSIGNED';
+
+        $rbac = [
+            "CREATE TABLE IF NOT EXISTS admin_roles (
+                id {$id},
+                slug VARCHAR(100) NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                description TEXT NULL,
+                is_super TINYINT NOT NULL DEFAULT 0,
+                sort INTEGER NOT NULL DEFAULT 0,
+                created_at DATETIME NULL,
+                updated_at DATETIME NULL,
+                UNIQUE (slug)
+            )",
+            "CREATE TABLE IF NOT EXISTS admin_permissions (
+                id {$id},
+                slug VARCHAR(190) NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                `group` VARCHAR(255) NULL,
+                description TEXT NULL,
+                created_at DATETIME NULL,
+                updated_at DATETIME NULL,
+                UNIQUE (slug)
+            )",
+            "CREATE TABLE IF NOT EXISTS admin_permission_role (
+                role_id {$bigint} NOT NULL,
+                permission_id {$bigint} NOT NULL,
+                PRIMARY KEY (role_id, permission_id)
+            )",
+            "CREATE TABLE IF NOT EXISTS admin_role_user (
+                role_id {$bigint} NOT NULL,
+                user_id {$bigint} NOT NULL,
+                PRIMARY KEY (role_id, user_id)
+            )",
+        ];
+
         try {
             \think\facade\Db::execute($sql);
+
+            foreach ($rbac as $ddl) {
+                \think\facade\Db::execute($ddl);
+            }
         } catch (\Throwable $e) {
             $output->writeln('<error>✗ 建表失败: '.$e->getMessage().'</error>');
 
             return 1;
         }
 
-        $output->writeln('<info>✓ 已创建数据表 admin_users</info>');
+        $output->writeln('<info>✓ 已创建数据表：admin_users / admin_roles / admin_permissions / 两张关联表</info>');
 
         return 0;
     }
@@ -285,7 +325,58 @@ final class InstallCommand extends Command
             $output->writeln("    <comment>随机密码: {$password}（请立即保存）</comment>");
         }
 
+        $this->ensureSuperRole($output, $user);
+
         return 0;
+    }
+
+    /**
+     * 保证存在「超级管理员」角色，并把刚建的管理员挂上去。
+     *
+     * ## 为什么必须有
+     *
+     * RBAC 一打开，**没有角色 = 没有任何权限 = 全站 403**，
+     * 包括管理后台本身。使用者会看到一个完全打不开的后台，
+     * 而唯一的出路是手工往关联表插数据 —— 那不在任何文档里。
+     * 这与「装完没有账号可登」是同一类闭环死锁。
+     */
+    protected function ensureSuperRole(Output $output, object $user): void
+    {
+        try {
+            $roleModel = \Aimanong\ThinkPHP\Models\Role::class;
+            $role = $roleModel::where('slug', 'admin')->find();
+
+            if ($role === null) {
+                $role = new $roleModel;
+                $role->save([
+                    'slug' => 'admin',
+                    'name' => '超级管理员',
+                    'description' => '绕过全部权限判定',
+                    'is_super' => 1,
+                    'sort' => 0,
+                ]);
+
+                $output->writeln('<info>✓ 已创建超级管理员角色</info>');
+            }
+
+            // 绑定用户 ↔ 角色（先查后插，保证幂等）
+            $exists = \think\facade\Db::name('admin_role_user')
+                ->where('role_id', $role->getKey())
+                ->where('user_id', $user->getKey())
+                ->find();
+
+            if ($exists === null) {
+                \think\facade\Db::name('admin_role_user')->insert([
+                    'role_id' => $role->getKey(),
+                    'user_id' => $user->getKey(),
+                ]);
+
+                $output->writeln('<info>✓ 已把管理员挂到超级管理员角色</info>');
+            }
+        } catch (\Throwable $e) {
+            $output->writeln('<error>✗ 创建超级管理员角色失败: '.$e->getMessage().'</error>');
+            $output->writeln('    ⚠️ RBAC 打开后没有角色会全站 403，请手工处理。');
+        }
     }
 
     /**

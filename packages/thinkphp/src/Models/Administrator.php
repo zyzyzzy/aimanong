@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\ThinkPHP\Models;
 
 use think\Model;
+use think\model\relation\BelongsToMany;
 
 /**
  * 后台管理员。
@@ -45,6 +46,25 @@ class Administrator extends Model
         'enabled' => 'integer',
         'preferences' => 'json',
     ];
+
+    /**
+     * 用户 → 角色（多对多）。
+     */
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class, 'admin_role_user', 'user_id', 'role_id');
+    }
+
+    public function isSuper(): bool
+    {
+        foreach ($this->roles as $role) {
+            if ($role->isSuper()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     public function verifyPassword(string $plain): bool
     {

@@ -344,6 +344,51 @@ t('登出 → 302', $st === 302, "HTTP {$st}");
 [$st] = $auth('GET', '/admin');
 t('登出后被拦截 → 302', $st === 302, "HTTP {$st}");
 
+echo "\n=== ⑨ RBAC：超管绕过 + 普通角色被拒 ===\n";
+
+$viewerJar = sys_get_temp_dir().'/amn-tp-viewer-'.getmypid();
+@unlink($viewerJar);
+
+/** 用指定 jar 发请求 */
+$as = function (string $method, string $path, array $data, string $jar) use ($port): array {
+    $ch = curl_init("http://127.0.0.1:{$port}{$path}");
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_CUSTOMREQUEST => $method,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_POSTFIELDS => $data === [] ? null : http_build_query($data),
+        CURLOPT_COOKIEJAR => $jar,
+        CURLOPT_COOKIEFILE => $jar,
+    ]);
+    $b = (string) curl_exec($ch);
+    $st = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    unset($ch);
+
+    return [$st, $b];
+};
+
+// 上面验证的是「登出后被拦」，所以这里先以超管身份登入
+$auth('POST', '/admin/auth/login', ['username' => 'admin', 'password' => 'admin123']);
+
+// 超管能吃下全部 —— 这条同时验证了「装完不会全站 403」这个闭环死锁
+[$st, $abody] = $auth('GET', '/admin/api/customers');
+t('超管可访问（RBAC 打开后不会全站 403）', $st === 200, "HTTP {$st}");
+
+$auth('POST', '/admin/auth/logout');
+[$st] = $as('POST', '/admin/auth/login', ['username' => 'viewer', 'password' => 'viewer123'], $viewerJar);
+t('普通角色可登录', $st === 302, "HTTP {$st}");
+
+[$st, $abody] = $as('GET', '/admin/api/customers', [], $viewerJar);
+t('普通角色访问被拒 → 403', $st === 403, "HTTP {$st}");
+t('403 是 JSON（不是 HTML 错误页）', str_contains($abody, '"code":"FORBIDDEN"'), substr($abody, 0, 60));
+
+// 恢复 admin 的登录态给后续段落用
+[$st] = $auth('POST', '/admin/auth/login', ['username' => 'admin', 'password' => 'admin123']);
+t('超管重新登入', $st === 302, "HTTP {$st}");
+
+@unlink($viewerJar);
+
 echo "\n=== ⑧ 登录限流：防暴力破解 ===\n";
 
 /*
@@ -501,9 +546,15 @@ if ($newId !== null) {
 [$st] = $api('GET', 'customers/999999');
 t('详情不存在 → 404', $st === 404, "HTTP {$st}");
 
-// 未在 permissions 里授权的 uri 必须 403，而不是悄悄放行
+/*
+ * 未注册的 uri → 404。
+ *
+ * 注意：这里**不是** 403 —— 超管角色绕过全部权限判定，
+ * 所以权限这一关会过，然后在注册表里找不到 → 404。
+ * 403 的验证在 ⑨ 段用普通角色做（那里才是真正的权限拦截）。
+ */
 [$st] = $api('GET', 'orders');
-t('未授权 uri → 403', $st === 403, "HTTP {$st}");
+t('未注册的 uri → 404（超管已过权限关）', $st === 404, "HTTP {$st}");
 
 if (is_resource($proc)) {
     proc_terminate($proc);
@@ -585,8 +636,9 @@ t('install 退出码 0', $code === 0, "exit={$code}");
 t('发布了 config/aimanong.php', is_file($fresh.'/config/aimanong.php'));
 
 $cfg = is_file($fresh.'/config/aimanong.php') ? include $fresh.'/config/aimanong.php' : [];
-t('配置含 prefix/dict/permissions 等键', is_array($cfg)
-    && isset($cfg['prefix'], $cfg['dict'], $cfg['permissions'], $cfg['upload'], $cfg['ui']));
+t('配置含 prefix/auth/dict/upload/ui 等键', is_array($cfg)
+    && isset($cfg['prefix'], $cfg['auth'], $cfg['dict'], $cfg['upload'], $cfg['ui']));
+t('配置含 RBAC 开关', is_array($cfg) && array_key_exists('rbac', $cfg['auth'] ?? []));
 t('创建了 app/service.php', is_file($fresh.'/app/service.php'));
 t('service.php 登记了 ThinkService', is_file($fresh.'/app/service.php')
     && str_contains((string) file_get_contents($fresh.'/app/service.php'), 'ThinkService'));

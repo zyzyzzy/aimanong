@@ -1,0 +1,45 @@
+=== ThinkPHP RBAC（2026-10-14）===
+
+## 表结构（与 Laravel 侧同名同形）
+  admin_roles / admin_permissions / admin_permission_role / admin_role_user
+  权限用字符串 slug；group 只是展示分类字段，不做权限组表
+
+## 判定顺序（顺序就是语义）
+  ① 超管角色（is_super）→ 放行，绕过一切
+  ② RBAC 未启用 → 放行
+  ③ 未登录 → 拒绝
+  ④ 用户 → 角色 → 权限节点，命中即放行
+  ⑤ 其余 → 拒绝
+
+## ⚠️ 纠正了一处两边不一致
+  第一版 TP 的权限是「配置数组列举即拥有，否则拒绝」= 默认拒绝。
+  而 Laravel 侧语义是：aimanong.auth.rbac 默认 **false**，
+  此时**根本不做权限判定**（RBAC 是 opt-in）。
+  两边不一致比两边都严格更危险 —— 同一个项目换框架后行为会变。现已对齐。
+
+## 实测
+  超管访问 /admin/api/customers → HTTP 200
+  普通角色访问同一接口        → HTTP 403
+    {"error":{"code":"FORBIDDEN","message":"无权限：customers.index",...}}
+
+## 闭环死锁的防护
+  RBAC 一打开，没有角色 = 没有任何权限 = **全站 403**，包括后台本身。
+  所以 install 会创建超管角色并把管理员挂上去 ——
+  这与「装完没有账号可登」是同一类死锁。
+
+## 这一轮踩到的两个自己的错
+  1. 替换顺序反了：先把 $this->authorize(...) 删掉、再想插入 deny(...)，
+     结果权限检查整个消失（普通角色拿到 200 + 全部数据）。
+     → 已修正，并确认 5 个动作都有判定（grep 计数 = 5）。
+  2. API 的 403 原本抛 HttpException，被 TP 渲染成 HTML 错误页 ——
+     对 JSON 接口来说调用方拿到一坨 HTML 没法处理。改为返回 JSON 403。
+
+## 验证（thinkphp-e2e 87/87 的第 ⑨ 节）
+=== ⑨ RBAC：超管绕过 + 普通角色被拒 ===
+  超管可访问（RBAC 打开后不会全站 403）  ✅  HTTP 200
+  普通角色可登录                                ✅  HTTP 302
+  普通角色访问被拒 → 403                     ✅  HTTP 403
+  403 是 JSON（不是 HTML 错误页）              ✅  {"error":{"code":"FORBIDDEN","message":"无权限：customer
+  超管重新登入                                   ✅  HTTP 302
+
+=== ⑧ 登录限流：防暴力破解 ===

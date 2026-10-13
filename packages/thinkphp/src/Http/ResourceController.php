@@ -44,7 +44,11 @@ final class ResourceController
 
     public function index(Request $request, string $uri): Response
     {
-        $this->authorize($uri, 'index');
+        if (($deny = $this->deny($uri, 'index')) !== null) {
+            return $deny;
+        }
+
+        
         $node = $this->resolve($uri);
 
         $searchable = [];
@@ -111,7 +115,11 @@ final class ResourceController
 
     public function show(Request $request, string $uri, int|string $id): Response
     {
-        $this->authorize($uri, 'show');
+        if (($deny = $this->deny($uri, 'show')) !== null) {
+            return $deny;
+        }
+
+        
         $node = $this->resolve($uri);
 
         try {
@@ -125,7 +133,11 @@ final class ResourceController
 
     public function store(Request $request, string $uri): Response
     {
-        $this->authorize($uri, 'create');
+        if (($deny = $this->deny($uri, 'store')) !== null) {
+            return $deny;
+        }
+
+        
         $node = $this->resolve($uri);
 
         $errors = $this->validateInput($request, $node, true);
@@ -144,7 +156,11 @@ final class ResourceController
 
     public function update(Request $request, string $uri, int|string $id): Response
     {
-        $this->authorize($uri, 'update');
+        if (($deny = $this->deny($uri, 'update')) !== null) {
+            return $deny;
+        }
+
+        
         $node = $this->resolve($uri);
 
         $errors = $this->validateInput($request, $node, false);
@@ -167,7 +183,11 @@ final class ResourceController
 
     public function destroy(Request $request, string $uri, int|string $id): Response
     {
-        $this->authorize($uri, 'destroy');
+        if (($deny = $this->deny($uri, 'destroy')) !== null) {
+            return $deny;
+        }
+
+        
         $node = $this->resolve($uri);
 
         try {
@@ -228,14 +248,33 @@ final class ResourceController
      * 走 `Drivers::permissions()` —— 与 Laravel 侧同一个契约，
      * TP 的实现是配置驱动的（见 ThinkPermissionChecker）。
      */
-    protected function authorize(string $uri, string $action): void
+    /**
+     * 权限判定。
+     *
+     * ⚠️ 返回一个 **JSON** 的 403，而不是抛 HttpException。
+     * 抛异常会被 TP 的默认处理器渲染成 HTML 错误页 ——
+     * 对一个 JSON 接口来说，调用方（前端 / AI Agent）拿到一坨 HTML
+     * 是没法处理的。实测踩到。
+     *
+     * @return Response|null null = 放行
+     */
+    protected function deny(string $uri, string $action): ?Response
     {
         $checker = Drivers::permissions();
         $slug = $checker->slug($uri, $action);
 
-        if (! $checker->check($slug)) {
-            throw new \think\exception\HttpException(403, "无权限：{$slug}");
+        if ($checker->check($slug)) {
+            return null;
         }
+
+        return Response::create([
+            'error' => [
+                'code' => 'FORBIDDEN',
+                'message' => "无权限：{$slug}",
+                'slug' => $slug,
+                'hint' => '权限由「用户 → 角色 → 权限节点」判定；超管角色绕过全部判定。',
+            ],
+        ], 'json', 403);
     }
 
     /**

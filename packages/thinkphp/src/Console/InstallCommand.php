@@ -42,8 +42,7 @@ final class InstallCommand extends Command
      * @var array<string, string>
      */
     public const NOT_IMPLEMENTED = [
-        'RBAC 数据表' => '角色 / 权限表随完整 RBAC 一起提供，尚未移植（当前权限由 config 的 permissions 数组声明）',
-        '登录限流' => '防暴力破解的手段，尚未实现 —— 因此后台**不应对外暴露**',
+        '完整 RBAC' => '角色 / 权限表尚未移植；当前权限由 config/aimanong.php 的 permissions 数组声明（默认拒绝）',
     ];
 
     protected function configure(): void
@@ -54,7 +53,7 @@ final class InstallCommand extends Command
             ->addOption('admin-user', null, Option::VALUE_REQUIRED, '管理员账号（不传则不创建）')
             ->addOption('admin-password', null, Option::VALUE_REQUIRED, '管理员密码')
             ->addOption('no-admin', null, Option::VALUE_NONE, '跳过创建管理员账号')
-            ->setDescription('安装 Aimanong（ThinkPHP 版：仅脚手架，不建表/不建管理员）');
+            ->setDescription('安装 Aimanong（ThinkPHP 版：脚手架 + 建表 + 创建管理员）');
     }
 
     protected function execute(Input $input, Output $output): int
@@ -85,7 +84,8 @@ final class InstallCommand extends Command
         $output->writeln('  4. php think aimanong:schema    生成 JSON / TS / OpenAPI / AI 上下文');
         $output->writeln('  5. 打开 /admin 看后台，/admin/api/{uri} 取数据');
         $output->writeln('');
-        $output->writeln('<comment>⚠️ 登录限流尚未实现（防暴力破解）。后台不应对外暴露，仅适合本地开发。</comment>');
+        $output->writeln('<comment>说明：登录限流（每 IP / 每 IP+账号 两个维度）已启用，防暴力破解。</comment>');
+        $output->writeln('<comment>      尚未实现的是完整 RBAC —— 当前权限由 config 的 permissions 数组声明。</comment>');
 
         return $failed > 0 ? 1 : 0;
     }

@@ -108,6 +108,15 @@ t('内省：$type 声明的列算真实列', $intro->isVirtualAttribute(new app\
 
 echo "\n=== ③ 真实 HTTP：/admin 能打开 ===\n";
 
+/*
+ * 清掉限流缓存再开始。
+ *
+ * 限流是按 IP 计数的，而这个脚本自己就要发十几次登录请求；
+ * 上一次运行的计数会**跨轮次影响**，导致断言看到的是上一轮的 429。
+ * 夹具主动重置状态是对的 —— 否则测试会时好时坏。
+ */
+exec('rm -rf '.escapeshellarg($tp.'/runtime/cache'));
+
 $port = 8897;
 
 // 登录态用的 cookie jar —— 认证已启用，后续所有请求都要带上
@@ -334,6 +343,34 @@ t('登出 → 302', $st === 302, "HTTP {$st}");
 
 [$st] = $auth('GET', '/admin');
 t('登出后被拦截 → 302', $st === 302, "HTTP {$st}");
+
+echo "\n=== ⑧ 登录限流：防暴力破解 ===\n";
+
+/*
+ * 用一个**独立账号名**探测，避免把 admin 的计数打满影响后续段落。
+ * （限流是按「IP + 账号」两个维度计的，换账号名就隔离了。）
+ */
+$probeUser = 'ghost-user-'.substr((string) getmypid(), -4);
+$codes = [];
+
+for ($i = 1; $i <= 7; $i++) {
+    [$st] = $auth('POST', '/admin/auth/login', ['username' => $probeUser, 'password' => 'wrong']);
+    $codes[] = $st;
+}
+
+t('前几次是 401（密码错误）', $codes[0] === 401, "第1次 HTTP {$codes[0]}");
+t('达到上限后变 429（限流）', in_array(429, $codes, true), 'HTTP '.implode(',', $codes));
+
+// 429 必须带「还要等几秒」—— 只说「太频繁」用户不知道等多久
+[$st, $abody] = $auth('POST', '/admin/auth/login', ['username' => $probeUser, 'password' => 'wrong']);
+t('429 提示剩余秒数', $st === 429 && (bool) preg_match('/\d+\s*秒/', $abody));
+
+/*
+ * 成功登录必须**清零** —— 否则用户打错几次再登对，
+ * 后面正常的操作仍会被计数挡住。
+ */
+[$st] = $auth('POST', '/admin/auth/login', ['username' => 'admin', 'password' => 'admin123']);
+t('正确密码仍可登录（未被误伤）', $st === 302, "HTTP {$st}");
 
 /*
  * 后续段落（页面 / 数据 API）现在都需要登录态 ——
@@ -581,8 +618,10 @@ t('重复执行幂等（不重复登记）', substr_count($svc2, 'ThinkService')
  * 比没有这个命令更糟。
  */
 [$code, $out] = $think('aimanong:install --dir='.escapeshellarg($fresh));
-t('明说尚未实现的步骤', str_contains($out, '尚未实现') && str_contains($out, '登录限流'));
-t('明说不应对外暴露（仅本地开发）', str_contains($out, '不应对外暴露') && str_contains($out, '本地开发'));
+t('明说尚未实现的步骤', str_contains($out, '尚未实现') && str_contains($out, 'RBAC'));
+t('明说限流已启用', str_contains($out, '登录限流') && str_contains($out, '已启用'));
+t('install 真的建了表', str_contains($out, 'admin_users'));
+t('install 真的建了管理员', str_contains($out, '已创建管理员') || str_contains($out, '已存在管理员'));
 
 exec('rm -rf '.escapeshellarg($fresh));
 

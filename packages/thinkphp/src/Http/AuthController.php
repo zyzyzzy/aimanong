@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\ThinkPHP\Http;
 
+use Aimanong\ThinkPHP\Auth\LoginThrottle;
 use Aimanong\ThinkPHP\Auth\ThinkGuard;
 use Aimanong\ThinkPHP\View\NullErrors;
 use Aimanong\ThinkPHP\View\ViewErrors;
@@ -57,17 +58,35 @@ final class AuthController
             return $this->fail($request, '请输入账号与密码。', 422);
         }
 
+        // 先看是否已被限流 —— 必须在 attempt 之前，
+        // 否则已经超限的请求仍会去比对密码，限流形同虚设
+        $lockedFor = LoginThrottle::lockedFor($request, $username);
+
+        if ($lockedFor > 0) {
+            return $this->fail(
+                $request,
+                sprintf('尝试过于频繁，请 %d 秒后重试', $lockedFor),
+                429
+            );
+        }
+
         try {
             $ok = (new ThinkGuard)->attempt($username, $password, $remember);
         } catch (\RuntimeException $e) {
             // 账号被禁用 —— 与「密码错误」区分开，否则管理员查不出原因
+            LoginThrottle::hit($request, $username);
+
             return $this->fail($request, $e->getMessage(), 403);
         }
+
+        // 失败才计数；成功则清零（否则打错几次再登对会被后续计数挡住）
+        LoginThrottle::hit($request, $username);
 
         if (! $ok) {
             return $this->fail($request, '账号或密码不正确。', 401);
         }
 
+        LoginThrottle::clear($request, $username);
         $this->touchLogin($request);
 
         if ($wantsJson) {

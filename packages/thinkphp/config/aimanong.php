@@ -29,6 +29,21 @@ return [
         'model' => '',
         'guard' => 'admin',
         'session_key' => 'aimanong_admin_id',
+
+        /*
+         * 登录限流（防暴力破解）。
+         *
+         * 两个维度叠加，至少保证「同一 IP 对同一账号」始终受限 ——
+         * 只按 IP 限流的话，攻击者换 IP 就能继续猜同一个账号。
+         *
+         *   0 表示关闭该维度
+         */
+        'throttle' => [
+            'enable' => true,
+            'per_ip' => 20,
+            'per_account' => 5,
+            'window' => 60,
+        ],
     ],
 
     /*

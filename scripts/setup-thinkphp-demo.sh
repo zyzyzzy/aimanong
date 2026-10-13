@@ -173,6 +173,12 @@ return [
     // 后台 URL 前缀（ThinkRuntime::urlPrefix 读它）
     'prefix' => '/admin',
 
+    // 登录限流（防暴力破解）—— 演示里收紧一点，便于 e2e 验证
+    'auth' => [
+        'model' => '',   // 用默认的 Administrator
+        'throttle' => ['enable' => true, 'per_ip' => 20, 'per_account' => 5, 'window' => 60],
+    ],
+
     // 数据字典（配置声明式，与 Laravel 侧同一份格式）
     'dict' => [
         'declarations' => [

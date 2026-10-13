@@ -102,6 +102,28 @@ php artisan aimanong:install --admin-user=admin --admin-password=admin123 \
   || php artisan aimanong:install --force --admin-user=admin --admin-password=admin123 \
     --no-interaction
 
+# ── 保证 demo 管理员密码 ──
+#
+# ⚠️ 上面的 install 只在「账号不存在」时才建。**重跑**这个脚本时账号已存在，
+# install 会（正确地）跳过，密码保持上一次的值 —— 而 e2e 需要确定的 admin123。
+#
+# `aimanong:install` 不重置已有密码是**对的安全行为**（不能因为重跑安装就把
+# 生产管理员密码改掉）。所以这里由 demo 脚本自己显式保证，而不是让 install 破例。
+echo "  → 固定 demo 管理员密码"
+php -r '
+require "vendor/autoload.php";
+$app = require "bootstrap/app.php";
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$cls  = \Aimanong\Models\Administrator::class;
+$user = $cls::where("username", "admin")->first();
+if (! $user) {
+    fwrite(STDERR, "  ⚠️  管理员账号不存在，e2e 会失败\n");
+    exit(1);
+}
+$user->password = \Illuminate\Support\Facades\Hash::make("admin123");
+$user->save();
+' 2>&1 | tail -2
+
 # ── 权限节点（内置 Resource 的节点要写库）──
 echo "  → 同步权限节点"
 php artisan aimanong:permission sync >/dev/null 2>&1 || true

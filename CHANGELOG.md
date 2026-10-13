@@ -2,6 +2,41 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.9.1] - 2026-10-13
+
+> 主题：修掉 1.9.0 里一个**只有真装一次才看得见**的版本号 bug。
+
+### 修复：后台界面显示的版本号是内部包的，不是产品版本
+
+1.9.0 发布后做验收（全新项目从 Packagist 装 `aimanong/framework`）时发现：
+界面显示 **1.0.0**，而产品版本是 1.9.0。
+
+根因在 `Aimanong::version()` 的解析顺序：
+
+- `aimanong/framework` 是 metapackage，**Composer 不为它建目录**，
+  所以「读 framework/composer.json」这条路径落空；
+- 于是落到下一候选 —— **本包（laravel）自己的 composer.json** → 1.0.0。
+
+修法：把「用 Composer 的 `InstalledVersions` 取产品包版本」提到最前，
+且**只认 `aimanong/framework`**。
+
+> 只认 framework 这点也是踩出来的：Composer 会把 **root 包**一并放进
+> `InstalledVersions`，而驱动包在仓库里跑测试时它自己就是 root ——
+> 把 `aimanong/laravel` 也列进候选，测试环境就会返回 laravel 的版本。
+
+这个 bug 单测抓不到（测试环境里 root 包的情况与真实安装不同），
+只有「从 Packagist 真装一次并打开界面」才能发现 —— 属于 AGENTS.md
+第 9 条「验收标准盯着用户可感知的结果」那一类。
+
+### 变更：包 tag 由各包自己的版本派生
+
+发布脚本原先把**主仓库的 tag 名**原样推到包仓库。主仓库 tag 是产品级的
+（`v1.9.0`），而各包有自己的版本线 —— 原样推会在 laravel 仓库上造出一个
+根本不存在的 `v1.9.0`，Packagist 就会列出 laravel 1.9.0。
+（第一次发 laravel 时 `v1.9.0` 还没打，侥幸跳过了。）
+
+现在远端 tag 一律用「该提交上本包 composer.json 的 version」。
+
 ## [1.9.0] - 2026-10-13
 
 > 主题：**把框架拆成「内核 + 驱动」，为多框架适配铺路**。

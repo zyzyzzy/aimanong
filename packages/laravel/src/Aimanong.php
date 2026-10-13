@@ -159,15 +159,16 @@ class Aimanong
      * **产品版本**（framework），不是内部包的版本 —— 用户装的是 framework，
      * 他关心的是那个号码。内部包怎么升版不该影响他看到的数字。
      *
-     * ## 为什么用相对路径而不是 Composer 的 InstalledVersions
+     * ## 三个来源，顺序不能乱（每一步都踩过坑）
      *
-     * 下面第一个候选路径在**两种布局下都成立**：
+     *   ① Composer 的 `InstalledVersions`（装在应用里时）
+     *   ② `framework/composer.json` 的相对路径（仓库内开发时）
+     *   ③ 本包自己的 composer.json（只装了驱动包时的兜底）
      *
-     *   仓库内开发：  packages/laravel/src/../../framework/composer.json
-     *   装成依赖：    vendor/aimanong/laravel/src/../../framework/composer.json
-     *
-     * 两者都指向 `aimanong/framework/composer.json`。这比走 Composer API
-     * 少一层依赖，也能在「只装了 laravel 没装 framework」时自然回退。
+     * ⚠️ ① 必须在 ③ 之前。`aimanong/framework` 是 metapackage，
+     * Composer **不为它建目录**，所以 ② 会落空；若此时直接落 ③，
+     * 就会返回 laravel 的 1.0.0 —— 真实安装里实测到过这个错误，
+     * 而且只有跑起来看界面才发现。
      */
     public static function version(): string
     {
@@ -178,68 +179,61 @@ class Aimanong
         }
 
         /*
-         * ① 仓库内开发 → 直接读产品包的 composer.json。
+         * ① 装在应用里 → 用 Composer 运行时 API 取**产品包**版本。
          *
-         *    驱动包自己跑测试时，它就是 root 包，Composer 的 InstalledVersions
-         *    里既没有 framework 也没有 laravel（root 不算「已安装依赖」），
-         *    所以必须靠路径。
-         *
-         *    路径在**两种布局下都成立**：
-         *      仓库内：  packages/laravel/src/../../framework/composer.json
-         *      装成依赖：vendor/aimanong/laravel/src/../../framework/composer.json
-         *    后者在 metapackage 场景下不存在（Composer 不建目录），
-         *    于是自然落到下面的 ②。
+         *    ⚠️ 这里只认 `aimanong/framework`，**不能**把 `aimanong/laravel`
+         *    也列进来。Composer 会把 **root 包**一并放进 InstalledVersions ——
+         *    驱动包在仓库里跑测试时它自己就是 root，于是 laravel 会抢先命中，
+         *    返回 1.0.0 而不是产品的 1.9.0。（实测踩到。）
+         *    「只装了驱动包」的情况由 ③ 兜底。
          */
-        $candidates = [
-            __DIR__.'/../../framework/composer.json',
-            __DIR__.'/../composer.json',
-        ];
+        if (class_exists(InstalledVersions::class)
+            && InstalledVersions::isInstalled('aimanong/framework')) {
+            $ver = InstalledVersions::getPrettyVersion('aimanong/framework');
 
-        foreach ($candidates as $path) {
-            if (! is_file($path)) {
-                continue;
-            }
-
-            try {
-                /** @var mixed $decoded */
-                $decoded = json_decode((string) file_get_contents($path), true);
-            } catch (\Throwable) {
-                continue;
-            }
-
-            if (is_array($decoded)
-                && isset($decoded['version'])
-                && is_string($decoded['version'])
-                && $decoded['version'] !== '') {
-                return $cached = $decoded['version'];
+            if (is_string($ver) && $ver !== '') {
+                return $cached = $ver;
             }
         }
 
-        /*
-         * ② 装在应用里 → 走 Composer 的运行时 API。
-         *
-         * ⚠️ 这里**不能**只靠文件路径：`aimanong/framework` 是 metapackage
-         * （type: metapackage），Composer 不为它建目录，
-         * `vendor/aimanong/framework/composer.json` 根本不存在 ——
-         * 但 Composer 把它记进了 `installed.php`，所以 API 拿得到。
-         *
-         * 实测踩到过：只按文件路径找 framework，会在真实安装里静默回退成
-         * laravel 的 1.0.0，后台界面就显示错的版本号。
-         */
-        if (class_exists(InstalledVersions::class)) {
-            foreach (['aimanong/framework', 'aimanong/laravel'] as $pkg) {
-                if (! InstalledVersions::isInstalled($pkg)) {
-                    continue;
-                }
+        // ② 仓库内开发（驱动包自己就是 root 包，InstalledVersions 里没有 framework）
+        $fwComposer = __DIR__.'/../../framework/composer.json';
 
-                $ver = InstalledVersions::getPrettyVersion($pkg);
+        if (($ver = self::versionFromComposer($fwComposer)) !== null) {
+            return $cached = $ver;
+        }
 
-                if (is_string($ver) && $ver !== '') {
-                    return $cached = $ver;
-                }
-            }
+        // ③ 兜底：只装了驱动包
+        if (($ver = self::versionFromComposer(__DIR__.'/../composer.json')) !== null) {
+            return $cached = $ver;
         }
 
         return $cached = '1.0.0';
+    }
+
+    /**
+     * 从 composer.json 读 version 字段；读不到返回 null。
+     */
+    protected static function versionFromComposer(string $path): ?string
+    {
+        if (! is_file($path)) {
+            return null;
+        }
+
+        try {
+            /** @var mixed $decoded */
+            $decoded = json_decode((string) file_get_contents($path), true);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if (is_array($decoded)
+            && isset($decoded['version'])
+            && is_string($decoded['version'])
+            && $decoded['version'] !== '') {
+            return $decoded['version'];
+        }
+
+        return null;
     }
 }

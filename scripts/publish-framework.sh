@@ -143,8 +143,27 @@ for k in d.get('require', {}):
         done
 
         if [ -n "$target" ]; then
+            # ⚠️ 远端 tag 名用**该提交上本包 composer.json 的 version**，
+            #    而不是主仓库的 tag 名。
+            #
+            #    为什么：主仓库的 tag 是**产品级**的（v1.9.0），而各包有
+            #    自己的版本线（laravel 1.0.1 / core 1.0.0）。原样推主仓库 tag
+            #    会在 laravel 仓库上造出一个根本不存在的 `v1.9.0` ——
+            #    Packagist 就会列出 laravel 1.9.0。实测差点踩到：
+            #    第一次发 laravel 时 v1.9.0 还没打，所以侥幸跳过了。
+            local blob_ver
+            blob_ver=$(printf '%s' "$src_blob" | python3 -c "
+import sys, json
+try: print(json.load(sys.stdin).get('version', ''))
+except Exception: print('')" 2>/dev/null || echo "")
+
+            if [ -z "$blob_ver" ]; then
+                skipped=$((skipped+1))
+                continue
+            fi
+
             # 不建本地 tag，直接把目标对象推成远端 tag
-            git push -q -f "$remote" "$target:refs/tags/$t" 2>/dev/null && count=$((count+1))
+            git push -q -f "$remote" "$target:refs/tags/v${blob_ver}" 2>/dev/null && count=$((count+1))
         fi
     done
     info "同步了 $count 个版本 tag"

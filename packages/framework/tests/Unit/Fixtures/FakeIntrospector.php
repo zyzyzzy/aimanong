@@ -19,12 +19,14 @@ class FakeIntrospector implements SchemaIntrospector
      * @param  array<string, array<int, string>>  $tables  表名 => 列清单
      * @param  array<int, string>  $virtual  视为虚拟属性的名字
      * @param  array<int, string>  $relations  视为关联的方法名
+     * @param  array<string, string>  $relationTargets  关联名 => 目标模型类名
      */
     public function __construct(
         public array $tables = [],
         public array $virtual = [],
         public array $relations = [],
         public ?string $table = null,
+        public array $relationTargets = [],
     ) {}
 
     public function tableOf(object $model): ?string
@@ -48,6 +50,11 @@ class FakeIntrospector implements SchemaIntrospector
     public function isRelation(mixed $value): bool
     {
         return is_string($value) && in_array($value, $this->relations, true);
+    }
+
+    public function relationTargetOf(object $model, string $relation): ?string
+    {
+        return $this->relationTargets[$relation] ?? null;
     }
 
     public function isVirtualAttribute(object $model, string $name): bool

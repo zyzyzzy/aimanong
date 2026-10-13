@@ -37,6 +37,19 @@ jobs:
       - name: 安装依赖
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      #
+      # core 纯度门禁：`packages/core` 不得依赖 illuminate / laravel。
+      #
+      # 这条门禁把「core 是框架无关的」从**声明**变成**事实**。
+      # 没有它，core 里会悄悄长回 Illuminate 依赖（AI 照抄别处 import 时尤其容易），
+      # 后果是 ThinkPHP 用户重新掉进「装上就炸」的全局 env() 冲突。
+      #
+      # 注意本 job 的 working-directory 是 packages/framework，
+      # 走仓库根的脚本要显式覆盖。
+      - name: core 纯度门禁
+        working-directory: .
+        run: bash scripts/check-core-purity.sh
+
       - name: Pint 代码风格
         run: composer pint -- --test
 

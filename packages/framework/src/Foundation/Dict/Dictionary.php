@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Foundation\Dict;
 
+use Aimanong\Contracts\DictionarySource;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
 
@@ -30,7 +31,7 @@ use Throwable;
  *   - 缓存不可用 → 直接查库
  * 一个字典读不到不该让整个后台打不开。
  */
-class Dictionary
+class Dictionary implements DictionarySource
 {
     public const CACHE_KEY = 'aimanong.dict';
 
@@ -121,6 +122,18 @@ class Dictionary
     public function isLocked(string $code): bool
     {
         return array_key_exists($code, $this->declarations());
+    }
+
+    /**
+     * 全部字典的 code 列表（契约要求的最小面）。
+     *
+     * core 只需要它来生成「可用字典: a, b, c」这类纠错提示。
+     *
+     * @return array<int, string>
+     */
+    public function codes(): array
+    {
+        return array_map(static fn (int|string $code): string => (string) $code, array_keys($this->all()));
     }
 
     /**

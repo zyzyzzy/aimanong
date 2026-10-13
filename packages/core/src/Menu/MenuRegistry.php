@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\Menu;
 
 use Aimanong\Aimanong;
-use Aimanong\Auth\PermissionGate;
+use Aimanong\Support\Drivers;
 
 /**
  * 菜单注册器。
@@ -82,10 +82,13 @@ class MenuRegistry
     {
         $filtered = [];
 
-        foreach ($this->all() as $item) {
-            $slug = PermissionGate::slug($item->uri, 'index');
+        // 权限驱动只取一次：它不是无状态猜测，而是「当前登录用户的判定器」
+        $gate = Drivers::permissions();
 
-            if (! PermissionGate::check($slug)) {
+        foreach ($this->all() as $item) {
+            $slug = $gate->slug($item->uri, 'index');
+
+            if (! $gate->check($slug)) {
                 continue;
             }
 

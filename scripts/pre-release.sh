@@ -107,6 +107,16 @@ else
   bad "Pint 风格不合规"
 fi
 
+# core 纯度门禁 —— 这是多框架适配能否成立的前提。
+# core 一旦长回 Illuminate 依赖，ThinkPHP 用户就会重新掉进
+# 「装上就炸」（全局 env() 冲突）的坑，而这个坑是静默的。
+if bash "$ROOT/scripts/check-core-purity.sh" > /tmp/amn-core.log 2>&1; then
+  ok "$(tail -1 /tmp/amn-core.log | sed 's/^✅ //')"
+else
+  bad "core 包混入了 illuminate/laravel 依赖"
+  sed 's/^/      /' /tmp/amn-core.log | head -15
+fi
+
 # ─────────────────────────────────────────────────
 head1 "【3】必需文件"
 
@@ -249,7 +259,7 @@ if [ "$SKIP_NET" -eq 1 ]; then
   warn "已显式跳过 Packagist 连通性检查（--skip-network）"
   warn "→ 版本同步【未验证】。发布前请务必重跑一次不带该参数的检查。"
 else
-for pkg in framework region; do
+for pkg in core framework region; do
   if ! body=$(fetch_packagist "$pkg"); then
     bad "连不上 Packagist，无法确认 aimanong/${pkg} 是否发布（测了 3 次）"
     echo "       → 这是网络问题，不是发版问题。检查网络后重跑本脚本。"
@@ -268,7 +278,7 @@ done
 # 所以这里显式比对版本号。
 echo ""
 echo "  版本同步状态（本地 composer.json vs Packagist）："
-for pkg in framework region; do
+for pkg in core framework region; do
   local_ver=$(python3 -c "import json;print(json.load(open('$ROOT/packages/${pkg}/composer.json')).get('version',''))" 2>/dev/null || echo "")
   if [ -z "$local_ver" ]; then continue; fi
 

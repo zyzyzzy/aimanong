@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Aimanong\Grid;
 
 use Aimanong\Exceptions\DictNotFoundException;
-use Aimanong\Foundation\Dict\Dictionary;
 use Aimanong\Schema\Ast\ColumnNode;
+use Aimanong\Support\Drivers;
 
 /**
  * 表格列。
@@ -143,10 +143,10 @@ class Column
      */
     public function dict(string $code): static
     {
-        $dictionary = new Dictionary;
+        $dictionary = Drivers::dictionary();
 
         if (! $dictionary->has($code)) {
-            $available = array_keys($dictionary->all());
+            $available = $dictionary->codes();
 
             throw new DictNotFoundException(
                 "数据字典 [{$code}] 不存在（或没有任何启用中的条目）。",

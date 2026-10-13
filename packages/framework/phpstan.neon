@@ -8,6 +8,9 @@ parameters:
     paths:
         - src
         - tests
+        # core 是同一套代码的另一半，一起分析 ——
+        # 分两个 run 会漏掉「跨包签名不兼容」这类问题
+        - ../core/src
 
     excludePaths:
         - vendor

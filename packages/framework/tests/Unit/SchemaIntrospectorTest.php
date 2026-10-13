@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Aimanong\Tests\Unit;
 
 use Aimanong\Contracts\SchemaIntrospector;
+use Aimanong\Drivers\Eloquent\EloquentIntrospector;
 use Aimanong\Exceptions\GhostColumnException;
 use Aimanong\Schema\Compiler;
-use Aimanong\Schema\Introspector\EloquentIntrospector;
 use Aimanong\Schema\Introspector\IntrospectorResolver;
 use Aimanong\Schema\Introspector\NullIntrospector;
 use Aimanong\Tests\Unit\Fixtures\FakeIntrospector;
@@ -109,10 +109,12 @@ class SchemaIntrospectorTest extends TestCase
     }
 
     /**
-     * 有 Eloquent 可用时必须选它 —— 否则幽灵列检测会静默失效，
-     * 而这是框架最不能降级的能力。
+     * 驱动已注册时，未显式注入的 Compiler 必须用上它 ——
+     * 否则幽灵列检测会静默失效，而这是框架最不能降级的能力。
+     *
+     * 注册由 `tests/bootstrap.php` 完成（与真实应用的 ServiceProvider 同一套）。
      */
-    public function test_resolver_picks_eloquent_when_available(): void
+    public function test_resolver_picks_registered_driver(): void
     {
         $this->assertInstanceOf(EloquentIntrospector::class, IntrospectorResolver::resolve());
     }

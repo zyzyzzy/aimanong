@@ -23,6 +23,7 @@
         "php": "^8.2",
         "ext-json": "*",
         "ext-mbstring": "*",
+        "aimanong/core": "^1.0",
         "illuminate/console": "^12.0|^13.0",
         "illuminate/container": "^12.0|^13.0",
         "illuminate/contracts": "^12.0|^13.0",
@@ -37,6 +38,15 @@
     "conflict": {
         "topthink/framework": "*"
     },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../core",
+            "options": {
+                "symlink": true
+            }
+        }
+    ],
     "suggest": {
         "aimanong/region": "中国省市区三级联动字段（->region()）。不装也能用框架，只是没有这个字段类型"
     },
@@ -59,7 +69,7 @@
     "scripts": {
         "test": "vendor/bin/phpunit",
         "phpstan": "vendor/bin/phpstan analyse",
-        "pint": "vendor/bin/pint"
+        "pint": "vendor/bin/pint src tests ../core/src"
     },
     "extra": {
         "laravel": {

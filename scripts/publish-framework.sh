@@ -58,6 +58,32 @@ publish_one() {
     fi
     info "version: $ver"
 
+    # 1.5 它依赖的 aimanong/* 包必须**已经**在 Packagist 上。
+    #
+    # 拆包之后 framework 依赖 aimanong/core。如果 core 还没发布就发 framework，
+    # 结果是：Packagist 上有一个永远装不上的包，而发布过程本身一切正常 ——
+    # 典型的「关卡不报错但产物是坏的」。
+    local deps
+    deps=$(python3 -c "
+import json
+d = json.load(open('$prefix/composer.json'))
+for k in d.get('require', {}):
+    if k.startswith('aimanong/'):
+        print(k)
+" 2>/dev/null || echo "")
+
+    if [ -n "$deps" ]; then
+        for dep in $deps; do
+            if curl -s --max-time 30 --retry 2 --retry-delay 1 \
+                "https://repo.packagist.org/p2/${dep}.json" 2>/dev/null \
+                | grep -q "\"${dep}\""; then
+                info "依赖已发布: $dep"
+            else
+                error "依赖尚未发布到 Packagist: $dep —— 现在发 $pkg，用户会装不上。先发布该依赖。"
+            fi
+        done
+    fi
+
     # 2. subtree split
     echo "  → subtree split..."
     git subtree split --prefix="$prefix" -b "$branch" >/dev/null 2>&1 \

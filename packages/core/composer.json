@@ -1,0 +1,41 @@
+{
+    "name": "aimanong/core",
+    "version": "1.0.0",
+    "description": "Aimanong 框架无关内核 —— 声明 DSL 与四产物编译（零 illuminate 依赖）",
+    "type": "library",
+    "keywords": [
+        "aimanong",
+        "ai",
+        "admin",
+        "dsl",
+        "ai-first"
+    ],
+    "homepage": "https://aimanong.com",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Aimanong",
+            "email": "zyzyzzy@vip.qq.com"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "ext-json": "*",
+        "ext-mbstring": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Aimanong\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Aimanong\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

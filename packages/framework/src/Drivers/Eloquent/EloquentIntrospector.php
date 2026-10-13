@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Aimanong\Schema\Introspector;
+namespace Aimanong\Drivers\Eloquent;
 
 use Aimanong\Contracts\SchemaIntrospector;
 use Illuminate\Database\Eloquent\Model;
@@ -12,12 +12,12 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Eloquent 内省实现（Laravel 驱动）。
  *
- * **本文件里出现的全部 Illuminate 依赖集中在这一个类**，
- * 拆包时整个 `Schema/Introspector/` 目录搬到 `aimanong/laravel` 即可。
+ * 放在 `Aimanong\Drivers\` 下是刻意的：**这个命名空间整体属于驱动层**，
+ * 拆包时整个 `src/Drivers/` 搬到 `aimanong/laravel` 即可。
+ * core 侧只有 `Contracts\SchemaIntrospector` 与 `NullIntrospector`。
  *
- * 拆包前它是框架里最后 3 处 Schema 层耦合的归宿：
- * 原先散在 `Compiler::assertColumnsExist()` 和
- * `Compiler::isVirtualAttribute()` 里。
+ * 本类收拢了原先散在 `Compiler::assertColumnsExist()` /
+ * `Compiler::isVirtualAttribute()` 里的 Eloquent 耦合。
  */
 class EloquentIntrospector implements SchemaIntrospector
 {
@@ -49,6 +49,25 @@ class EloquentIntrospector implements SchemaIntrospector
     public function isRelation(mixed $value): bool
     {
         return $value instanceof Relation;
+    }
+
+    public function relationTargetOf(object $model, string $relation): ?string
+    {
+        if (! $model instanceof Model) {
+            return null;
+        }
+
+        try {
+            $result = $model->{$relation}();
+
+            if ($result instanceof Relation) {
+                return $result->getRelated()::class;
+            }
+        } catch (\Throwable) {
+            // 关联定义有误 —— 交给上层校验报告
+        }
+
+        return null;
     }
 
     public function isVirtualAttribute(object $model, string $name): bool

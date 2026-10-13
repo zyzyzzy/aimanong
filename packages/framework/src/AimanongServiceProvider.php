@@ -8,10 +8,15 @@ use Aimanong\Application\ApplicationContext;
 use Aimanong\Application\ApplicationManager;
 use Aimanong\Auth\AdminGuard;
 use Aimanong\Auth\AdminUserProvider;
+use Aimanong\Auth\PermissionGateChecker;
 use Aimanong\Console\InstallCommand;
 use Aimanong\Console\PermissionCommand;
+use Aimanong\Drivers\Eloquent\EloquentIntrospector;
 use Aimanong\Extend\ExtensionManager;
+use Aimanong\Foundation\Dict\Dictionary;
+use Aimanong\Foundation\Upload\Uploader;
 use Aimanong\Support\Asset;
+use Aimanong\Support\Drivers;
 use Illuminate\Auth\AuthManager;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -90,6 +95,26 @@ class AimanongServiceProvider extends ServiceProvider
         $this->registerServices();
         $this->registerAuthGuard();
         $this->registerCommands();
+        $this->registerDrivers();
+    }
+
+    /**
+     * 注册驱动 —— core 与具体框架之间的唯一接缝。
+     *
+     * `packages/core` 里的 Form / Grid / Menu / Schema 只说
+     * 「我需要一个 DictionarySource / PermissionChecker / UploadSpec」，
+     * 具体是谁由这里决定。core 因此可以零 Illuminate 依赖，
+     * ThinkPHP 包只要换成自己的实现即可。
+     *
+     * ⚠️ 必须在 register() 阶段完成，不能挪到 boot()：
+     * 产物生成（`ai:schema`、MCP 工具）可能在 boot 之前就被调用。
+     */
+    protected function registerDrivers(): void
+    {
+        Drivers::registerIntrospector(new EloquentIntrospector);
+        Drivers::registerDictionary(new Dictionary);
+        Drivers::registerPermissionChecker(new PermissionGateChecker);
+        Drivers::registerUploadSpec(new Uploader);
     }
 
     public function boot(): void

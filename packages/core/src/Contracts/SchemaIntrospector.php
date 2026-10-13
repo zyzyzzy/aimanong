@@ -54,6 +54,14 @@ interface SchemaIntrospector
     public function isRelation(mixed $value): bool;
 
     /**
+     * 关联的目标模型类名；不是关联或定义有误时返回 null。
+     *
+     * 用于把 `category.name` 里的 `category` 解析成目标模型，
+     * 进而判断 `name` 在目标表里是否真实存在。
+     */
+    public function relationTargetOf(object $model, string $relation): ?string;
+
+    /**
      * 名字是否是模型上的虚拟属性。
      *
      * 覆盖：传统访问器(`getXxxAttribute`)、Laravel 9+ 访问器(`xxx(): Attribute`)、

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Aimanong\Schema\Emitters;
 
-use Aimanong\Foundation\Upload\Uploader;
 use Aimanong\Schema\Ast\FieldNode;
 use Aimanong\Schema\Ast\ResourceNode;
+use Aimanong\Support\Drivers;
 use Aimanong\Support\FieldType;
 
 /**
@@ -50,7 +50,7 @@ class JsonSchemaEmitter
      */
     protected function upload(): array
     {
-        return (new Uploader)->toArray();
+        return Drivers::upload()->toArray();
     }
 
     /**

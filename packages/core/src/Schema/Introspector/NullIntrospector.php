@@ -45,6 +45,11 @@ class NullIntrospector implements SchemaIntrospector
         return false;
     }
 
+    public function relationTargetOf(object $model, string $relation): ?string
+    {
+        return null;
+    }
+
     public function isVirtualAttribute(object $model, string $name): bool
     {
         return false;

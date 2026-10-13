@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\Form\Concerns;
 
 use Aimanong\Exceptions\DictNotFoundException;
-use Aimanong\Foundation\Dict\Dictionary;
+use Aimanong\Support\Drivers;
 
 /**
  * 给选项类字段（select / multiselect / radio / checkbox）加上
@@ -34,10 +34,10 @@ trait ResolvesDictionary
      */
     public function dict(string $code): static
     {
-        $dictionary = new Dictionary;
+        $dictionary = Drivers::dictionary();
 
         if (! $dictionary->has($code)) {
-            $available = array_keys($dictionary->all());
+            $available = $dictionary->codes();
 
             throw new DictNotFoundException(
                 "数据字典 [{$code}] 不存在（或没有任何启用中的条目）。",

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Tests\Unit;
 
-use Aimanong\Schema\Introspector\EloquentIntrospector;
+use Aimanong\Drivers\Eloquent\EloquentIntrospector;
 use Aimanong\Tests\Unit\Fixtures\IntrospectArticle;
 use Aimanong\Tests\Unit\Fixtures\IntrospectComment;
 use Illuminate\Container\Container;

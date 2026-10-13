@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\Foundation\Upload;
 
 use Aimanong\Aimanong;
+use Aimanong\Contracts\UploadSpec;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -30,7 +31,7 @@ use Throwable;
  *
  * 原始文件名只保存在数据库里（给用户看），不参与路径。
  */
-class Uploader
+class Uploader implements UploadSpec
 {
     /*
      * 默认白名单与上限。

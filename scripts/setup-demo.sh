@@ -56,6 +56,7 @@ cd "$DEMO"
 # ── 用 path 仓库指向本地框架（CI 与本地都适用）──
 echo "  → 接入本地框架包"
 composer config repositories.aimanong path "$ROOT/packages/framework" --no-interaction
+composer config repositories.aimanong-core path "$ROOT/packages/core" --no-interaction
 composer config repositories.aimanong-region path "$ROOT/packages/region" --no-interaction
 
 # --minimal：只装 framework，不装任何可选插件。

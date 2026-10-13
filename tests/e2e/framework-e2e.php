@@ -18,7 +18,24 @@ require $demo.'/vendor/autoload.php';
 $app = require $demo.'/bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
-$pass = 0; $fail = 0;
+$pass = 0;
+$fail = 0;
+
+/*
+ * 没跑到结尾就退出 = 中途崩了 = 失败。
+ * 见文件末尾的说明：Laravel 的异常处理器不会改变退出码。
+ */
+$completed = false;
+register_shutdown_function(static function (): void {
+    global $completed;
+
+    if (! $completed) {
+        fwrite(STDERR, "\n❌ e2e 未跑完（中途崩溃）—— 判定为失败\n");
+
+        exit(1);
+    }
+});
+
 function t(string $name, bool $cond, string $note = ''): void {
     global $pass, $fail;
     printf("  %-52s %s%s\n", $name, $cond ? "✅" : "❌", $note ? "  $note" : '');
@@ -415,6 +432,38 @@ t("region 不在 framework 的 require 中", ! isset($fwRequire['aimanong/region
  * 框架只负责在合适的字段类型上渲染它们。
  */
 $fw = dirname(__DIR__, 2).'/packages/framework';
+$corePkg = dirname(__DIR__, 2).'/packages/core';
+
+/*
+ * 读框架源码 —— 同时搜 core 与 framework 两个包。
+ *
+ * ## 为什么不能写死路径
+ *
+ * 拆包后 `Aimanong\` 这个命名空间横跨两个包：Grid / Form / Schema 在 core，
+ * Http / Console 在 framework。原先这里写死 `$fw.'/src/Grid/Grid.php'`，
+ * 搬包那一刻就变成「文件不存在」—— 而 Laravel 的异常处理器会把
+ * ErrorException 渲染出来却**不改变退出码**，于是 pre-release 仍然
+ * 报「✅ framework-e2e 通过」。一个崩了的测试被显示成通过。
+ *
+ * 所以这里两点一起改：路径搜索 + 末尾的退出码保证。
+ */
+function fwSrc(string $rel): string
+{
+    global $fw, $corePkg;
+
+    static $cache = [];
+
+    foreach ([$corePkg, $fw] as $pkg) {
+        $path = $pkg.'/'.$rel;
+
+        if (is_file($path)) {
+            return $cache[$path] ??= (string) file_get_contents($path);
+        }
+    }
+
+    fwrite(STDERR, "❌ 找不到源码文件：{$rel}（已搜 packages/core 与 packages/framework）\n");
+    exit(1);
+}
 
 // 1) 框架核心不得再出现插件自己的类
 $coreTpl = (string) file_get_contents($fw.'/resources/views/resource.blade.php');
@@ -460,7 +509,7 @@ if (class_exists(\Aimanong\Region\RegionExtension::class)) {
  *
  * 这条断言检查安装命令**具备**建号能力且幂等。
  */
-$installSrc = (string) file_get_contents($fw.'/src/Console/InstallCommand.php');
+$installSrc = fwSrc('src/Console/InstallCommand.php');
 
 /*
  * ⚠️ 必须检查**调用**而不是方法存在。
@@ -535,7 +584,7 @@ if (is_string($adminModel) && class_exists($adminModel)) {
  * 两个都不报在编译期、不在单测里、不在 e2e 里，
  * 因为它们都**只在生产部署路径上出现**。
  */
-$providerSrc = (string) file_get_contents($fw.'/src/AimanongServiceProvider.php');
+$providerSrc = fwSrc('src/AimanongServiceProvider.php');
 
 t("guard 注册不被配置缓存跳过",
     str_contains($providerSrc, 'guardDriverRegistered'),
@@ -626,7 +675,7 @@ t("有 map/dict 时用下拉框",
 // 后端协议本身（早已可用，这里锁死防退化）
 t("后端支持 filters 参数",
     str_contains(
-        (string) file_get_contents($fw.'/src/Repository/EloquentRepository.php'),
+        fwSrc('src/Repository/EloquentRepository.php'),
         'applyFilters'
     ));
 
@@ -638,9 +687,9 @@ t("后端支持 filters 参数",
  * 攻击者可对暴露公网的后台无限次尝试密码；
  * 登录日志会记录失败，但日志不能阻止攻击。
  */
-$authSrc = (string) file_get_contents($fw.'/src/Http/Controllers/AuthController.php');
-$throttleSrc = is_file($fw.'/src/Auth/LoginThrottle.php')
-    ? (string) file_get_contents($fw.'/src/Auth/LoginThrottle.php')
+$authSrc = fwSrc('src/Http/Controllers/AuthController.php');
+$throttleSrc = (is_file($corePkg.'/src/Auth/LoginThrottle.php') || is_file($fw.'/src/Auth/LoginThrottle.php'))
+    ? fwSrc('src/Auth/LoginThrottle.php')
     : '';
 
 t("存在登录限流器", $throttleSrc !== '', 'LoginThrottle');
@@ -674,10 +723,10 @@ t("限流可配置开关",
  * 也就是说：声明了、文档写了、能力面列了，实际是个彻底的空操作。
  * 比 `->filter()` 更糟 —— 后者至少后端能用。
  */
-$gridSrc = (string) file_get_contents($fw.'/src/Grid/Grid.php');
-$compilerSrc = (string) file_get_contents($fw.'/src/Schema/Compiler.php');
-$emitterSrc = (string) file_get_contents($fw.'/src/Schema/Emitters/JsonSchemaEmitter.php');
-$controllerSrc = (string) file_get_contents($fw.'/src/Http/Controllers/ResourceController.php');
+$gridSrc = fwSrc('src/Grid/Grid.php');
+$compilerSrc = fwSrc('src/Schema/Compiler.php');
+$emitterSrc = fwSrc('src/Schema/Emitters/JsonSchemaEmitter.php');
+$controllerSrc = fwSrc('src/Http/Controllers/ResourceController.php');
 $routeSrc = (string) file_get_contents($fw.'/routes/admin.php');
 $tplSrc = (string) file_get_contents($fw.'/resources/views/resource.blade.php');
 
@@ -723,7 +772,7 @@ t("导出带上当前筛选条件",
  */
 
 // ① divider：声明了必须真的可见（原先被 hidden(true) 过滤，界面上一个字都没有）
-$dividerSrc = (string) file_get_contents($fw.'/src/Form/Fields/Divider.php');
+$dividerSrc = fwSrc('src/Form/Fields/Divider.php');
 $tplSrc2 = (string) file_get_contents($fw.'/resources/views/resource.blade.php');
 
 /*
@@ -755,7 +804,7 @@ t("divider 有可见样式",
     '有结构没样式 = 还是看不见');
 
 // ② draggable：不得在产物里谎报可用
-$treeSrc = (string) file_get_contents($fw.'/src/Tree/Tree.php');
+$treeSrc = fwSrc('src/Tree/Tree.php');
 
 t("draggable 默认不谎报",
     str_contains($treeSrc, 'protected bool $draggable = false'),
@@ -801,3 +850,19 @@ t("业务语言可检索到能力", $bizHits === 3, "{$bizHits}/3");
 
 echo "\n";
 printf("通过 %d / %d\n", $pass, $pass + $fail);
+
+/*
+ * ⚠️ 必须显式设置退出码。
+ *
+ * Laravel 启动后注册了全局异常处理器：脚本中途崩掉时它会把异常
+ * 渲染出来，然后**正常返回** —— PHP 退出码仍是 0。
+ * 而 `pre-release.sh` 只看退出码，于是「崩了的 e2e」被显示成
+ * 「✅ framework-e2e 通过」（已真实发生：搬包后 Grid.php 路径失效）。
+ *
+ * 两道保险：
+ *   ① 正常跑完 → 按失败数返回
+ *   ② 没跑完（崩溃/被中断）→ shutdown 钩子把它改成失败
+ */
+$completed = true;
+
+exit($fail > 0 ? 1 : 0);

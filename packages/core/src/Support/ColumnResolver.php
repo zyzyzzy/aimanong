@@ -4,10 +4,6 @@ declare(strict_types=1);
 
 namespace Aimanong\Support;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\Relation;
-use Illuminate\Support\Facades\Schema;
-
 /**
  * 列名解析器 —— **查询列安全校验的唯一入口**。
  *
@@ -31,9 +27,12 @@ use Illuminate\Support\Facades\Schema;
 class ColumnResolver
 {
     /**
-     * 已解析的缓存：模型类 → [列名 => 解析结果]。
+     * 已解析的缓存：模型类 → [键 => 任意解析结果]。
      *
-     * @var array<string, array<string, array<string, mixed>>>
+     * 内层同时存 `__columns`（列名**列表**）与逐列解析结果（映射），
+     * 所以内层值类型是 mixed，不能收窄成 array<string, mixed>。
+     *
+     * @var array<string, array<string, mixed>>
      */
     protected static array $cache = [];
 
@@ -184,14 +183,16 @@ class ColumnResolver
 
         $columns = [];
 
-        try {
-            if (class_exists($model)) {
-                /** @var Model $instance */
-                $instance = new $model;
-                $table = $instance->getTable();
+        // 没注册内省驱动时返回空 —— 调用方据此跳过校验（与拆包前一致）
+        $introspector = Drivers::introspector();
 
-                if (Schema::hasTable($table)) {
-                    $columns = Schema::getColumnListing($table);
+        try {
+            if ($introspector !== null && class_exists($model)) {
+                $instance = new $model;
+                $table = $introspector->tableOf($instance);
+
+                if ($table !== null && $introspector->hasTable($table)) {
+                    $columns = $introspector->columnsOf($table);
                 }
             }
         } catch (\Throwable) {
@@ -211,16 +212,14 @@ class ColumnResolver
      */
     public static function relationTarget(string $model, string $relation): ?string
     {
+        $introspector = Drivers::introspector();
+
+        if ($introspector === null || ! class_exists($model)) {
+            return null;
+        }
+
         try {
-            /** @var Model $instance */
-            $instance = new $model;
-            $result = $instance->{$relation}();
-
-            if ($result instanceof Relation) {
-                $related = $result->getRelated();
-
-                return $related::class;
-            }
+            return $introspector->relationTargetOf(new $model, $relation);
         } catch (\Throwable) {
             // 关联定义有误等
         }

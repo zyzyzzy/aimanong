@@ -54,7 +54,25 @@ function http(string $url, string $method = 'GET', array $data = [], array $head
  */
 $base = getenv('E2E_BASE') ?: 'http://localhost:8899';
 @unlink('/tmp/e2e-cookie.txt');
-$pass = 0; $fail = 0;
+$pass = 0;
+$fail = 0;
+
+/*
+ * 没跑到结尾就退出 = 中途崩了 = 失败。
+ * 原因同 framework-e2e.php：Laravel 的全局异常处理器渲染后正常返回，
+ * 退出码仍是 0，而 pre-release.sh 只看退出码。
+ */
+$completed = false;
+register_shutdown_function(static function (): void {
+    global $completed;
+
+    if (! $completed) {
+        fwrite(STDERR, "\n❌ http-e2e 未跑完（中途崩溃）—— 判定为失败\n");
+
+        exit(1);
+    }
+});
+
 function t(string $n, bool $c, string $note = ''): void {
     global $pass, $fail;
     printf("  %-46s %s%s\n", $n, $c ? "✅" : "❌", $note ? "  $note" : '');
@@ -302,3 +320,7 @@ t("目录穿越被拦截", $trav['code'] === 404);
 
 echo "\n";
 printf("通过 %d / %d\n", $pass, $pass + $fail);
+
+$completed = true;
+
+exit($fail > 0 ? 1 : 0);

@@ -15,8 +15,15 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FW="$ROOT/packages/framework"
 FAIL=0
 WITH_E2E=0
+SKIP_NET=0
 
-[ "${1:-}" = "--with-e2e" ] && WITH_E2E=1
+# 参数解析（原来只认位置固定的 $1，加第二个参数就失效）
+for arg in "$@"; do
+  case "$arg" in
+    --with-e2e)     WITH_E2E=1 ;;
+    --skip-network) SKIP_NET=1 ;;
+  esac
+done
 
 # 颜色
 # 注意：颜色变量名不要用单字母 N ——
@@ -209,13 +216,51 @@ head1 "【8】Composer 包发布连通性"
 # 新人按 README 第一步就失败，而内部验证用的是本地 path 仓库所以发现不了。
 #
 # 这里检查 Packagist 上能否真的解析到，防止文档再次失实。
+#
+# ⚠️ 2026-10-13 修：原实现用 `curl --max-time 10 | grep -q`，
+#    踩了两个叠加的坑，导致**每次发版都误报「包没发布」**：
+#      1. Packagist 的 p2 API 从国内实测延迟 3~10s（6 次里 2 次超 10s），
+#         `--max-time 10` 太紧 → curl 退出码 28（超时）
+#      2. `set -o pipefail` 下，curl 非 0 会让整条管道判定失败
+#    结果：网络慢 → 报「Packagist 未收录 —— 文档里的 composer require 跑不通！」
+#    结论方向完全反了（网络问题 vs 发版事故），且会拦住发版。
+#    一个总在撒谎的关卡，比没有关卡更糟 —— 它会训练人忽略它。
+#
+#    现在：① 超时放宽到 30s + 重试 ② 用变量而非管道取 body，
+#    避开 grep -q 提前退出引发 SIGPIPE ③ **区分「连不上」和「真没有」**：
+#    两者的处置完全不同 —— 前者要重试，后者是发版事故。
+#
+#    ⚠️ 但仍然**都算失败**：本检查的职责是「确认版本真的发布了」，
+#    连不上 = 无法确认 = 不能放行（宪法第五条 可验证）。
+#    只是失败信息必须指对根因，否则人会去查错方向。
+#    确实遇到断网需要临时绕过时，用显式的 --skip-network，
+#    它会在输出里留下醒目的「未验证」痕迹。
+fetch_packagist() {
+  # 成功时把 JSON 打到 stdout 并返回 0；失败（网络/超时/空响应）返回 1
+  local body
+  body=$(curl -s --max-time 30 --retry 2 --retry-delay 1 --retry-connrefused \
+      "https://repo.packagist.org/p2/aimanong/$1.json" 2>/dev/null) || return 1
+  [ -n "$body" ] || return 1
+  printf '%s' "$body"
+  return 0
+}
+
+if [ "$SKIP_NET" -eq 1 ]; then
+  warn "已显式跳过 Packagist 连通性检查（--skip-network）"
+  warn "→ 版本同步【未验证】。发布前请务必重跑一次不带该参数的检查。"
+else
 for pkg in framework region; do
-  if curl -s --max-time 10 "https://repo.packagist.org/p2/aimanong/${pkg}.json" 2>/dev/null \
-      | grep -q '"aimanong/'${pkg}'"'; then
-    ok "Packagist 已收录 aimanong/${pkg}"
-  else
-    bad "Packagist 未收录 aimanong/${pkg} —— 文档里的 composer require 跑不通！"
+  if ! body=$(fetch_packagist "$pkg"); then
+    bad "连不上 Packagist，无法确认 aimanong/${pkg} 是否发布（测了 3 次）"
+    echo "       → 这是网络问题，不是发版问题。检查网络后重跑本脚本。"
+    echo "       → 确认是断网而非发版遗漏时，才可用 --skip-network 临时绕过。"
+    continue
   fi
+  # 用 case 而非 `echo | grep -q`：无子进程、无 SIGPIPE 风险
+  case "$body" in
+    *'"aimanong/'"$pkg"'"'*) ok "Packagist 已收录 aimanong/${pkg}" ;;
+    *) bad "Packagist 未收录 aimanong/${pkg} —— 文档里的 composer require 跑不通！" ;;
+  esac
 done
 
 # ⚠️ 最容易漏的一步：tag 推了主仓库，但忘了跑 publish-framework.sh。
@@ -227,8 +272,13 @@ for pkg in framework region; do
   local_ver=$(python3 -c "import json;print(json.load(open('$ROOT/packages/${pkg}/composer.json')).get('version',''))" 2>/dev/null || echo "")
   if [ -z "$local_ver" ]; then continue; fi
 
-  remote_ver=$(curl -s --max-time 10 "https://repo.packagist.org/p2/aimanong/${pkg}.json" 2>/dev/null \
-      | python3 -c "import sys,json
+  if ! body=$(fetch_packagist "$pkg"); then
+    bad "${pkg}: 连不上 Packagist，无法比对版本（网络问题，非发版问题）"
+    echo "       → 检查网络后重跑本脚本。"
+    continue
+  fi
+
+  remote_ver=$(printf '%s' "$body" | python3 -c "import sys,json
 try:
     d=json.load(sys.stdin)
     vs=[v['version'].lstrip('v') for v in d['packages']['aimanong/${pkg}'] if not v['version'].startswith('dev')]
@@ -237,14 +287,18 @@ except: print('')" 2>/dev/null || echo "")
 
   if [ "$local_ver" = "$remote_ver" ]; then
     ok "${pkg}: 本地 $local_ver = Packagist $remote_ver"
+  elif [ -z "$remote_ver" ]; then
+    bad "${pkg}: Packagist 上没有可解析的版本号（可能刚发布，索引尚未更新）"
+    echo "       → 稍等 1~2 分钟重跑；仍为空则检查发布是否真的成功。"
   else
     # 用 bad 而非 warn：这是**发版遗漏**，必须拦住。
     # 只 warn 的话 pre-release 仍显示"全部通过"，
     # 而 Packagist 上用户装到的还是旧代码。
-    bad "${pkg}: 本地 $local_ver ≠ Packagist ${remote_ver:-（空）}"
+    bad "${pkg}: 本地 $local_ver ≠ Packagist $remote_ver"
     echo "       → 需运行: ./scripts/publish-framework.sh ${pkg}"
   fi
 done
+fi
 
 # ─────────────────────────────────────────────────
 printf "\n${C_B}"

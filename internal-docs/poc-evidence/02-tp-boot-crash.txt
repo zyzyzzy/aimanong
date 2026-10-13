@@ -1,0 +1,27 @@
+PHP Fatal error:  Uncaught Error: Class "PhpOption\Option" not found in /private/tmp/tp-poc/vendor/illuminate/support/Env.php:254
+Stack trace:
+#0 /private/tmp/tp-poc/vendor/illuminate/support/Env.php(104): Illuminate\Support\Env::getOption('DB_DRIVER')
+#1 /private/tmp/tp-poc/vendor/illuminate/support/helpers.php(152): Illuminate\Support\Env::get('DB_DRIVER', 'mysql')
+#2 /private/tmp/tp-poc/config/database.php(5): env('DB_DRIVER', 'mysql')
+#3 /private/tmp/tp-poc/vendor/topthink/framework/src/think/Config.php(85): include('/private/tmp/tp...')
+#4 /private/tmp/tp-poc/vendor/topthink/framework/src/think/Config.php(67): think\Config->parse('/private/tmp/tp...', 'database')
+#5 /private/tmp/tp-poc/vendor/topthink/framework/src/think/App.php(574): think\Config->load('/private/tmp/tp...', 'database')
+#6 /private/tmp/tp-poc/vendor/topthink/framework/src/think/App.php(545): think\App->loadConfig()
+#7 /private/tmp/tp-poc/vendor/topthink/framework/src/think/App.php(477): think\App->load()
+#8 Command line code(1): think\App->initialize()
+#9 {main}
+  thrown in /private/tmp/tp-poc/vendor/illuminate/support/Env.php on line 254
+
+Fatal error: Uncaught Error: Class "PhpOption\Option" not found in /private/tmp/tp-poc/vendor/illuminate/support/Env.php:254
+Stack trace:
+#0 /private/tmp/tp-poc/vendor/illuminate/support/Env.php(104): Illuminate\Support\Env::getOption('DB_DRIVER')
+#1 /private/tmp/tp-poc/vendor/illuminate/support/helpers.php(152): Illuminate\Support\Env::get('DB_DRIVER', 'mysql')
+#2 /private/tmp/tp-poc/config/database.php(5): env('DB_DRIVER', 'mysql')
+#3 /private/tmp/tp-poc/vendor/topthink/framework/src/think/Config.php(85): include('/private/tmp/tp...')
+#4 /private/tmp/tp-poc/vendor/topthink/framework/src/think/Config.php(67): think\Config->parse('/private/tmp/tp...', 'database')
+#5 /private/tmp/tp-poc/vendor/topthink/framework/src/think/App.php(574): think\Config->load('/private/tmp/tp...', 'database')
+#6 /private/tmp/tp-poc/vendor/topthink/framework/src/think/App.php(545): think\App->loadConfig()
+#7 /private/tmp/tp-poc/vendor/topthink/framework/src/think/App.php(477): think\App->load()
+#8 Command line code(1): think\App->initialize()
+#9 {main}
+  thrown in /private/tmp/tp-poc/vendor/illuminate/support/Env.php on line 254

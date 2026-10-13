@@ -1,0 +1,24 @@
+=== conflict 守卫验证（2026-10-13）===
+
+场景：干净的 ThinkPHP 8.1.4 项目里执行 composer require aimanong/framework:@dev
+
+--- 加 conflict 之前（v1.8.0）---
+Composer 报【零冲突】，安装 83 个包「成功」，
+随后 ThinkPHP 启动即致命错误（见 02-tp-boot-crash.txt）
+
+--- 加 conflict 之后（v1.8.1）---
+./composer.json has been updated
+Running composer update aimanong/framework
+Loading composer repositories with package information
+Updating dependencies
+Your requirements could not be resolved to an installable set of packages.
+
+  Problem 1
+    - Root composer.json requires aimanong/framework @dev -> satisfiable by aimanong/framework[1.8.1].
+    - topthink/framework is locked to version v8.1.4 and an update of this package was not requested.
+    - aimanong/framework 1.8.1 conflicts with topthink/framework *.
+
+
+Installation failed, reverting ./composer.json and ./composer.lock to their original content.
+
+结论：Composer 明确拒绝 + 自动回滚 composer.json/lock，无残留半装状态。

@@ -1,0 +1,40 @@
+模板                                    行数     待人工项
+------------------------------------------------------------
+auth/login.blade.php                 312       18
+index.blade.php                      158       13
+partials/icon.blade.php               89        3
+partials/layout.blade.php            129        8
+partials/sidebar.blade.php           480        9
+partials/theme-panel.blade.php       211       10
+partials/topbar.blade.php             59        8
+partials/upload.blade.php            250        4
+profile.blade.php                    303        9
+resource.blade.php                  1160       16
+------------------------------------------------------------
+合计 10 个模板，待人工处理项 98 条
+
+按类型聚合：
+   24×  @include(partials.icon) 带数据数组
+   10×  Blade 注释 N 处
+    9×  Laravel helper `url(` × N
+    8×  @php
+    6×  @if N 处
+    5×  Laravel helper `asset(` × N
+    4×  @foreach
+    4×  @json
+    3×  Laravel helper `csrf_token()` × N
+    3×  @extends/@section
+    3×  @push/@stack 在 TP 无对应机制，需人工改写
+    3×  Vue mustache 去转义 N 处
+    2×  @csrf
+    2×  Laravel helper `app()->version()` × N
+    2×  partial 里的 `use Aimanong\Ui\ThemeConfig;` 必须上提到页面级（TP include 是编译期内联，重复即致命）
+    2×  @include(partials.upload) 带数据数组
+    1×  Laravel helper `old(` × N
+    1×  Laravel helper `$errors` × N
+    1×  @elseif N 处
+    1×  @forelse
+    1×  Blade 原始输出 {!! !!} N 处
+    1×  @checked 在 TP 无对应，需人工展开为 {if}
+    1×  @switch/@case 在 TP 无对应，需人工展开为 {if}
+    1×  @include($pluginView) 带数据数组

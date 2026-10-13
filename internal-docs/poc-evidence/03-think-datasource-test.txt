@@ -1,0 +1,31 @@
+=== ① 基础分页 ===
+  ✅ paginate() items 数 → 3
+  ✅ total → 3
+  ✅ perPage → 20
+  ✅ currentPage → 1
+  ✅ lastPage → 1
+  ✅ per_page=2 请求覆盖 → 2
+  ✅ defaultPerPage 生效 → 1
+=== ② 搜索（OR 组） ===
+  ✅ keyword 命中 order_no → 1
+  ✅ keyword 命中 amount → 1
+  ✅ keyword 无命中 → 0
+  ✅ keyword 为 Stringable → 3
+=== ③ 排序 ===
+  ✅ order by amount desc → SO-002=2300.5
+  ✅ 关联排序 customer.name（最难移植点） → SO-003
+=== ④ 筛选 ===
+  ✅ filters 平铺列 → 2
+  ✅ filters 关联列 → 2
+=== ⑤ ids 批量 ===
+  ✅ ids 过滤 → 2
+=== ⑥ CRUD ===
+  ✅ create → id=4
+  ✅ find → SO-900
+  ✅ update → 188.8
+  ✅ find 不存在抛 ModelNotFoundException → ✅ think\db\exception\ModelNotFoundException
+  ✅ delete → true
+=== ⑦ 预加载 ===
+  ✅ with 关联 → 深圳宏远精密
+
+结果: 通过 22 / 失败 0

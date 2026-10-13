@@ -1,0 +1,751 @@
+{
+    "installed": [
+        {
+            "name": "aimanong/framework",
+            "direct-dependency": true,
+            "homepage": "https://aimanong.com",
+            "source": null,
+            "version": "1.8.0",
+            "description": "Aimanong（AI 码农）—— 为 AI Agent 设计的 Laravel 后台开发框架",
+            "abandoned": false
+        },
+        {
+            "name": "brick/math",
+            "direct-dependency": false,
+            "homepage": null,
+            "source": "https://github.com/brick/math/tree/0.14.8",
+            "version": "0.14.8",
+            "description": "Arbitrary-precision arithmetic library",
+            "abandoned": false
+        },
+        {
+            "name": "carbonphp/carbon-doctrine-types",
+            "direct-dependency": false,
+            "homepage": null,
+            "source": "https://github.com/CarbonPHP/carbon-doctrine-types/tree/3.2.1",
+            "version": "3.2.1",
+            "description": "Types to use Carbon in Doctrine",
+            "abandoned": false
+        },
+        {
+            "name": "doctrine/inflector",
+            "direct-dependency": false,
+            "homepage": "https://www.doctrine-project.org/projects/inflector.html",
+            "source": "https://github.com/doctrine/inflector/tree/2.1.0",
+            "version": "2.1.0",
+            "description": "PHP Doctrine Inflector is a small library that can perform string manipulations with regard to upper/lowercase and singular/plural forms of words.",
+            "abandoned": false
+        },
+        {
+            "name": "doctrine/lexer",
+            "direct-dependency": false,
+            "homepage": "https://www.doctrine-project.org/projects/lexer.html",
+            "source": "https://github.com/doctrine/lexer/tree/3.0.3",
+            "version": "3.0.3",
+            "description": "PHP Doctrine Lexer parser library that can be used in Top-Down, Recursive Descent Parsers.",
+            "abandoned": false
+        },
+        {
+            "name": "egulias/email-validator",
+            "direct-dependency": false,
+            "homepage": "https://github.com/egulias/EmailValidator",
+            "source": "https://github.com/egulias/EmailValidator/tree/4.0.4",
+            "version": "4.0.4",
+            "description": "A library for validating emails against several RFCs",
+            "abandoned": false
+        },
+        {
+            "name": "fruitcake/php-cors",
+            "direct-dependency": false,
+            "homepage": "https://github.com/fruitcake/php-cors",
+            "source": "https://github.com/fruitcake/php-cors/tree/v1.4.0",
+            "version": "v1.4.0",
+            "description": "Cross-origin resource sharing library for the Symfony HttpFoundation",
+            "abandoned": false
+        },
+        {
+            "name": "guzzlehttp/guzzle",
+            "direct-dependency": false,
+            "homepage": null,
+            "source": "https://github.com/guzzle/guzzle/tree/7.15.5",
+            "version": "7.15.5",
+            "description": "Guzzle is a PHP HTTP client library",
+            "abandoned": false
+        },
+        {
+            "name": "guzzlehttp/promises",
+            "direct-dependency": false,
+            "homepage": null,
+            "source": "https://github.com/guzzle/promises/tree/2.5.3",
+            "version": "2.5.3",
+            "description": "Guzzle promises library",
+            "abandoned": false
+        },
+        {
+            "name": "guzzlehttp/psr7",
+            "direct-dependency": false,
+            "homepage": null,
+            "source": "https://github.com/guzzle/psr7/tree/2.13.1",
+            "version": "2.13.1",
+            "description": "PSR-7 message implementation that also provides common utility methods",
+            "abandoned": false
+        },
+        {
+            "name": "guzzlehttp/uri-template",
+            "direct-dependency": false,
+            "homepage": null,
+            "source": "https://github.com/guzzle/uri-template/tree/v1.0.11",
+            "version": "v1.0.11",
+            "description": "A polyfill class for uri_template of PHP",
+            "abandoned": false
+        },
+        {
+            "name": "illuminate/bus",
+            "direct-dependency": false,
+            "homepage": "https://laravel.com",
+            "source": "https://github.com/laravel/framework",
+            "version": "v12.69.3",
+            "description": "The Illuminate Bus package.",
+            "abandoned": false
+        },
+        {
+            "name": "illuminate/collections",
+            "direct-dependency": false,
+            "homepage": "https://laravel.com",
+            "source": "https://github.com/laravel/framework",
+            "version": "v12.69.3",
+            "description": "The Illuminate Collections package.",
+            "abandoned": false
+        },
+        {
+            "name": "illuminate/conditionable",
+            "direct-dependency": false,
+            "homepage": "https://laravel.com",
+            "source": "https://github.com/laravel/framework",
+            "version": "v12.69.3",
+            "description": "The Illuminate Conditionable package.",
+            "abandoned": false
+        },
+        {
+            "name": "illuminate/console",
+            "direct-dependency": false,
+            "homepage": "https://laravel.com",
+            "source": "https://github.com/laravel/framework",
+            "version": "v12.69.3",
+            "description": "The Illuminate Console package.",
+            "abandoned": false
+        },
+        {
+            "name": "illuminate/container",
+            "direct-dependency": false,
+            "homepage": "https://laravel.com",
+            "source": "https://github.com/laravel/framework",
+            "version": "v12.69.3",
+            "description": "The Illuminate Container package.",
+            "abandoned": false
+        },
+        {
+            "name": "illuminate/contracts",
+            "direct-dependency": false,
+            "homepage": "https://laravel.com",
+            "source": "https://github.com/laravel/framework",
+            "version": "v12.69.3",
+            "description": "The Illuminate Contracts package.",
+            "abandoned": false
+        },
+        {
+            "name": "illuminate/database",
+            "direct-dependency": false,
+            "homepage": "https://laravel.com",
+            "source": "https://github.com/laravel/framework",
+            "version": "v12.69.3",
+            "description": "The Illuminate Database package.",
+            "abandoned": false
+        },
+        {
+            "name": "illuminate/events",
+            "direct-dependency": false,
+            "homepage": "https://laravel.com",
+            "source": "https://github.com/laravel/framework",
+            "version": "v12.69.3",
+            "description": "The Illuminate Events package.",
+            "abandoned": false
+        },
+        {
+            "name": "illuminate/filesystem",
+            "direct-dependency": false,
+            "homepage": "https://laravel.com",
+            "source": "https://github.com/laravel/framework",
+            "version": "v12.69.3",
+            "description": "The Illuminate Filesystem package.",
+            "abandoned": false
+        },
+        {
+            "name": "illuminate/http",
+            "direct-dependency": false,
+            "homepage": "https://laravel.com",
+            "source": "https://github.com/laravel/framework",
+            "version": "v12.69.3",
+            "description": "The Illuminate Http package.",
+            "abandoned": false
+        },
+        {
+            "name": "illuminate/json-schema",
+            "direct-dependency": false,
+            "homepage": "https://laravel.com",
+            "source": "https://github.com/laravel/framework",
+            "version": "v12.69.3",
+            "description": "The Illuminate Json Schema package.",
+            "abandoned": false
+        },
+        {
+            "name": "illuminate/macroable",
+            "direct-dependency": false,
+            "homepage": "https://laravel.com",
+            "source": "https://github.com/laravel/framework",
+            "version": "v12.69.3",
+            "description": "The Illuminate Macroable package.",
+            "abandoned": false
+        },
+        {
+            "name": "illuminate/pipeline",
+            "direct-dependency": false,
+            "homepage": "https://laravel.com",
+            "source": "https://github.com/laravel/framework",
+            "version": "v12.69.3",
+            "description": "The Illuminate Pipeline package.",
+            "abandoned": false
+        },
+        {
+            "name": "illuminate/reflection",
+            "direct-dependency": false,
+            "homepage": "https://laravel.com",
+            "source": "https://github.com/laravel/framework",
+            "version": "v12.69.3",
+            "description": "The Illuminate Reflection package.",
+            "abandoned": false
+        },
+        {
+            "name": "illuminate/routing",
+            "direct-dependency": false,
+            "homepage": "https://laravel.com",
+            "source": "https://github.com/laravel/framework",
+            "version": "v12.69.3",
+            "description": "The Illuminate Routing package.",
+            "abandoned": false
+        },
+        {
+            "name": "illuminate/session",
+            "direct-dependency": false,
+            "homepage": "https://laravel.com",
+            "source": "https://github.com/laravel/framework",
+            "version": "v12.69.3",
+            "description": "The Illuminate Session package.",
+            "abandoned": false
+        },
+        {
+            "name": "illuminate/support",
+            "direct-dependency": false,
+            "homepage": "https://laravel.com",
+            "source": "https://github.com/laravel/framework",
+            "version": "v12.69.3",
+            "description": "The Illuminate Support package.",
+            "abandoned": false
+        },
+        {
+            "name": "illuminate/translation",
+            "direct-dependency": false,
+            "homepage": "https://laravel.com",
+            "source": "https://github.com/laravel/framework",
+            "version": "v12.69.3",
+            "description": "The Illuminate Translation package.",
+            "abandoned": false
+        },
+        {
+            "name": "illuminate/validation",
+            "direct-dependency": false,
+            "homepage": "https://laravel.com",
+            "source": "https://github.com/laravel/framework",
+            "version": "v12.69.3",
+            "description": "The Illuminate Validation package.",
+            "abandoned": false
+        },
+        {
+            "name": "illuminate/view",
+            "direct-dependency": false,
+            "homepage": "https://laravel.com",
+            "source": "https://github.com/laravel/framework",
+            "version": "v12.69.3",
+            "description": "The Illuminate View package.",
+            "abandoned": false
+        },
+        {
+            "name": "laravel/mcp",
+            "direct-dependency": false,
+            "homepage": "https://github.com/laravel/mcp",
+            "source": "https://github.com/laravel/mcp",
+            "version": "v0.4.2",
+            "description": "Rapidly build MCP servers for your Laravel applications.",
+            "abandoned": false
+        },
+        {
+            "name": "laravel/prompts",
+            "direct-dependency": false,
+            "homepage": null,
+            "source": "https://github.com/laravel/prompts/tree/v0.3.25",
+            "version": "v0.3.25",
+            "description": "Add beautiful and user-friendly forms to your command-line applications.",
+            "abandoned": false
+        },
+        {
+            "name": "laravel/serializable-closure",
+            "direct-dependency": false,
+            "homepage": null,
+            "source": "https://github.com/laravel/serializable-closure",
+            "version": "v2.1.0",
+            "description": "Laravel Serializable Closure provides an easy and secure way to serialize closures in PHP.",
+            "abandoned": false
+        },
+        {
+            "name": "league/flysystem",
+            "direct-dependency": false,
+            "homepage": null,
+            "source": "https://github.com/thephpleague/flysystem/tree/3.36.0",
+            "version": "3.36.0",
+            "description": "File storage abstraction for PHP",
+            "abandoned": false
+        },
+        {
+            "name": "league/flysystem-local",
+            "direct-dependency": false,
+            "homepage": null,
+            "source": "https://github.com/thephpleague/flysystem-local/tree/3.35.3",
+            "version": "3.35.3",
+            "description": "Local filesystem adapter for Flysystem.",
+            "abandoned": false
+        },
+        {
+            "name": "league/mime-type-detection",
+            "direct-dependency": false,
+            "homepage": null,
+            "source": "https://github.com/thephpleague/mime-type-detection/tree/1.17.0",
+            "version": "1.17.0",
+            "description": "Mime-type detection for Flysystem",
+            "abandoned": false
+        },
+        {
+            "name": "nesbot/carbon",
+            "direct-dependency": false,
+            "homepage": "https://carbonphp.github.io/carbon/",
+            "source": "https://github.com/CarbonPHP/carbon",
+            "version": "3.14.2",
+            "description": "An API extension for DateTime that supports 281 different languages.",
+            "abandoned": false
+        },
+        {
+            "name": "nunomaduro/termwind",
+            "direct-dependency": false,
+            "homepage": null,
+            "source": "https://github.com/nunomaduro/termwind/tree/v2.4.0",
+            "version": "v2.4.0",
+            "description": "It's like Tailwind CSS, but for the console.",
+            "abandoned": false
+        },
+        {
+            "name": "psr/clock",
+            "direct-dependency": false,
+            "homepage": "https://github.com/php-fig/clock",
+            "source": "https://github.com/php-fig/clock/tree/1.0.0",
+            "version": "1.0.0",
+            "description": "Common interface for reading the clock.",
+            "abandoned": false
+        },
+        {
+            "name": "psr/container",
+            "direct-dependency": false,
+            "homepage": "https://github.com/php-fig/container",
+            "source": "https://github.com/php-fig/container/tree/2.0.2",
+            "version": "2.0.2",
+            "description": "Common Container Interface (PHP FIG PSR-11)",
+            "abandoned": false
+        },
+        {
+            "name": "psr/event-dispatcher",
+            "direct-dependency": false,
+            "homepage": null,
+            "source": "https://github.com/php-fig/event-dispatcher/tree/1.0.0",
+            "version": "1.0.0",
+            "description": "Standard interfaces for event handling.",
+            "abandoned": false
+        },
+        {
+            "name": "psr/http-client",
+            "direct-dependency": false,
+            "homepage": "https://github.com/php-fig/http-client",
+            "source": "https://github.com/php-fig/http-client",
+            "version": "1.0.3",
+            "description": "Common interface for HTTP clients",
+            "abandoned": false
+        },
+        {
+            "name": "psr/http-factory",
+            "direct-dependency": false,
+            "homepage": null,
+            "source": "https://github.com/php-fig/http-factory",
+            "version": "1.1.0",
+            "description": "PSR-17: Common interfaces for PSR-7 HTTP message factories",
+            "abandoned": false
+        },
+        {
+            "name": "psr/http-message",
+            "direct-dependency": false,
+            "homepage": "https://github.com/php-fig/http-message",
+            "source": "https://github.com/php-fig/http-message/tree/2.0",
+            "version": "2.0",
+            "description": "Common interface for HTTP messages",
+            "abandoned": false
+        },
+        {
+            "name": "psr/log",
+            "direct-dependency": false,
+            "homepage": "https://github.com/php-fig/log",
+            "source": "https://github.com/php-fig/log/tree/3.0.2",
+            "version": "3.0.2",
+            "description": "Common interface for logging libraries",
+            "abandoned": false
+        },
+        {
+            "name": "psr/simple-cache",
+            "direct-dependency": false,
+            "homepage": null,
+            "source": "https://github.com/php-fig/simple-cache/tree/3.0.0",
+            "version": "3.0.0",
+            "description": "Common interfaces for simple caching",
+            "abandoned": false
+        },
+        {
+            "name": "ralouphie/getallheaders",
+            "direct-dependency": false,
+            "homepage": null,
+            "source": "https://github.com/ralouphie/getallheaders/tree/develop",
+            "version": "3.0.3",
+            "description": "A polyfill for getallheaders.",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/clock",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/clock/tree/v7.4.8",
+            "version": "v7.4.8",
+            "description": "Decouples applications from the system clock",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/console",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/console/tree/v7.4.20",
+            "version": "v7.4.20",
+            "description": "Eases the creation of beautiful and testable command line interfaces",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/deprecation-contracts",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/deprecation-contracts/tree/v3.7.1",
+            "version": "v3.7.1",
+            "description": "A generic function and convention to trigger deprecation notices",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/error-handler",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/error-handler/tree/v7.4.20",
+            "version": "v7.4.20",
+            "description": "Provides tools to manage errors and ease debugging PHP code",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/event-dispatcher",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/event-dispatcher/tree/v7.4.17",
+            "version": "v7.4.17",
+            "description": "Provides tools that allow your application components to communicate with each other by dispatching events and listening to them",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/event-dispatcher-contracts",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/event-dispatcher-contracts/tree/v3.7.1",
+            "version": "v3.7.1",
+            "description": "Generic abstractions related to dispatching event",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/finder",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/finder/tree/v7.4.20",
+            "version": "v7.4.20",
+            "description": "Finds files and directories via an intuitive fluent interface",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/http-foundation",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/http-foundation/tree/v7.4.20",
+            "version": "v7.4.20",
+            "description": "Defines an object-oriented layer for the HTTP specification",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/http-kernel",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/http-kernel/tree/v7.4.20",
+            "version": "v7.4.20",
+            "description": "Provides a structured process for converting a Request into a Response",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/mime",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/mime/tree/v7.4.19",
+            "version": "v7.4.19",
+            "description": "Allows manipulating MIME messages",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/polyfill-ctype",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/polyfill-ctype/tree/v1.37.0",
+            "version": "v1.37.0",
+            "description": "Symfony polyfill for ctype functions",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/polyfill-intl-grapheme",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/polyfill-intl-grapheme/tree/v1.43.0",
+            "version": "v1.43.0",
+            "description": "Symfony polyfill for intl's grapheme_* functions",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/polyfill-intl-idn",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/polyfill-intl-idn/tree/v1.43.0",
+            "version": "v1.43.0",
+            "description": "Symfony polyfill for intl's idn_to_ascii and idn_to_utf8 functions",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/polyfill-intl-normalizer",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/polyfill-intl-normalizer/tree/v1.43.0",
+            "version": "v1.43.0",
+            "description": "Symfony polyfill for intl's Normalizer class and related functions",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/polyfill-mbstring",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/polyfill-mbstring/tree/v1.43.0",
+            "version": "v1.43.0",
+            "description": "Symfony polyfill for the Mbstring extension",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/polyfill-php80",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/polyfill-php80/tree/v1.43.0",
+            "version": "v1.43.0",
+            "description": "Symfony polyfill backporting some PHP 8.0+ features to lower PHP versions",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/polyfill-php83",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/polyfill-php83/tree/v1.43.0",
+            "version": "v1.43.0",
+            "description": "Symfony polyfill backporting some PHP 8.3+ features to lower PHP versions",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/polyfill-php84",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/polyfill-php84/tree/v1.43.0",
+            "version": "v1.43.0",
+            "description": "Symfony polyfill backporting some PHP 8.4+ features to lower PHP versions",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/polyfill-php85",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/polyfill-php85/tree/v1.43.0",
+            "version": "v1.43.0",
+            "description": "Symfony polyfill backporting some PHP 8.5+ features to lower PHP versions",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/process",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/process/tree/v7.4.19",
+            "version": "v7.4.19",
+            "description": "Executes commands in sub-processes",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/routing",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/routing/tree/v7.4.20",
+            "version": "v7.4.20",
+            "description": "Maps an HTTP request to a set of configuration variables",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/service-contracts",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/service-contracts/tree/v3.7.3",
+            "version": "v3.7.3",
+            "description": "Generic abstractions related to writing services",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/string",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/string/tree/v7.4.19",
+            "version": "v7.4.19",
+            "description": "Provides an object-oriented API to strings and deals with bytes, UTF-8 code points and grapheme clusters in a unified way",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/translation",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/translation/tree/v7.4.17",
+            "version": "v7.4.17",
+            "description": "Provides tools to internationalize your application",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/translation-contracts",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/translation-contracts/tree/v3.7.1",
+            "version": "v3.7.1",
+            "description": "Generic abstractions related to translation",
+            "abandoned": false
+        },
+        {
+            "name": "symfony/var-dumper",
+            "direct-dependency": false,
+            "homepage": "https://symfony.com",
+            "source": "https://github.com/symfony/var-dumper/tree/v7.4.18",
+            "version": "v7.4.18",
+            "description": "Provides mechanisms for walking through any arbitrary PHP variable",
+            "abandoned": false
+        },
+        {
+            "name": "topthink/framework",
+            "direct-dependency": true,
+            "homepage": "http://thinkphp.cn/",
+            "source": "https://github.com/top-think/framework/tree/v8.1.4",
+            "version": "v8.1.4",
+            "description": "The ThinkPHP Framework.",
+            "abandoned": false
+        },
+        {
+            "name": "topthink/think-container",
+            "direct-dependency": false,
+            "homepage": null,
+            "source": "https://github.com/top-think/think-container/tree/v3.0.2",
+            "version": "v3.0.2",
+            "description": "PHP Container & Facade Manager",
+            "abandoned": false
+        },
+        {
+            "name": "topthink/think-dumper",
+            "direct-dependency": true,
+            "homepage": null,
+            "source": "https://github.com/top-think/think-dumper/tree/v1.0.7",
+            "version": "v1.0.7",
+            "description": "Dumper extend for thinkphp",
+            "abandoned": false
+        },
+        {
+            "name": "topthink/think-filesystem",
+            "direct-dependency": true,
+            "homepage": null,
+            "source": "https://github.com/top-think/think-filesystem/tree/v3.0.0",
+            "version": "v3.0.0",
+            "description": "The ThinkPHP6.1 Filesystem Package",
+            "abandoned": false
+        },
+        {
+            "name": "topthink/think-helper",
+            "direct-dependency": false,
+            "homepage": null,
+            "source": "https://github.com/top-think/think-helper/tree/v3.1.12",
+            "version": "v3.1.12",
+            "description": "The ThinkPHP6 Helper Package",
+            "abandoned": false
+        },
+        {
+            "name": "topthink/think-orm",
+            "direct-dependency": true,
+            "homepage": null,
+            "source": "https://github.com/top-think/think-orm/tree/v4.0.51",
+            "version": "v4.0.51",
+            "description": "the PHP Database&ORM Framework",
+            "abandoned": false
+        },
+        {
+            "name": "topthink/think-trace",
+            "direct-dependency": true,
+            "homepage": null,
+            "source": "https://github.com/top-think/think-trace/tree/v2.0",
+            "version": "v2.0",
+            "description": "thinkphp debug trace",
+            "abandoned": false
+        },
+        {
+            "name": "topthink/think-validate",
+            "direct-dependency": false,
+            "homepage": null,
+            "source": "https://github.com/top-think/think-validate/tree/v3.0.7",
+            "version": "v3.0.7",
+            "description": "think validate",
+            "abandoned": false
+        },
+        {
+            "name": "voku/portable-ascii",
+            "direct-dependency": false,
+            "homepage": "https://github.com/voku/portable-ascii",
+            "source": "https://github.com/voku/portable-ascii/tree/2.1.1",
+            "version": "2.1.1",
+            "description": "Portable ASCII library - performance optimized (ascii) string functions for php.",
+            "abandoned": false
+        }
+    ]
+}

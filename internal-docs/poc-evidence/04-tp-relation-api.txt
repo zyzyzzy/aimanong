@@ -1,0 +1,21 @@
+关联类: think\model\relation\BelongsTo
+反射方法:
+  - __construct(parent, model, foreignKey, localKey, relation)
+  - getRelation(subRelation, closure)
+  - getRelationCountQuery(closure, aggregate, field, name)
+  - relationCount(result, closure, aggregate, field, name)
+  - has(operator, count, id, joinType, query)
+  - hasWhere(where, fields, joinType, query, logic, relationAlias)
+  - associate(model)
+  - dissociate()
+
+--- 关键取值 ---
+getModel() => Customer
+getRelated() => (无此方法)
+getForeignKey() => 'customer_id'
+getLocalKey() => 'id'
+getOwnerKeyName() => (无此方法)
+getForeignKeyName() => (无此方法)
+
+--- 关联排序子查询可行性 ---
+TP 子查询 SQL: ( SELECT `name` FROM `customers` WHERE  `id` <> 0 LIMIT 1 )

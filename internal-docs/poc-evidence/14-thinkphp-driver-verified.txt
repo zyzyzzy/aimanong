@@ -1,0 +1,94 @@
+=== packages/thinkphp 驱动验证（2026-10-13，真实 ThinkPHP 8.1.4）===
+
+## 安装
+  项目：/tmp/tp-verify（只 require topthink/framework ^8.0 + aimanong/thinkphp）
+  - Installing topthink/framework (v8.1.4)
+  - Installing aimanong/core (1.0.0)
+  - Installing aimanong/thinkphp (1.0.0)
+
+  **零 illuminate**（ls vendor/illuminate → 不存在）
+  ← PoC 发现的那个致命冲突（全局 env() 被 Illuminate 抢走）在真实安装里消失了。
+
+## ① 驱动契约实现 + 注册语义
+=== ① 驱动注册（不注册就不该能用）===
+  未注册时 Drivers 为空                    ✅
+  缺驱动抛 DriverNotRegisteredException      ✅
+  内省缺驱动返回 null（刻意不抛）   ✅
+  注册后 4 个驱动就位                    ✅  SchemaIntrospector,DictionarySource,PermissionChecker,UploadSpec
+
+=== ② ThinkDataSource（PoC 的 22 项）===
+## ② ThinkDataSource（PoC 的 22 项，全绿）
+=== ② ThinkDataSource（PoC 的 22 项）===
+  paginate()->items()                            ✅
+  total()                                        ✅
+  perPage()（TP 是 listRows）                 ✅
+  currentPage()                                  ✅
+  lastPage()                                     ✅
+  per_page 请求覆盖                          ✅
+  defaultPerPage                                 ✅
+  搜索命中 order_no                          ✅
+  搜索无命中                                ✅
+  搜索支持 Stringable                        ✅
+  普通列排序                                ✅  SO-002
+  关联列排序（最难移植点）           ✅  SO-003
+  filters 平铺列                              ✅
+  filters 关联列 hasWhere                     ✅
+  ids 批量过滤                               ✅
+  with 预加载                                 ✅
+  create                                         ✅
+  find                                           ✅
+  update                                         ✅
+  find 找不到抛 ModelNotFoundException       ✅
+  delete                                         ✅
+
+=== ③ ThinkIntrospector（幽灵列检测）===
+## ③ ThinkIntrospector（幽灵列检测）
+=== ③ ThinkIntrospector（幽灵列检测）===
+  tableOf                                        ✅
+  hasTable 真表                                ✅
+  hasTable 假表                                ✅
+  columnsOf 含 name                             ✅  id,name,industry,level,credit_days,create_time
+  isRelation                                     ✅
+  relationTargetOf                               ✅
+  访问器 getLevelLabelAttr                    ✅
+  $type 声明的列                             ✅
+  拼错列名不放过                          ✅
+
+=== ④ 三个小契约 ===
+## ④ 三个小契约
+=== ④ 三个小契约 ===
+  dict has                                       ✅
+  dict codes                                     ✅
+  dict options 形状                            ✅
+  dict 不存在的 code                         ✅
+  perm 授过权                                 ✅
+  perm 未授权                                 ✅
+  perm slug                                      ✅
+  perm slug 默认动作                         ✅
+  upload spec 8 个键                           ✅  urlTemplate,endpoint,disk,directory,imageMaxSize,fileMaxSize,imageExtensions,fileExtensions
+  upload 默认扩展名                         ✅
+
+通过 44 / 44
+
+════════════════════════════════════════
+## ⑤ 决定性集成测试：core 编译器在 ThinkPHP 上
+=== ① core 编译器在 ThinkPHP 上工作 ===
+  编译成功                                     ✅
+  列数                                           ✅
+  字典列 formatter=map                          ✅  map
+  字典列 props.dict 记录了来源             ✅  priority
+  字典映射来自 TP 驱动                     ✅  {"low":"低","high":"高"}
+
+=== ② 幽灵列检测在 ThinkPHP 上真的生效 ===
+  抛出 GhostColumnException                      ✅
+  指出是 column:nmae                            ✅  column:nmae
+  可用列来自 TP 内省                        ✅  id,name,industry,level,credit_days,create_time
+  did_you_mean 给出建议                        ✅  name
+
+=== ③ 四份产物在 ThinkPHP 上生成 ===
+  生成 schema.json                               ✅  3400 字节
+  生成 types.ts                                  ✅  3721 字节
+  生成 openapi.json                              ✅  5728 字节
+  生成 ai-context.md                             ✅  381 字节
+
+通过 13 / 13

@@ -167,11 +167,46 @@ class Column
          * 正确顺序下 formatter 最终是 'map'，前端照样渲染成徽章。
          */
         $this->badge();
-        $this->map($dictionary->map($code));
+
+        /*
+         * 值 => 标签、值 => 颜色都**从 options() 自己派生**，
+         * 不调驱动上的 map()/colors()。
+         *
+         * 为什么：契约 `DictionarySource` 只有 has/codes/options 三个方法。
+         * 原先这里直接调 `$dictionary->map()` / `->colors()` —— 那是
+         * **契约外的方法**，Laravel 的 Dictionary 恰好有，所以一直没暴露；
+         * 换成 ThinkPHP 实现（只按契约写）就当场 `Call to undefined method`。
+         *
+         * 这类「契约不完整」是最隐蔽的一种隐式耦合：单框架下永远正确，
+         * 换实现时立刻崩，而崩的位置离原因很远。
+         *
+         * 派生结果与 Laravel `Dictionary::map()/colors()` 逐字等价
+         * （两边都是「遍历 options()，非空 color 才收录」）。
+         */
+        $options = $dictionary->options($code);
+        $map = [];
+        $colors = [];
+
+        foreach ($options as $option) {
+            // 契约保证 value/label 一定存在且是 string —— 不需要 ?? 兜底
+            $value = $option['value'];
+
+            if ($value === '') {
+                continue;
+            }
+
+            $map[$value] = $option['label'];
+
+            $color = $option['color'];
+
+            if ($color !== null && $color !== '') {
+                $colors[$value] = $color;
+            }
+        }
+
+        $this->map($map);
 
         $this->props['dict'] = $code;
-
-        $colors = $dictionary->colors($code);
 
         if ($colors !== []) {
             $this->props['dictColors'] = $colors;

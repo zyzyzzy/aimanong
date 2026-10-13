@@ -1,0 +1,50 @@
+{
+    "name": "aimanong/thinkphp",
+    "version": "1.0.0",
+    "description": "Aimanong 的 ThinkPHP 8 驱动 —— ThinkORM 数据源 / 模板 / 路由 / 认证",
+    "type": "library",
+    "keywords": [
+        "aimanong",
+        "ai",
+        "admin",
+        "thinkphp",
+        "ai-first"
+    ],
+    "homepage": "https://aimanong.com",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Aimanong",
+            "email": "zyzyzzy@vip.qq.com"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "ext-json": "*",
+        "ext-mbstring": "*",
+        "aimanong/core": "^1.0",
+        "topthink/framework": "^8.0"
+    },
+    "conflict": {
+        "illuminate/support": "*"
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../core",
+            "options": {
+                "symlink": true
+            }
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Aimanong\\ThinkPHP\\": "src/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

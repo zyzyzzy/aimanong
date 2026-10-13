@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\ThinkPHP;
 
+use Aimanong\Ai\ScopeHooks;
 use Aimanong\Contracts\DataSource;
 use Aimanong\Contracts\PageResult;
 use think\db\exception\ModelNotFoundException;
@@ -38,6 +39,16 @@ class ThinkDataSource implements DataSource
     {
         $query = $this->query();
 
+        /*
+         * 数据作用域（多租户 / 行级隔离）—— **必须在所有条件之前**。
+         *
+         * ⚠️ 这是本次全面验收发现的**最高危缺口**：Laravel 侧
+         * EloquentRepository 有 4 处 ScopeHooks，而这里此前 0 处 ——
+         * 配了多租户后 TP 侧查询不做任何收窄，**跨租户数据全量返回**。
+         * 而且它在 200 响应里完全看不出来（这正是它危险的原因）。
+         */
+        ScopeHooks::applyQuery($query);
+
         $this->applyEagerLoad($query, $params);
         $this->applySearch($query, $params);
         $this->applySort($query, $params);
@@ -54,6 +65,10 @@ class ThinkDataSource implements DataSource
 
     public function create(array $data): object
     {
+        // 写入作用域（多租户：自动补 tenant_id）—— 与查询作用域成对，
+        // 少了它就会出现「读得到、写不进」或更糟的「写到别人的租户下」
+        $data = ScopeHooks::applyWriting($data);
+
         // TP 的 create 是**真正的静态方法**（不像 query() 是 __callStatic 转发）
         return $this->model::create($data);
     }
@@ -61,7 +76,7 @@ class ThinkDataSource implements DataSource
     public function update(int|string $id, array $data): object
     {
         $model = $this->find($id);
-        $model->save($data);
+        $model->save(ScopeHooks::applyWriting($data));
 
         // Eloquent 有 fresh()，TP 没有 —— 重新查一次
         return $this->find($id);

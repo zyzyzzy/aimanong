@@ -133,7 +133,7 @@ final class ResourceController
 
     public function store(Request $request, string $uri): Response
     {
-        if (($deny = $this->deny($uri, 'store')) !== null) {
+        if (($deny = $this->deny($uri, 'create')) !== null) {
             return $deny;
         }
 
@@ -147,9 +147,17 @@ final class ResourceController
         }
 
         $data = $this->payload($request);
-        [$data] = $this->splitRelationFields($node, $data);
+        [$data, $relations] = $this->splitRelationFields($node, $data);
 
-        $model = $this->repository($node)->create($data);
+        try {
+            $model = $this->repository($node)->create($data);
+
+            if ($relations !== []) {
+                $this->syncRelations($model, $relations);
+            }
+        } catch (\think\db\exception\PDOException | \think\db\exception\DbException $e) {
+            return $this->constraintViolation($e, $node);
+        }
 
         return Response::create(['data' => $model], 'json', 201);
     }
@@ -170,12 +178,18 @@ final class ResourceController
         }
 
         $data = $this->payload($request);
-        [$data] = $this->splitRelationFields($node, $data);
+        [$data, $relations] = $this->splitRelationFields($node, $data);
 
         try {
             $model = $this->repository($node)->update($id, $data);
+
+            if ($relations !== []) {
+                $this->syncRelations($model, $relations);
+            }
         } catch (ModelNotFoundException) {
             return $this->notFound($uri, $id);
+        } catch (\think\db\exception\PDOException | \think\db\exception\DbException $e) {
+            return $this->constraintViolation($e, $node);
         }
 
         return Response::create(['data' => $model], 'json', 200);
@@ -260,6 +274,31 @@ final class ResourceController
      */
     protected function deny(string $uri, string $action): ?Response
     {
+        /*
+         * 只读校验**必须在 RBAC 之前**。
+         *
+         * RBAC 默认关闭时权限判定直接放行；若把只读校验写在后面，
+         * 未启用 RBAC 的项目就能随便改只读资源。「只读」是资源自身的
+         * 性质，与权限系统无关 —— Laravel 侧也是这个顺序。
+         *
+         * ⚠️ 本次全面验收发现：TP 侧此前**完全没有**这道校验，
+         * 只读资源会被真的写库；而共享的 OpenApiEmitter 按 readonly
+         * 省略了写接口 —— 产物说不许写、接口却接受写。
+         */
+        if (in_array($action, ['create', 'update', 'destroy'], true)) {
+            $node = $this->resolve($uri);
+
+            if ((bool) ($node->meta['readonly'] ?? false)) {
+                return Response::create([
+                    'error' => [
+                        'code' => 'RESOURCE_READONLY',
+                        'message' => "「{$node->label}」是只读资源（Resource::readonly()），"
+                            .'只能由系统写入，不允许通过后台接口修改。',
+                    ],
+                ], 'json', 403);
+            }
+        }
+
         $checker = Drivers::permissions();
         $slug = $checker->slug($uri, $action);
 
@@ -325,7 +364,24 @@ final class ResourceController
         if (! $isCreate) {
             foreach ((array) ($meta['requiredOnCreate'] ?? []) as $name) {
                 if (is_string($name)) {
-                    $rules[$name] = $this->dropRequired((string) ($rules[$name] ?? ''));
+                    $rules[$name] = $this->dropRequired($this->normalizeRule($rules[$name] ?? ''));
+                }
+            }
+        }
+
+        /*
+         * 仅新增时必填的字段（典型：用户表单的密码框）。
+         *
+         * ⚠️ 本次全面验收发现：TP 侧此前只处理了「编辑时 drop require」，
+         * **新增时什么都不加** —— 于是 POST 不带密码不会 422，
+         * 直接撞上 NOT NULL → 未捕获异常 → 500。
+         * 而 Laravel 是 422「密码 不能为空」。
+         */
+        if ($isCreate) {
+            foreach ((array) ($meta['requiredOnCreate'] ?? []) as $name) {
+                if (is_string($name) && $name !== '') {
+                    $existing = $this->normalizeRule($rules[$name] ?? '');
+                    $rules[$name] = 'required'.($existing !== '' ? '|'.$existing : '');
                 }
             }
         }
@@ -445,6 +501,35 @@ final class ResourceController
         return implode('|', $out);
     }
 
+    /**
+     * 把规则值归一化成「甲|乙」字符串。
+     *
+     * ⚠️ `$form->validationRules()` 给出的值**可能是数组**（如 `["required"]`），
+     * 直接 `(string)` 会得到 "Array"。两处用到规则的地方都必须先过这里。
+     *
+     * @param  mixed  $rule
+     */
+    protected function normalizeRule(mixed $rule): string
+    {
+        if (is_string($rule)) {
+            return $rule;
+        }
+
+        if (! is_array($rule)) {
+            return '';
+        }
+
+        $parts = [];
+
+        foreach ($rule as $one) {
+            if (is_string($one) && $one !== '') {
+                $parts[] = $one;
+            }
+        }
+
+        return implode('|', $parts);
+    }
+
     protected function dropRequired(string $rule): string
     {
         $parts = array_filter(
@@ -463,16 +548,39 @@ final class ResourceController
      */
     protected function splitRelationFields(ResourceNode $node, array $data): array
     {
+        /** @var array<string, string> $relationFields */
+        $relationFields = is_array($node->meta) ? ($node->meta['relationFields'] ?? []) : [];
         $relations = [];
 
-        foreach (array_keys($data) as $key) {
-            if (str_contains((string) $key, '.') || str_contains((string) $key, '[')) {
-                $relations[(string) $key] = $data[$key];
-                unset($data[$key]);
+        foreach ($relationFields as $field => $relation) {
+            if (array_key_exists($field, $data)) {
+                $relations[$relation] = array_values(array_filter(
+                    (array) $data[$field],
+                    static fn (mixed $v): bool => $v !== null && $v !== ''
+                ));
             }
+
+            // 关联字段不是真实列，必须从主表数据里剔除，否则 insert 会带上不存在的列
+            unset($data[$field]);
         }
 
         return [$data, $relations];
+    }
+
+    /**
+     * 同步多对多关联（写中间表）。
+     *
+     * ⚠️ 本次全面验收发现：TP 侧此前把 `splitRelationFields` 的第二个返回值
+     * **丢掉了** —— 提交成功、不写中间表、不报错。
+     * 这正是 Laravel 侧注释里记录过的那次「幽灵能力」事故的同形复现。
+     */
+    protected function syncRelations(object $model, array $relations): void
+    {
+        foreach ($relations as $relation => $ids) {
+            if (method_exists($model, $relation)) {
+                $model->{$relation}()->saveAll($ids);
+            }
+        }
     }
 
     /**
@@ -522,6 +630,48 @@ final class ResourceController
             'error' => ['code' => 'VALIDATION_FAILED', 'message' => '提交的数据未通过校验。'],
             'errors' => $errors,
         ], 'json', 422);
+    }
+
+    /**
+     * 唯一键 / NOT NULL 冲突 → 422 友好提示（而不是 500 HTML 错误页）。
+     *
+     * ⚠️ 本次全面验收发现：TP 侧此前没有这层转换，重复唯一值直接 500，
+     * 调用方拿不到「是哪个字段重复」。
+     */
+    protected function constraintViolation(\Throwable $e, ResourceNode $node): Response
+    {
+        $message = $e->getMessage();
+
+        // 唯一键：SQLite / MySQL 的措辞不同，都兜住
+        if (preg_match('/UNIQUE constraint failed: ([\w.]+)/i', $message, $m)
+            || preg_match("/Duplicate entry '.*' for key '([\w.]+)'/i", $message, $m)) {
+            $field = str_contains($m[1], '.') ? explode('.', $m[1])[1] : $m[1];
+
+            return Response::create([
+                'error' => [
+                    'code' => 'UNIQUE_CONSTRAINT_VIOLATION',
+                    'message' => "字段「{$field}」的值已存在。",
+                    'field' => $field,
+                    'hint' => '该字段有唯一约束，请换一个值。',
+                ],
+            ], 'json', 422);
+        }
+
+        if (preg_match('/NOT NULL constraint failed: ([\w.]+)/i', $message, $m)
+            || preg_match("/Column '([\w.]+)' cannot be null/i", $message, $m)) {
+            $field = str_contains($m[1], '.') ? explode('.', $m[1])[1] : $m[1];
+
+            return Response::create([
+                'error' => [
+                    'code' => 'REQUIRED_FIELD_MISSING',
+                    'message' => "字段「{$field}」不能为空。",
+                    'field' => $field,
+                ],
+            ], 'json', 422);
+        }
+
+        // 其它数据库错误照旧抛出 —— 不吞掉未知异常
+        throw $e;
     }
 
     protected function notFound(string $uri, int|string $id): Response

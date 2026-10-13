@@ -67,6 +67,9 @@ PHPEOF
 # Resource 声明 —— 与 Laravel 侧**同一套写法**。
 # 只有下面那行注册是框架胶水，grid/form/show 全是框架无关的。
 cp "$ROOT/scripts/tp-demo-resource.php.tpl" "$TARGET/app/CustomerResource.php"
+# ⚠️ 必须独立文件：PSR-4 要求类名与文件名一致，
+#    把两个类塞进一个文件会让第二个类加载不到（注册表静默记一条失败）
+cp "$ROOT/scripts/tp-demo-readonly.php.tpl" "$TARGET/app/ReadonlyCustomerResource.php"
 
 cat > "$TARGET/app/AimanongDemoService.php" <<'PHPEOF'
 <?php
@@ -86,6 +89,7 @@ class AimanongDemoService extends Service
     public function register(): void
     {
         Aimanong::registry()->register(CustomerResource::class);
+        Aimanong::registry()->register(ReadonlyCustomerResource::class);
     }
 }
 PHPEOF
@@ -200,6 +204,8 @@ return [
     'permissions' => [
         'customers.index', 'customers.show',
         'customers.create', 'customers.update', 'customers.destroy',
+        'readonly-customers.index', 'readonly-customers.create',
+        'readonly-customers.update', 'readonly-customers.destroy',
     ],
 ];
 PHPEOF

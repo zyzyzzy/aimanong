@@ -38,7 +38,9 @@ class CustomerResource extends Resource
     public static function form(\Aimanong\Form\Form $form): void
     {
         $form->text('name')->label('名称')->required();
-        $form->text('industry')->label('行业');
+        // requiredOnCreate：新增必填、编辑可留空 —— e2e 用它验证 422
+        $form->text('industry')->label('行业')->requiredOnCreate();
         $form->text('level')->label('等级');
     }
 }
+

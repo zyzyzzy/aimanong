@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace Aimanong\Ai;
 
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
-
 /**
  * 数据作用域钩子 —— **框架提供的官方拦截点**。
  *
@@ -36,7 +33,7 @@ class ScopeHooks
     /**
      * 已注册的作用域回调。
      *
-     * @var array<string, callable(Builder): mixed>
+     * @var array<string, callable(object): mixed>
      */
     protected static array $queryScopes = [];
 
@@ -51,12 +48,12 @@ class ScopeHooks
      * 注册查询作用域 —— 对所有 Resource 查询生效。
      *
      * ```php
-     * ScopeHooks::query('tenant', function (Builder $q) {
+     * ScopeHooks::query('tenant', function ($q) {
      *     $q->where('tenant_id', TenantContext::id());
      * });
      * ```
      *
-     * @param  callable(Builder): mixed  $callback
+     * @param  callable(object): mixed  $callback
      */
     public static function query(string $name, callable $callback): void
     {
@@ -83,9 +80,9 @@ class ScopeHooks
     /**
      * 应用全部查询作用域。
      *
-     * @param  Builder<Model>  $query
+     * @param  object  $query  各框架自己的查询对象（Laravel Builder / think\db\Query）
      */
-    public static function applyQuery(Builder $query): void
+    public static function applyQuery(object $query): void
     {
         foreach (static::$queryScopes as $callback) {
             $callback($query);

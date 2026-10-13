@@ -106,6 +106,46 @@ t('内省：访问器识别为虚拟属性', $intro->isVirtualAttribute(new app\
 t('内省：拼错列名不放过', $intro->isVirtualAttribute(new app\Customer, 'nmae') === false);
 t('内省：$type 声明的列算真实列', $intro->isVirtualAttribute(new app\Customer, 'credit_days') === true);
 
+/*
+ * 数据作用域（多租户 / 行级隔离）—— 本次全面验收发现的**最高危缺口**。
+ *
+ * 此前 TP 侧的 ThinkDataSource 里 0 处 ScopeHooks（Laravel 侧 4 处），
+ * 配了多租户后查询不做任何收窄 → 跨租户数据全量返回，
+ * 而且它在 200 响应里完全看不出来。
+ */
+\Aimanong\Ai\ScopeHooks::flush();
+
+$scoped = new \Aimanong\ThinkPHP\ThinkDataSource(app\Customer::class);
+t('未注册作用域：全部可见', $scoped->paginate()->total() === 2);
+
+\Aimanong\Ai\ScopeHooks::query('tenant', function ($q): void {
+    $q->where('industry', '制造业');
+});
+
+$page = $scoped->paginate();
+t('查询作用域生效（total 收窄）', $page->total() === 1, "total={$page->total()}");
+
+/*
+ * 这四条是关键：作用域必须**在所有查询条件之前**，
+ * 否则搜索 / 排序 / 筛选 / ids 都能绕过它 —— 那就等于没有隔离。
+ */
+t('搜索绕不过作用域', $scoped->paginate(['keyword' => '杭州', 'searchable' => ['name']])->total() === 0);
+t('排序绕不过作用域', $scoped->paginate(['sort' => 'name', 'direction' => 'desc'])->total() === 1);
+t('筛选绕不过作用域', $scoped->paginate(['filters' => ['level' => 'B']])->total() === 0);
+t('ids 绕不过作用域', $scoped->paginate(['ids' => [1, 2]])->total() === 1);
+
+\Aimanong\Ai\ScopeHooks::writing('tenant', function (array $d): array {
+    $d['industry'] = '自动补齐';
+
+    return $d;
+});
+$created = $scoped->create(['name' => '作用域探针', 'industry' => '手工值', 'level' => 'A']);
+t('写入作用域生效', $created->industry === '自动补齐', (string) $created->industry);
+$scoped->delete($created->getKey());
+
+\Aimanong\Ai\ScopeHooks::flush();
+t('flush 后恢复可见', $scoped->paginate()->total() === 2);
+
 echo "\n=== ③ 真实 HTTP：/admin 能打开 ===\n";
 
 /*
@@ -556,9 +596,44 @@ t('详情不存在 → 404', $st === 404, "HTTP {$st}");
 [$st] = $api('GET', 'orders');
 t('未注册的 uri → 404（超管已过权限关）', $st === 404, "HTTP {$st}");
 
-if (is_resource($proc)) {
-    proc_terminate($proc);
-    proc_close($proc);
+echo "\n=== ⑩ 语义缺口修复验证（全面验收报告 P0）===\n";
+
+// ① 只读资源必须拒绝写入（此前 TP 侧完全没有这道校验）
+[$st] = $api('GET', 'readonly-customers');
+t('只读资源可读 → 200', $st === 200, "HTTP {$st}");
+
+[$st, $r] = $api('POST', 'readonly-customers', ['name' => 'x']);
+t('只读资源 POST → 403', $st === 403, "HTTP {$st}");
+t('403 说明是只读资源', is_array($r) && ($r['error']['code'] ?? '') === 'RESOURCE_READONLY');
+
+[$st] = $api('PUT', 'readonly-customers/1', ['name' => 'y']);
+t('只读资源 PUT → 403', $st === 403, "HTTP {$st}");
+
+[$st] = $api('DELETE', 'readonly-customers/1');
+t('只读资源 DELETE → 403', $st === 403, "HTTP {$st}");
+
+/*
+ * ② 连字符 URI
+ *
+ * 路由参数默认不匹配 `-`，`readonly-customers` 会被截成 `readonly`，
+ * 报「Resource [readonly] 未注册」—— 看起来像资源没注册，实际是路由切断了名字。
+ * 带连字符的资源名在真实项目里很常见。
+ */
+t('连字符 URI 未被截断', $st === 403, '（403 而非 404 说明 uri 完整匹配）');
+
+// ③ requiredOnCreate：新增必填、编辑可留空
+[$st, $r] = $api('POST', 'customers', ['name' => '只有名字']);
+t('新增缺 requiredOnCreate 字段 → 422', $st === 422, "HTTP {$st}");
+t('422 指出是 industry', is_array($r) && isset($r['errors']['industry']));
+
+[$st, $r] = $api('POST', 'customers', ['name' => '完整', 'industry' => '制造业']);
+t('带齐字段可新增 → 201', $st === 201, "HTTP {$st}");
+$keepId = is_array($r) ? ($r['data']['id'] ?? null) : null;
+
+if ($keepId !== null) {
+    [$st] = $api('PUT', "customers/{$keepId}", ['name' => '只改名字']);
+    t('编辑时该字段可留空 → 200', $st === 200, "HTTP {$st}");
+    $api('DELETE', "customers/{$keepId}");
 }
 
 echo "\n=== ⑤ 控制台命令：AI 自检入口与四份产物 ===\n";
@@ -676,5 +751,10 @@ t('install 真的建了表', str_contains($out, 'admin_users'));
 t('install 真的建了管理员', str_contains($out, '已创建管理员') || str_contains($out, '已存在管理员'));
 
 exec('rm -rf '.escapeshellarg($fresh));
+
+if (is_resource($proc)) {
+    proc_terminate($proc);
+    proc_close($proc);
+}
 
 $completed = true;

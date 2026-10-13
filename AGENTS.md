@@ -11,7 +11,10 @@
 
 | 目录 | 用途 | Agent 是否可写 |
 |---|---|---|
-| `packages/framework/src` | 框架核心 | ⚠️ 谨慎，需人类 review |
+| `packages/core/src` | 框架无关内核（Grid / Form / Schema / 契约） | ⚠️ 谨慎，需人类 review |
+| `packages/laravel/src` | Laravel 驱动 + 包资源 | ⚠️ 谨慎，需人类 review |
+| `packages/thinkphp/src` | ThinkPHP 驱动 | ⚠️ 谨慎，需人类 review |
+| `packages/framework` | 元包 —— **只有 composer.json**，没有 src | —— |
 | `packages/region/src` | 官方扩展（省市区） | ✅ 可写 |
 | `docs/` | 文档站 + Playground | ✅ 可写 |
 | `internal-docs/` | 开发文档、实测记录 | ✅ 可写 |
@@ -25,7 +28,7 @@
 
 ## 生成代码的强制流程
 
-1. **先查能力**：`GET /__ai/capabilities.json` 或 `php artisan ai:capabilities`
+1. **先查能力**：`GET /__ai/capabilities.json`（或 `php artisan aimanong:docs` 看生成的清单）
 2. **写 Resource**：放 `app/Aimanong/{Name}Resource.php`
 3. **必须校验**：`php artisan ai:verify`
 4. **跑测试**：`composer test`
@@ -117,3 +120,50 @@ php artisan serve         # 访问 /admin 人工确认
 ```
 
 不传 `requirements` 就交付，等于没有验证。
+
+
+---
+
+## ⚠️ 全绿 ≠ 用户装得到对的东西
+
+**这一条是 2026-10-14 的全面验收用真金白银换来的，比任何一条代码规范都重要。**
+
+ThinkPHP 驱动当时的状态是：
+
+```
+thinkphp-e2e      87 / 87  ✅
+framework-e2e    101 / 101 ✅
+PHPStan L8 / Pint          ✅
+CI 4 个 job                ✅
+```
+
+而实际上：
+
+| 真实情况 | 为什么全绿 |
+|---|---|
+| **多租户隔离失效** | `ScopeHooks` 未接，跨租户数据全量返回。e2e 没有多租户场景 |
+| **只读资源可被写** | 只读校验压根没写。e2e 没有只读资源 |
+| **多对多关联静默丢弃** | 提交成功、不写中间表、不报错。e2e 没断言过关联 |
+| **`aimanong/thinkphp` 用户装不到** | e2e 用 path 仓库指向 monorepo，**永远看不到发布缺口** |
+| **包缺了一个必装依赖**（`topthink/think-template`） | demo 的 composer.json **自己手加了** —— 于是 e2e 里它永远存在 |
+| **已发布的 `aimanong/core` 是旧的** | path 仓库指向本地源码，**看不到 Packagist 上是什么** |
+
+### 三条必须记住的
+
+1. **「能不能跑」与「和另一个实现一不一样」是两个问题。**
+   项目主张「同一套声明，多框架行为一致」时，只验证前者等于没验证。
+   做法：**把同一个输入在两个实现上跑一遍，比较输出**（对拍）。
+
+2. **测试环境手动补过的东西，会掩盖包真正缺的东西。**
+   给 demo 加的每一个依赖、每一个 config，都要问一句：
+   *「包自己带了吗？用户装完会有吗？」*
+
+3. **仓内路径 ≠ 用户路径。**
+   用户是 `composer require` 从 Packagist 装。
+   任何「发布」相关的事，**必须在全新项目里从公开源装一遍**才算验过。
+
+### 落地成动作
+
+- 任何新驱动/新包上线前：**建一个不带任何本地仓库的项目，从公开源装一遍并跑通首页**
+- 任何「两端一致」的主张：**写对拍断言**，而不是分别写两个「能跑」的测试
+- 任何门禁：**先造一个反例确认它会拦**，再相信它

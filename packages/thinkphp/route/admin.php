@@ -16,6 +16,7 @@ declare(strict_types=1);
 
 use Aimanong\ThinkPHP\Http\AuthController;
 use Aimanong\ThinkPHP\Http\HomeController;
+use Aimanong\ThinkPHP\Http\Middleware\Authenticate;
 use Aimanong\ThinkPHP\Http\ResourceController;
 use think\facade\Route;
 
@@ -34,15 +35,15 @@ Route::group(function (): void {
     // 首页：/admin
     Route::get('/', [HomeController::class, 'index']);
 
-/*
-| 数据 API —— JSON，供前端 Vue 与 AI Agent 调用
-|
-| 路径：/admin/api/{uri}
-|
-| 只登记**已实现**的动作。未移植的四个（batch / export / tree / move）
-| 不在这里挂着 —— 它们会被 TP 当成默认控制器路由，报「控制器不存在」，
-| 那是个让人摸不着头脑的错误。真要调时由 unimplemented() 明确回 501。
-*/
+    /*
+    | 数据 API —— JSON，供前端 Vue 与 AI Agent 调用
+    |
+    | 路径：/admin/api/{uri}
+    |
+    | 只登记**已实现**的动作。未移植的四个（batch / export / tree / move）
+    | 不在这里挂着 —— 它们会被 TP 当成默认控制器路由，报「控制器不存在」，
+    | 那是个让人摸不着头脑的错误。真要调时由 unimplemented() 明确回 501。
+    */
     /*
      * ⚠️ `:uri` 必须显式允许**连字符**。
      *
@@ -66,4 +67,4 @@ Route::group(function (): void {
         Route::put(':uri/:id', [ResourceController::class, 'update'])->pattern(['uri' => $uri]);
         Route::delete(':uri/:id', [ResourceController::class, 'destroy'])->pattern(['uri' => $uri]);
     });
-})->middleware(\Aimanong\ThinkPHP\Http\Middleware\Authenticate::class);
+})->middleware(Authenticate::class);

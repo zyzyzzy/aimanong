@@ -24,12 +24,16 @@ use think\model\relation\BelongsToMany;
  */
 class Administrator extends Model
 {
+    /** @var string */
     protected $name = 'admin_users';
 
+    /** @var bool */
     protected $autoWriteTimestamp = true;
 
+    /** @var string */
     protected $createTime = 'created_at';
 
+    /** @var string */
     protected $updateTime = 'updated_at';
 
     /**

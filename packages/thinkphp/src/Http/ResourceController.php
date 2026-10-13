@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace Aimanong\ThinkPHP\Http;
 
 use Aimanong\Aimanong;
-use Aimanong\Schema\Compiler;
 use Aimanong\Schema\Ast\ResourceNode;
+use Aimanong\Schema\Compiler;
 use Aimanong\Support\Drivers;
 use Aimanong\ThinkPHP\ThinkDataSource;
+use think\db\exception\DbException;
 use think\db\exception\ModelNotFoundException;
+use think\db\exception\PDOException;
+use think\exception\HttpException;
+use think\Model;
 use think\Request;
 use think\Response;
 use think\Validate;
@@ -48,7 +52,6 @@ final class ResourceController
             return $deny;
         }
 
-        
         $node = $this->resolve($uri);
 
         $searchable = [];
@@ -63,7 +66,7 @@ final class ResourceController
         // 否则 $grid->perPage(30) 只写进 schema.json，API 仍用 20 ——
         // 校验器说「已设置」而功能没生效。
         $perPage = $request->param('per_page');
-        $declared = is_array($node->meta) ? ($node->meta['perPage'] ?? 20) : 20;
+        $declared = $node->meta['perPage'] ?? 20;
 
         if (! is_numeric($perPage)) {
             $perPage = $declared;
@@ -119,7 +122,6 @@ final class ResourceController
             return $deny;
         }
 
-        
         $node = $this->resolve($uri);
 
         try {
@@ -137,7 +139,6 @@ final class ResourceController
             return $deny;
         }
 
-        
         $node = $this->resolve($uri);
 
         $errors = $this->validateInput($request, $node, true);
@@ -155,7 +156,7 @@ final class ResourceController
             if ($relations !== []) {
                 $this->syncRelations($model, $relations);
             }
-        } catch (\think\db\exception\PDOException | \think\db\exception\DbException $e) {
+        } catch (PDOException|DbException $e) {
             return $this->constraintViolation($e, $node);
         }
 
@@ -168,7 +169,6 @@ final class ResourceController
             return $deny;
         }
 
-        
         $node = $this->resolve($uri);
 
         $errors = $this->validateInput($request, $node, false);
@@ -188,7 +188,7 @@ final class ResourceController
             }
         } catch (ModelNotFoundException) {
             return $this->notFound($uri, $id);
-        } catch (\think\db\exception\PDOException | \think\db\exception\DbException $e) {
+        } catch (PDOException|DbException $e) {
             return $this->constraintViolation($e, $node);
         }
 
@@ -201,7 +201,6 @@ final class ResourceController
             return $deny;
         }
 
-        
         $node = $this->resolve($uri);
 
         try {
@@ -242,7 +241,7 @@ final class ResourceController
         $class = Aimanong::registry()->find($uri);
 
         if ($class === null) {
-            throw new \think\exception\HttpException(404, "Resource [{$uri}] 未注册");
+            throw new HttpException(404, "Resource [{$uri}] 未注册");
         }
 
         return $this->node = (new Compiler)->compile($class);
@@ -250,7 +249,7 @@ final class ResourceController
 
     protected function repository(ResourceNode $node): ThinkDataSource
     {
-        /** @var class-string<\think\Model> $model */
+        /** @var class-string<Model> $model */
         $model = $node->model;
 
         return new ThinkDataSource($model);
@@ -342,7 +341,7 @@ final class ResourceController
      */
     protected function validateInput(Request $request, ResourceNode $node, bool $isCreate): array
     {
-        $meta = is_array($node->meta) ? $node->meta : [];
+        $meta = $node->meta;
         /** @var array<string, mixed> $rules */
         $rules = is_array($meta['rules'] ?? null) ? $meta['rules'] : [];
 
@@ -506,8 +505,6 @@ final class ResourceController
      *
      * ⚠️ `$form->validationRules()` 给出的值**可能是数组**（如 `["required"]`），
      * 直接 `(string)` 会得到 "Array"。两处用到规则的地方都必须先过这里。
-     *
-     * @param  mixed  $rule
      */
     protected function normalizeRule(mixed $rule): string
     {
@@ -549,7 +546,7 @@ final class ResourceController
     protected function splitRelationFields(ResourceNode $node, array $data): array
     {
         /** @var array<string, string> $relationFields */
-        $relationFields = is_array($node->meta) ? ($node->meta['relationFields'] ?? []) : [];
+        $relationFields = $node->meta['relationFields'] ?? [];
         $relations = [];
 
         foreach ($relationFields as $field => $relation) {
@@ -573,6 +570,9 @@ final class ResourceController
      * ⚠️ 本次全面验收发现：TP 侧此前把 `splitRelationFields` 的第二个返回值
      * **丢掉了** —— 提交成功、不写中间表、不报错。
      * 这正是 Laravel 侧注释里记录过的那次「幽灵能力」事故的同形复现。
+     */
+    /**
+     * @param  array<string, array<int, mixed>>  $relations
      */
     protected function syncRelations(object $model, array $relations): void
     {

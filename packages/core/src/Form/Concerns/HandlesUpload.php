@@ -31,7 +31,7 @@ trait HandlesUpload
      */
     public function maxSize(int $kilobytes): static
     {
-        $this->props['maxSize'] = $kb = max(1, $kilobytes);
+        $this->props['maxSize'] = max(1, $kilobytes);
 
         return $this;
     }

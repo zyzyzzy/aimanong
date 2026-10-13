@@ -8,9 +8,9 @@ use Aimanong\Contracts\SchemaIntrospector;
 use think\db\Query;
 use think\facade\Db;
 use think\helper\Str;
-use think\model\relation\BelongsTo;
-use think\model\relation\HasOne;
 use think\Model;
+use think\model\Relation;
+use think\model\relation\BelongsTo;
 
 /**
  * ThinkORM 内省 —— `Contracts\SchemaIntrospector` 的 ThinkPHP 实现。
@@ -85,7 +85,7 @@ class ThinkIntrospector implements SchemaIntrospector
 
         // 形状 A：平铺的字符串列表
         if (isset($values[0]) && is_string($values[0])) {
-            return array_values(array_map('strval', $values));
+            return array_map('strval', $values);
         }
 
         // 形状 B：字段名 => 字段信息
@@ -110,7 +110,7 @@ class ThinkIntrospector implements SchemaIntrospector
      */
     public function isRelation(mixed $value): bool
     {
-        return $value instanceof \think\model\Relation;
+        return $value instanceof Relation;
     }
 
     public function relationTargetOf(object $model, string $relation): ?string
@@ -122,7 +122,7 @@ class ThinkIntrospector implements SchemaIntrospector
         try {
             $result = $model->{$relation}();
 
-            if ($result instanceof \think\model\Relation) {
+            if ($result instanceof Relation) {
                 return $result->getModel()::class;
             }
         } catch (\Throwable) {

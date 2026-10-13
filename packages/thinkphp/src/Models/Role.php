@@ -16,12 +16,16 @@ use think\model\relation\BelongsToMany;
  */
 class Role extends Model
 {
+    /** @var string */
     protected $name = 'admin_roles';
 
+    /** @var bool */
     protected $autoWriteTimestamp = true;
 
+    /** @var string */
     protected $createTime = 'created_at';
 
+    /** @var string */
     protected $updateTime = 'updated_at';
 
     /**

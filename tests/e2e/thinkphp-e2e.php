@@ -368,8 +368,22 @@ $auth('GET', '/admin'); // 刷新 cookie jar
 [$st] = $auth('POST', '/admin/auth/login', ['username' => 'admin', 'password' => '错误密码']);
 t('密码错误 → 401', $st === 401, "HTTP {$st}");
 
+/*
+ * 会话固定（session fixation）防护：登录成功后必须换一个 session id。
+ *
+ * 不换的话：攻击者先让受害者带着一个已知 id 访问，受害者登录后那个 id
+ * 仍然有效 —— 攻击者直接用它就是登录态。
+ */
+$jarBefore = (string) @file_get_contents($jar);
+preg_match('/PHPSESSID\s+(\S+)/', $jarBefore, $mBefore);
+
 [$st] = $auth('POST', '/admin/auth/login', ['username' => 'admin', 'password' => 'admin123']);
 t('密码正确 → 302', $st === 302, "HTTP {$st}");
+
+$jarAfter = (string) @file_get_contents($jar);
+preg_match('/PHPSESSID\s+(\S+)/', $jarAfter, $mAfter);
+t('登录后 session id 已更换', ($mBefore[1] ?? '') !== '' && ($mAfter[1] ?? '') !== ''
+    && $mBefore[1] !== $mAfter[1], ($mBefore[1] ?? '?').' → '.($mAfter[1] ?? '?'));
 
 [$st, $body] = $auth('GET', '/admin');
 t('登录后 /admin → 200', $st === 200, "HTTP {$st}");
@@ -446,9 +460,29 @@ for ($i = 1; $i <= 7; $i++) {
 t('前几次是 401（密码错误）', $codes[0] === 401, "第1次 HTTP {$codes[0]}");
 t('达到上限后变 429（限流）', in_array(429, $codes, true), 'HTTP '.implode(',', $codes));
 
+/*
+ * 大小写 / 空格变体必须共用一个计数桶。
+ *
+ * 不规范化的话 `Admin` / `admin` / ` admin ` 是三个桶，
+ * 攻击者变换大小写就能绕过「每账号 5 次」—— 限流看着在、实际形同虚设。
+ */
 // 429 必须带「还要等几秒」—— 只说「太频繁」用户不知道等多久
 [$st, $abody] = $auth('POST', '/admin/auth/login', ['username' => $probeUser, 'password' => 'wrong']);
 t('429 提示剩余秒数', $st === 429 && (bool) preg_match('/\d+\s*秒/', $abody));
+
+// 用**独立账号名**探测，否则会把 admin 的计数桶打满，
+// 影响后面「正确密码仍可登录」那条断言（第一次跑就踩到了）
+$caseUser = 'Case-User-'.substr((string) getmypid(), -4);
+exec('rm -rf '.escapeshellarg($tp.'/runtime/cache'));
+$mixed = [];
+
+foreach([$caseUser, ucfirst($caseUser), strtoupper($caseUser), ' '.$caseUser.' ', $caseUser, $caseUser] as $variant) {
+    [$st] = $auth('POST', '/admin/auth/login', ['username' => $variant, 'password' => 'wrong']);
+    $mixed[] = $st;
+}
+
+t('大小写变体共用计数桶（第6次 429）', ($mixed[5] ?? 0) === 429, 'HTTP '.implode(',', $mixed));
+
 
 /*
  * 成功登录必须**清零** —— 否则用户打错几次再登对，

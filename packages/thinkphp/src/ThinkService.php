@@ -4,7 +4,13 @@ declare(strict_types=1);
 
 namespace Aimanong\ThinkPHP;
 
+use Aimanong\Aimanong;
 use Aimanong\Support\Drivers;
+use Aimanong\ThinkPHP\Console\InstallCommand;
+use Aimanong\ThinkPHP\Console\SchemaCommand;
+use Aimanong\ThinkPHP\Console\VerifyCommand;
+use think\facade\Route;
+use think\middleware\SessionInit;
 use think\Service;
 
 /**
@@ -46,7 +52,7 @@ class ThinkService extends Service
             return;
         }
 
-        \think\facade\Route::group((new ThinkRuntime)->urlPrefix(), function () use ($routeFile): void {
+        Route::group((new ThinkRuntime)->urlPrefix(), function () use ($routeFile): void {
             include $routeFile;
         });
 
@@ -61,15 +67,15 @@ class ThinkService extends Service
          * 这里代用户挂上：框架要用会话，就不该让用户去猜要配什么。
          * 已经在全局中间件里时不重复添加。
          */
-        if (! $this->hasGlobalMiddleware(\think\middleware\SessionInit::class)) {
-            $this->app->middleware->add(\think\middleware\SessionInit::class);
+        if (! $this->hasGlobalMiddleware(SessionInit::class)) {
+            $this->app->middleware->add(SessionInit::class);
         }
 
         // 控制台命令 —— TP 的 Service::commands() 会在 console 启动时挂上
         $this->commands([
-            \Aimanong\ThinkPHP\Console\InstallCommand::class,
-            \Aimanong\ThinkPHP\Console\VerifyCommand::class,
-            \Aimanong\ThinkPHP\Console\SchemaCommand::class,
+            InstallCommand::class,
+            VerifyCommand::class,
+            SchemaCommand::class,
         ]);
     }
 
@@ -81,7 +87,7 @@ class ThinkService extends Service
         Drivers::registerUploadSpec(new ThinkUploadSpec);
 
         // 公开入口 Aimanong\Aimanong 在 core，它需要的框架设施接在这里
-        \Aimanong\Aimanong::bindRuntime(new ThinkRuntime);
+        Aimanong::bindRuntime(new ThinkRuntime);
     }
 
     /**
@@ -89,16 +95,40 @@ class ThinkService extends Service
      */
     protected function hasGlobalMiddleware(string $class): bool
     {
+        /*
+         * ⚠️ `think\Middleware` **没有** `getGlobal()` 方法 ——
+         * （PHPStan 在给本包加静态分析时抓到的）。
+         * 第一版直接调它 → 抛异常 → 被 catch 吞掉 → 永远返回 false →
+         * 每次 boot 都重复添加 SessionInit。
+         *
+         * TP 的全局中间件配置在 `app/middleware.php`（由应用加载）。
+         * 这里改读应用的中间件文件，读不到就当没有（重复添加无害，
+         * 只是多一次空转）。
+         */
         try {
-            $list = $this->app->middleware->getGlobal();
+            $file = $this->app->getAppPath().'middleware.php';
 
-            return in_array($class, array_map(
-                fn (mixed $m): string => is_string($m) ? $m : (is_object($m) ? $m::class : ''),
-                is_array($list) ? $list : []
-            ), true);
+            if (! is_file($file)) {
+                return false;
+            }
+
+            /** @var mixed $list */
+            $list = include $file;
+
+            if (! is_array($list)) {
+                return false;
+            }
+
+            foreach ($list as $m) {
+                if ($m === $class || (is_object($m) && $m::class === $class)) {
+                    return true;
+                }
+            }
         } catch (\Throwable) {
             return false;
         }
+
+        return false;
     }
 
     /**
@@ -113,6 +143,6 @@ class ThinkService extends Service
         Drivers::registerDictionary(new ThinkDictionary);
         Drivers::registerPermissionChecker(new ThinkPermissionChecker);
         Drivers::registerUploadSpec(new ThinkUploadSpec);
-        \Aimanong\Aimanong::bindRuntime(new ThinkRuntime);
+        Aimanong::bindRuntime(new ThinkRuntime);
     }
 }

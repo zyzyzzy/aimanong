@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace Aimanong\ThinkPHP\Http;
 
+use Aimanong\Aimanong;
 use Aimanong\ThinkPHP\Auth\LoginThrottle;
 use Aimanong\ThinkPHP\Auth\ThinkGuard;
 use Aimanong\ThinkPHP\View\NullErrors;
-use Aimanong\ThinkPHP\View\ViewErrors;
 use Aimanong\ThinkPHP\View\ThinkView;
+use Aimanong\ThinkPHP\View\ViewErrors;
 use think\Request;
 use think\Response;
 
@@ -33,14 +34,14 @@ final class AuthController
     {
         // 已登录还访问登录页 → 直接回后台，避免"登录了却停在登录页"的困惑
         if ((new ThinkGuard)->check()) {
-            return redirect(\Aimanong\Aimanong::url(''));
+            return redirect(Aimanong::url(''));
         }
 
         $html = (new ThinkView)->render('auth/login', [
             'errors' => new NullErrors,
             'old' => [],
             // 登录页模板里有 csrf 字段；TP 的 token 由 csrf_token() 助手提供
-            'brand' => \Aimanong\Aimanong::brand(),
+            'brand' => Aimanong::brand(),
         ]);
 
         return Response::create($html, 'html', 200);
@@ -52,15 +53,24 @@ final class AuthController
         $password = (string) $request->param('password', '');
         $remember = (bool) $request->param('remember', false);
 
-        $wantsJson = $request->isAjax() || str_contains((string) $request->header('accept', ''), 'application/json');
+        $wantsJson = $request->isAjax() || str_contains($this->acceptHeader($request), 'application/json');
 
         if ($username === '' || $password === '') {
             return $this->fail($request, '请输入账号与密码。', 422);
         }
 
+        /*
+         * ⚠️ 账号名必须先规范化再进限流键 —— 与 Laravel 侧一致。
+         *
+         * 否则 `Admin` / `admin` / ` admin ` 是三个不同的计数桶，
+         * 攻击者只要变换大小写就能绕过「每账号 5 次」的限制 ——
+         * 限流看着在、实际形同虚设。
+         */
+        $throttleKey = mb_strtolower(trim($username));
+
         // 先看是否已被限流 —— 必须在 attempt 之前，
         // 否则已经超限的请求仍会去比对密码，限流形同虚设
-        $lockedFor = LoginThrottle::lockedFor($request, $username);
+        $lockedFor = LoginThrottle::lockedFor($request, $throttleKey);
 
         if ($lockedFor > 0) {
             return $this->fail(
@@ -74,40 +84,40 @@ final class AuthController
             $ok = (new ThinkGuard)->attempt($username, $password, $remember);
         } catch (\RuntimeException $e) {
             // 账号被禁用 —— 与「密码错误」区分开，否则管理员查不出原因
-            LoginThrottle::hit($request, $username);
+            LoginThrottle::hit($request, $throttleKey);
 
             return $this->fail($request, $e->getMessage(), 403);
         }
 
         // 失败才计数；成功则清零（否则打错几次再登对会被后续计数挡住）
-        LoginThrottle::hit($request, $username);
+        LoginThrottle::hit($request, $throttleKey);
 
         if (! $ok) {
             return $this->fail($request, '账号或密码不正确。', 401);
         }
 
-        LoginThrottle::clear($request, $username);
+        LoginThrottle::clear($request, $throttleKey);
         $this->touchLogin($request);
 
         if ($wantsJson) {
             return Response::create([
                 'message' => '登录成功',
-                'redirect' => \Aimanong\Aimanong::url(''),
+                'redirect' => Aimanong::url(''),
             ], 'json', 200);
         }
 
-        return redirect(\Aimanong\Aimanong::url(''));
+        return redirect(Aimanong::url(''));
     }
 
     public function logout(Request $request): Response
     {
         (new ThinkGuard)->logout();
 
-        if ($request->isAjax() || str_contains((string) $request->header('accept', ''), 'application/json')) {
+        if ($request->isAjax() || str_contains($this->acceptHeader($request), 'application/json')) {
             return Response::create(['message' => '已退出登录'], 'json', 200);
         }
 
-        return redirect(\Aimanong\Aimanong::url('auth/login'));
+        return redirect(Aimanong::url('auth/login'));
     }
 
     /**
@@ -144,7 +154,7 @@ final class AuthController
 
     protected function fail(Request $request, string $message, int $status): Response
     {
-        $wantsJson = $request->isAjax() || str_contains((string) $request->header('accept', ''), 'application/json');
+        $wantsJson = $request->isAjax() || str_contains($this->acceptHeader($request), 'application/json');
 
         if ($wantsJson) {
             return Response::create(['message' => $message], 'json', $status);
@@ -155,9 +165,26 @@ final class AuthController
         $html = (new ThinkView)->render('auth/login', [
             'errors' => new ViewErrors($message),
             'old' => ['username' => (string) $request->param('username', '')],
-            'brand' => \Aimanong\Aimanong::brand(),
+            'brand' => Aimanong::brand(),
         ]);
 
         return Response::create($html, 'html', $status);
+    }
+
+    /**
+     * 取 Accept 头为字符串。
+     *
+     * ⚠️ `$request->header()` 的返回类型是 `array|string|null` ——
+     * 直接 `(string)` 转换在拿到数组时是错的（PHPStan 抓到的）。
+     */
+    protected function acceptHeader(Request $request): string
+    {
+        $value = $request->header('accept', '');
+
+        if (is_array($value)) {
+            $value = reset($value);
+        }
+
+        return is_string($value) ? $value : '';
     }
 }

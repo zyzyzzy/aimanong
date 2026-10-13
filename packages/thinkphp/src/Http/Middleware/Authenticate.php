@@ -67,6 +67,23 @@ final class Authenticate
     protected function wantsJson(Request $request): bool
     {
         return $request->isAjax()
-            || str_contains((string) $request->header('accept', ''), 'application/json');
+            || str_contains($this->acceptHeader($request), 'application/json');
+    }
+
+    /**
+     * 取 Accept 头为字符串。
+     *
+     * ⚠️ `$request->header()` 的返回类型是 `array|string|null` ——
+     * 直接 `(string)` 转换在拿到数组时是错的（PHPStan 抓到的）。
+     */
+    protected function acceptHeader(Request $request): string
+    {
+        $value = $request->header('accept', '');
+
+        if (is_array($value)) {
+            $value = reset($value);
+        }
+
+        return is_string($value) ? $value : '';
     }
 }

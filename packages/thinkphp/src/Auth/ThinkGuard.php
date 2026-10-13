@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Aimanong\ThinkPHP\Auth;
 
 use Aimanong\ThinkPHP\Models\Administrator;
+use think\facade\Config;
+use think\facade\Cookie;
 use think\facade\Session;
 
 /**
@@ -28,7 +30,7 @@ final class ThinkGuard
     protected function modelClass(): string
     {
         /** @var mixed $configured */
-        $configured = \think\facade\Config::get('aimanong.auth.model');
+        $configured = Config::get('aimanong.auth.model');
 
         if (is_string($configured) && $configured !== '' && class_exists($configured)) {
             /** @var class-string<Administrator> $configured */
@@ -113,17 +115,30 @@ final class ThinkGuard
     {
         Session::set($this->sessionKey, $user->getKey());
 
+        /*
+         * ⚠️ 会话固定（session fixation）防护 —— 登录成功后**必须**换一个 session id。
+         *
+         * 不换的话：攻击者先让受害者带着一个已知的 session id 访问站点，
+         * 受害者登录后那个 id 仍然是有效的 —— 攻击者直接用它就是登录态。
+         *
+         * 参数 `true` = 同时销毁旧 id 上的数据（等价于 Laravel 的
+         * `session()->migrate(true)`）。当前请求的数据在内存里，会写到新 id 下。
+         */
+        Session::regenerate(true);
+
         if ($remember) {
             $token = bin2hex(random_bytes(32));
             $user->save(['remember_token' => hash('sha256', $token)]);
-            \think\facade\Cookie::set('aimanong_remember', $user->getKey().'|'.$token, 86400 * 30);
+            Cookie::set('aimanong_remember', $user->getKey().'|'.$token, 86400 * 30);
         }
     }
 
     public function logout(): void
     {
-        Session::delete($this->sessionKey);
-        \think\facade\Cookie::delete('aimanong_remember');
+        // 彻底销毁（清数据 + 换 id），而不是只删一个 key ——
+        // 只删 key 会留下一个仍然有效的会话，登出形同虚设
+        Session::destroy();
+        Cookie::delete('aimanong_remember');
     }
 
     /**
@@ -133,7 +148,7 @@ final class ThinkGuard
      */
     protected function viaRememberToken(): ?Administrator
     {
-        $raw = (string) \think\facade\Cookie::get('aimanong_remember', '');
+        $raw = (string) Cookie::get('aimanong_remember', '');
 
         if ($raw === '' || ! str_contains($raw, '|')) {
             return null;

@@ -1,0 +1,54 @@
+includes:
+    - vendor/phpstan/phpstan/conf/bleedingEdge.neon
+
+parameters:
+    level: 8
+
+    paths:
+        - src
+        # core 是同一套代码的另一半，一起分析 ——
+        # 分两个 run 会漏掉「跨包签名不兼容」这类问题
+        - ../core/src
+
+    tmpDir: /tmp/aimanong-tp-phpstan
+
+    # 忽略规则本身不必逐条命中（TP 各小版本的方法表有差异）
+    reportUnmatchedIgnoredErrors: false
+
+    # TP 的全局助手（session() / config() / app() …）—— 不加载会报 function.notFound
+    bootstrapFiles:
+        - vendor/topthink/framework/src/helper.php
+        - vendor/topthink/think-helper/src/helper.php
+
+    ignoreErrors:
+        # ThinkPHP 的 Model 大量使用 __call / __callStatic 动态转发
+        # （find / where / save / getAttr …），静态分析看不到。
+        # 这些方法在运行时存在，且有 e2e 覆盖。
+        -
+            identifier: method.notFound
+            paths:
+                - src/Models/*.php
+                - src/ThinkDataSource.php
+                - src/Auth/ThinkGuard.php
+        -
+            identifier: staticMethod.notFound
+            paths:
+                - src/Models/*.php
+                - src/Console/InstallCommand.php
+        # 关系属性的读取走 TP 的 __get（roles() 方法 → $model->roles）
+        -
+            identifier: property.notFound
+            paths:
+                - src/Models/*.php
+                - src/ThinkPermissionChecker.php
+        # getFields() 在 think\db\Query 上（Db::table() 返回的是它），
+        # 但类型声明写的是 BaseQuery —— 运行时可用，e2e 覆盖了
+        -
+            message: '#Call to an undefined method think\\db\\BaseQuery::getFields\(\)#'
+        # TP 的 Validate 构造函数在 stub 里是 0 参数，实际接受 (rules, messages)
+        -
+            message: '#Class think\\Validate constructor invoked with 2 parameters#'
+        -
+            identifier: return.unusedType
+            paths:
+                - src/NullRuntime.php

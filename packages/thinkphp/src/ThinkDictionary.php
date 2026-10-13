@@ -56,7 +56,7 @@ class ThinkDictionary implements DictionarySource
         $out = [];
 
         foreach ($this->items($code) as $item) {
-            if (! ($item['enabled'] ?? true)) {
+            if (! $item['enabled']) {
                 continue;
             }
 

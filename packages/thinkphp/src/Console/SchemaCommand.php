@@ -106,7 +106,7 @@ final class SchemaCommand extends Command
     }
 
     /**
-     * @param  array<string, string>  $files
+     * @param  array<string, string|false>  $files
      */
     protected function checkDrift(Output $output, string $outDir, array $files): int
     {

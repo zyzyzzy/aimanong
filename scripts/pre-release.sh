@@ -139,6 +139,32 @@ else
   sed 's/^/      /' /tmp/amn-tpl.log | head -20
 fi
 
+# ThinkPHP 包的静态分析。
+#
+# ⚠️ 这一段是**全面验收时才补上的**：`packages/thinkphp` 此前完全没有
+# PHPStan / Pint —— 3451 行代码没有过一次静态分析，只靠 e2e 覆盖运行时。
+# 补上后立刻抓到几个真问题（详见验收报告）：
+#   · `topthink/think-template` **不在包依赖里**（ThinkView 用了它）
+#   · `think\Middleware::getGlobal()` 根本不存在（每次 boot 都重复加中间件）
+#   · 多处类型提示写错（Query vs BaseQuery）
+if [ -x "$ROOT/packages/thinkphp/vendor/bin/phpstan" ]; then
+  if (cd "$ROOT/packages/thinkphp" && vendor/bin/phpstan analyse --no-progress > /tmp/amn-tp-stan.log 2>&1); then
+    ok "ThinkPHP PHPStan Level 8"
+  else
+    bad "ThinkPHP PHPStan 未通过"
+    tail -12 /tmp/amn-tp-stan.log | sed 's/^/      /'
+  fi
+
+  if (cd "$ROOT/packages/thinkphp" && vendor/bin/pint --test > /tmp/amn-tp-pint.log 2>&1); then
+    ok "ThinkPHP Pint 代码风格"
+  else
+    bad "ThinkPHP Pint 未通过"
+    tail -6 /tmp/amn-tp-pint.log | sed 's/^/      /'
+  fi
+else
+  warn "packages/thinkphp 未安装依赖，跳过其静态分析（CI 会跑）"
+fi
+
 # core 纯度门禁 —— 这是多框架适配能否成立的前提。
 # core 一旦长回 Illuminate 依赖，ThinkPHP 用户就会重新掉进
 # 「装上就炸」（全局 env() 冲突）的坑，而这个坑是静默的。

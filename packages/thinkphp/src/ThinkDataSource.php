@@ -7,11 +7,13 @@ namespace Aimanong\ThinkPHP;
 use Aimanong\Ai\ScopeHooks;
 use Aimanong\Contracts\DataSource;
 use Aimanong\Contracts\PageResult;
+use think\db\BaseQuery;
 use think\db\exception\ModelNotFoundException;
-use think\db\Query;
 use think\db\Raw;
 use think\facade\Db;
 use think\Model;
+use think\model\relation\BelongsTo;
+use think\model\relation\HasOne;
 
 /**
  * ThinkORM 数据源 —— `Contracts\DataSource` 的 ThinkPHP 实现。
@@ -110,7 +112,7 @@ class ThinkDataSource implements DataSource
      * 静态方法，`$model::query()` 会掉进 `__callStatic` → `Query::__call`
      * 并抛 `DbException: method not exist`。TP 的正确入口是 `(new Model)->db()`。
      */
-    protected function query(): Query
+    protected function query(): BaseQuery
     {
         return (new $this->model)->db();
     }
@@ -118,7 +120,7 @@ class ThinkDataSource implements DataSource
     /**
      * @param  array<string, mixed>  $params
      */
-    protected function applyEagerLoad(Query $query, array $params): void
+    protected function applyEagerLoad(BaseQuery $query, array $params): void
     {
         $relations = $params['relations'] ?? null;
 
@@ -148,7 +150,7 @@ class ThinkDataSource implements DataSource
      *
      * @param  array<string, mixed>  $params
      */
-    protected function applySearch(Query $query, array $params): void
+    protected function applySearch(BaseQuery $query, array $params): void
     {
         $keyword = $params['keyword'] ?? $params['search'] ?? null;
 
@@ -167,7 +169,7 @@ class ThinkDataSource implements DataSource
             return;
         }
 
-        $query->where(function (Query $q) use ($columns, $keyword): void {
+        $query->where(function (BaseQuery $q) use ($columns, $keyword): void {
             foreach ($columns as $column) {
                 if (! is_string($column) || $column === '') {
                     continue;
@@ -177,7 +179,7 @@ class ThinkDataSource implements DataSource
                     [$relation, $field] = explode('.', $column, 2);
 
                     // Eloquent: orWhereHas ｜ TP: hasWhere(..., 'OR')
-                    $q->hasWhere($relation, function (Query $sub) use ($field, $keyword): void {
+                    $q->hasWhere($relation, function (BaseQuery $sub) use ($field, $keyword): void {
                         $sub->where($field, 'like', "%{$keyword}%");
                     }, 'OR');
 
@@ -198,7 +200,7 @@ class ThinkDataSource implements DataSource
      *
      * @param  array<string, mixed>  $params
      */
-    protected function applySort(Query $query, array $params): void
+    protected function applySort(BaseQuery $query, array $params): void
     {
         $sort = $params['sort'] ?? null;
 
@@ -237,8 +239,8 @@ class ThinkDataSource implements DataSource
 
         $related = $instance->{$relation}();
 
-        if (! $related instanceof \think\model\relation\BelongsTo
-            && ! $related instanceof \think\model\relation\HasOne) {
+        if (! $related instanceof BelongsTo
+            && ! $related instanceof HasOne) {
             throw new \RuntimeException(
                 "关联 [{$relation}] 是 ".(new \ReflectionClass($related))->getShortName()
                 .'，不支持排序（仅支持 belongsTo / hasOne）'
@@ -263,7 +265,7 @@ class ThinkDataSource implements DataSource
     /**
      * @param  array<string, mixed>  $params
      */
-    protected function applyFilters(Query $query, array $params): void
+    protected function applyFilters(BaseQuery $query, array $params): void
     {
         $filters = $params['filters'] ?? null;
 
@@ -280,7 +282,7 @@ class ThinkDataSource implements DataSource
                 [$relation, $field] = explode('.', $column, 2);
 
                 // Eloquent: whereHas ｜ TP: hasWhere
-                $query->hasWhere($relation, function (Query $sub) use ($field, $value): void {
+                $query->hasWhere($relation, function (BaseQuery $sub) use ($field, $value): void {
                     $sub->where($field, $value);
                 });
 
@@ -296,7 +298,7 @@ class ThinkDataSource implements DataSource
      *
      * @param  array<string, mixed>  $params
      */
-    protected function applyIds(Query $query, array $params): void
+    protected function applyIds(BaseQuery $query, array $params): void
     {
         $ids = $params['ids'] ?? null;
 
@@ -307,7 +309,15 @@ class ThinkDataSource implements DataSource
         $probe = new $this->model;
 
         // Eloquent: getKeyName() ｜ TP: getPk()
-        $query->whereIn($probe->getPk(), $ids);
+        // getPk() 类型上是 array|string|null（复合主键时是数组），
+        // whereIn 只接受字符串 —— 非字符串时不加条件（复合主键的批量过滤未支持）
+        $pk = $probe->getPk();
+
+        if (! is_string($pk) || $pk === '') {
+            return;
+        }
+
+        $query->whereIn($pk, $ids);
     }
 
     /**

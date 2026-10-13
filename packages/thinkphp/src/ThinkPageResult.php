@@ -18,6 +18,9 @@ use think\Paginator;
  */
 final class ThinkPageResult implements PageResult
 {
+    /**
+     * @param  Paginator<int, object>  $paginator
+     */
     public function __construct(private readonly Paginator $paginator) {}
 
     /**

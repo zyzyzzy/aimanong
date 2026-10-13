@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace Aimanong\ThinkPHP\Console;
 
+use Aimanong\ThinkPHP\Models\Administrator;
+use Aimanong\ThinkPHP\Models\Role;
 use think\console\Command;
 use think\console\Input;
 use think\console\input\Option;
 use think\console\Output;
+use think\facade\Config;
+use think\facade\Db;
 
 /**
  * 安装命令（ThinkPHP 版）—— `aimanong:install`。
@@ -105,7 +109,7 @@ final class InstallCommand extends Command
         }
 
         if (! is_dir(dirname($target)) && ! mkdir(dirname($target), 0755, true) && ! is_dir(dirname($target))) {
-            $output->writeln("<error>✗ 无法创建 config 目录</error>");
+            $output->writeln('<error>✗ 无法创建 config 目录</error>');
 
             return 1;
         }
@@ -242,10 +246,10 @@ final class InstallCommand extends Command
         ];
 
         try {
-            \think\facade\Db::execute($sql);
+            Db::execute($sql);
 
             foreach ($rbac as $ddl) {
-                \think\facade\Db::execute($ddl);
+                Db::execute($ddl);
             }
         } catch (\Throwable $e) {
             $output->writeln('<error>✗ 建表失败: '.$e->getMessage().'</error>');
@@ -262,10 +266,10 @@ final class InstallCommand extends Command
     {
         try {
             /** @var mixed $default */
-            $default = \think\facade\Config::get('database.default');
+            $default = Config::get('database.default');
 
             /** @var mixed $type */
-            $type = \think\facade\Config::get('database.connections.'.(string) $default.'.type');
+            $type = Config::get('database.connections.'.(string) $default.'.type');
 
             return is_string($type) && $type !== '' ? $type : (string) $default;
         } catch (\Throwable) {
@@ -288,7 +292,7 @@ final class InstallCommand extends Command
             return 0;
         }
 
-        $model = \Aimanong\ThinkPHP\Models\Administrator::class;
+        $model = Administrator::class;
 
         try {
             if ($model::count() > 0) {
@@ -340,10 +344,10 @@ final class InstallCommand extends Command
      * 而唯一的出路是手工往关联表插数据 —— 那不在任何文档里。
      * 这与「装完没有账号可登」是同一类闭环死锁。
      */
-    protected function ensureSuperRole(Output $output, object $user): void
+    protected function ensureSuperRole(Output $output, Administrator $user): void
     {
         try {
-            $roleModel = \Aimanong\ThinkPHP\Models\Role::class;
+            $roleModel = Role::class;
             $role = $roleModel::where('slug', 'admin')->find();
 
             if ($role === null) {
@@ -360,13 +364,13 @@ final class InstallCommand extends Command
             }
 
             // 绑定用户 ↔ 角色（先查后插，保证幂等）
-            $exists = \think\facade\Db::name('admin_role_user')
+            $exists = Db::name('admin_role_user')
                 ->where('role_id', $role->getKey())
                 ->where('user_id', $user->getKey())
                 ->find();
 
             if ($exists === null) {
-                \think\facade\Db::name('admin_role_user')->insert([
+                Db::name('admin_role_user')->insert([
                     'role_id' => $role->getKey(),
                     'user_id' => $user->getKey(),
                 ]);

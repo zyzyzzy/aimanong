@@ -96,6 +96,8 @@ abstract class Field
 
     /**
      * 追加 Laravel 验证规则。
+     *
+     * @param  string|array<int, mixed>  $rules
      */
     public function rules(string|array $rules): static
     {

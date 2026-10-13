@@ -133,6 +133,17 @@ jobs:
         working-directory: packages/laravel
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      #
+      # ThinkPHP 包自己的依赖 —— 它需要 topthink/framework 才能做静态分析
+      # （分析器要能解析 think\* 这些类）。
+      #
+      # ⚠️ 这一步是全面验收时才补的：此前 packages/thinkphp 完全没有
+      # PHPStan / Pint，3451 行代码没有过一次静态分析。
+      #
+      - name: 安装 ThinkPHP 驱动依赖
+        working-directory: packages/thinkphp
+        run: composer install --no-interaction --prefer-dist --no-progress
+
       - name: 安装文档站依赖
         working-directory: docs
         run: npm ci || npm install

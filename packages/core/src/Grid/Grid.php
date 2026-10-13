@@ -31,6 +31,7 @@ class Grid
      */
     public const BATCH_ACTIONS = ['delete', 'export'];
 
+    /** @var array<int, mixed> */
     protected array $batchActions = [];
 
     protected int $perPage = 20;

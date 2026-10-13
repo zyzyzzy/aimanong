@@ -1,0 +1,5 @@
+{
+    "preset": "laravel",
+    "exclude": ["vendor", "resources/views", "config"],
+    "notPath": ["src/helpers.php"]
+}

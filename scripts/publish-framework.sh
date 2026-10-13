@@ -75,14 +75,31 @@ publish_one() {
         info "main 已更新"
     fi
 
-    # 4. 同步历史 tag（在拆分分支的对应 commit 上打）
+    # 4. 同步历史 tag（把拆分分支上的对应 commit 推成包仓库的 tag）
+    #
+    # ⚠️ 2026-10-13 修：原实现在这里做 `git tag -f "$t" "$target"`，
+    #    把**本地** tag 改写成了拆分 commit。后果（真实发生）：
+    #      · 主仓库里 15 个 tag 全部指向「只有 packages/<pkg> 的树」，
+    #        git show v1.8.0 看到的是框架源码而不是主仓库
+    #      · 本脚本自己再也认不出这些 tag —— 它靠
+    #        `git show "$t:$prefix/composer.json"` 定位拆分 commit，
+    #        tag 被改写后这个路径不存在 → 静默 continue → **不幂等**
+    #      · 谁跑一次 `git push --tags origin`，就会把污染的 tag
+    #        覆盖到主仓库远端（远端目前是对的，纯属没人这么干）
+    #
+    #    正确做法：直接推「某个对象 → 远端 tag ref」，完全不碰本地 tag。
     echo "  → 同步版本 tag..."
-    local count=0
+    local count=0 skipped=0
     for t in $(git tag --sort=v:refname); do
         # 主仓库该 tag 上 packages/<pkg>/composer.json 的 blob
         local src_blob
         src_blob=$(git show "$t:$prefix/composer.json" 2>/dev/null || true)
-        [ -z "$src_blob" ] && continue
+        if [ -z "$src_blob" ]; then
+            # 正常情况不会走到这里。走到说明本地 tag 已被污染
+            # （或该 tag 本就不属于这个包），必须说出来而不是静默跳过。
+            skipped=$((skipped+1))
+            continue
+        fi
 
         # 在拆分分支历史里找包含相同 blob 的 commit
         local target=""
@@ -96,11 +113,16 @@ publish_one() {
         done
 
         if [ -n "$target" ]; then
-            git tag -f "$t" "$target" >/dev/null 2>&1
-            git push -q -f "$remote" "refs/tags/$t" 2>/dev/null && count=$((count+1))
+            # 不建本地 tag，直接把目标对象推成远端 tag
+            git push -q -f "$remote" "$target:refs/tags/$t" 2>/dev/null && count=$((count+1))
         fi
     done
     info "同步了 $count 个版本 tag"
+    if [ "$skipped" -gt 0 ]; then
+        warn "有 $skipped 个 tag 在本地解析不出 $prefix/composer.json —— 已跳过"
+        warn "  本地 tag 可能被历史版本的脚本改写过。修复："
+        warn "  git fetch origin --tags --force"
+    fi
 
     # 5. 清理临时分支
     git branch -D "$branch" >/dev/null 2>&1

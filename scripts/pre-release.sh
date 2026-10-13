@@ -12,7 +12,14 @@
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-FW="$ROOT/packages/framework"
+# ── 拆包后的两个"框架目录" ──
+#
+#   PRODUCT  产品包（元包）—— 对外版本号在这里，README/CHANGELOG 跟它走
+#   FW       驱动包（有 vendor / 测试 / PHPStan）—— 质量门禁在这里跑
+#
+# 拆包前它们是同一个目录，所以下面所有用到的地方都要显式区分。
+PRODUCT="$ROOT/packages/framework"
+FW="$ROOT/packages/laravel"
 FAIL=0
 WITH_E2E=0
 SKIP_NET=0
@@ -68,7 +75,7 @@ printf "${C_N}"
 # ─────────────────────────────────────────────────
 head1 "【1】版本号一致性"
 
-V_COMPOSER=$(python3 -c "import json;print(json.load(open('$FW/composer.json'))['version'])" 2>/dev/null || echo "?")
+V_COMPOSER=$(python3 -c "import json;print(json.load(open('$PRODUCT/composer.json'))['version'])" 2>/dev/null || echo "?")
 V_CODE=$(cd "$FW" && php -r 'require "vendor/autoload.php"; echo Aimanong\Aimanong::version();' 2>/dev/null || echo "?")
 
 if [ "$V_COMPOSER" = "$V_CODE" ] && [ "$V_COMPOSER" != "?" ]; then
@@ -259,7 +266,7 @@ if [ "$SKIP_NET" -eq 1 ]; then
   warn "已显式跳过 Packagist 连通性检查（--skip-network）"
   warn "→ 版本同步【未验证】。发布前请务必重跑一次不带该参数的检查。"
 else
-for pkg in core framework region; do
+for pkg in core laravel framework region; do
   if ! body=$(fetch_packagist "$pkg"); then
     bad "连不上 Packagist，无法确认 aimanong/${pkg} 是否发布（测了 3 次）"
     echo "       → 这是网络问题，不是发版问题。检查网络后重跑本脚本。"
@@ -289,7 +296,7 @@ done
 # 所以这里显式比对版本号。
 echo ""
 echo "  版本同步状态（本地 composer.json vs Packagist）："
-for pkg in core framework region; do
+for pkg in core laravel framework region; do
   local_ver=$(python3 -c "import json;print(json.load(open('$ROOT/packages/${pkg}/composer.json')).get('version',''))" 2>/dev/null || echo "")
   if [ -z "$local_ver" ]; then continue; fi
 

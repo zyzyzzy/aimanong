@@ -11,11 +11,12 @@ jobs:
     name: 框架质量门禁（PHP 8.3）
     runs-on: ubuntu-latest
 
-    # 所有命令都在 packages/framework 下执行 ——
+    # 所有命令都在 packages/laravel 下执行 ——
+    # （拆包后驱动包才有 vendor 与测试；framework 是元包）
     # 本仓库是 monorepo，根目录没有 composer.json
     defaults:
       run:
-        working-directory: packages/framework
+        working-directory: packages/laravel
 
     steps:
       - uses: actions/checkout@v4
@@ -30,8 +31,8 @@ jobs:
       - name: 缓存 Composer
         uses: actions/cache@v4
         with:
-          path: packages/framework/vendor
-          key: ${{ runner.os }}-php83-${{ hashFiles('packages/framework/composer.json') }}
+          path: packages/laravel/vendor
+          key: ${{ runner.os }}-php83-${{ hashFiles('packages/laravel/composer.json') }}
           restore-keys: ${{ runner.os }}-php83-
 
       - name: 安装依赖
@@ -44,7 +45,7 @@ jobs:
       # 没有它，core 里会悄悄长回 Illuminate 依赖（AI 照抄别处 import 时尤其容易），
       # 后果是 ThinkPHP 用户重新掉进「装上就炸」的全局 env() 冲突。
       #
-      # 注意本 job 的 working-directory 是 packages/framework，
+      # 注意本 job 的 working-directory 是 packages/laravel，
       # 走仓库根的脚本要显式覆盖。
       - name: core 纯度门禁
         working-directory: .
@@ -73,7 +74,7 @@ jobs:
           coverage: none
 
       - name: 安装依赖
-        working-directory: packages/framework
+        working-directory: packages/laravel
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Setup Node
@@ -129,7 +130,7 @@ jobs:
       # 而报错信息（「PHPUnit 失败」）完全指不到「依赖没装」。
       #
       - name: 安装框架依赖
-        working-directory: packages/framework
+        working-directory: packages/laravel
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: 安装文档站依赖
@@ -174,7 +175,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: packages/framework
+        working-directory: packages/laravel
 
     steps:
       - uses: actions/checkout@v4

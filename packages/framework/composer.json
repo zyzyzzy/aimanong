@@ -1,8 +1,8 @@
 {
     "name": "aimanong/framework",
-    "version": "1.8.1",
-    "description": "Aimanong（AI 码农）—— 为 AI Agent 设计的 Laravel 后台开发框架",
-    "type": "library",
+    "version": "1.9.0",
+    "description": "Aimanong（AI 码农）—— 为 AI Agent 设计的后台开发框架（元包：内核 + Laravel 驱动）",
+    "type": "metapackage",
     "keywords": [
         "aimanong",
         "ai",
@@ -21,22 +21,8 @@
     ],
     "require": {
         "php": "^8.2",
-        "ext-json": "*",
-        "ext-mbstring": "*",
         "aimanong/core": "^1.0",
-        "illuminate/console": "^12.0|^13.0",
-        "illuminate/container": "^12.0|^13.0",
-        "illuminate/contracts": "^12.0|^13.0",
-        "illuminate/database": "^12.0|^13.0",
-        "illuminate/http": "^12.0|^13.0",
-        "illuminate/routing": "^12.0|^13.0",
-        "illuminate/support": "^12.0|^13.0",
-        "illuminate/validation": "^12.0|^13.0",
-        "illuminate/view": "^12.0|^13.0",
-        "laravel/mcp": "^0.4"
-    },
-    "conflict": {
-        "topthink/framework": "*"
+        "aimanong/laravel": "^1.0"
     },
     "repositories": [
         {
@@ -45,38 +31,17 @@
             "options": {
                 "symlink": true
             }
+        },
+        {
+            "type": "path",
+            "url": "../laravel",
+            "options": {
+                "symlink": true
+            }
         }
     ],
     "suggest": {
         "aimanong/region": "中国省市区三级联动字段（->region()）。不装也能用框架，只是没有这个字段类型"
-    },
-    "require-dev": {
-        "laravel/pint": "^1.18",
-        "orchestra/testbench": "^9.0|^10.0",
-        "phpstan/phpstan": "^2.0",
-        "phpunit/phpunit": "^11.5"
-    },
-    "autoload": {
-        "psr-4": {
-            "Aimanong\\": "src/"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "Aimanong\\Tests\\": "tests/"
-        }
-    },
-    "scripts": {
-        "test": "vendor/bin/phpunit",
-        "phpstan": "vendor/bin/phpstan analyse",
-        "pint": "vendor/bin/pint src tests ../core/src"
-    },
-    "extra": {
-        "laravel": {
-            "providers": [
-                "Aimanong\\AimanongServiceProvider"
-            ]
-        }
     },
     "config": {
         "sort-packages": true

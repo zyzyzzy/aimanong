@@ -57,6 +57,7 @@ cd "$DEMO"
 echo "  → 接入本地框架包"
 composer config repositories.aimanong path "$ROOT/packages/framework" --no-interaction
 composer config repositories.aimanong-core path "$ROOT/packages/core" --no-interaction
+composer config repositories.aimanong-laravel path "$ROOT/packages/laravel" --no-interaction
 composer config repositories.aimanong-region path "$ROOT/packages/region" --no-interaction
 
 # --minimal：只装 framework，不装任何可选插件。

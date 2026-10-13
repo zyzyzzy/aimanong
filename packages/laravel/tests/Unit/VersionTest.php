@@ -17,15 +17,26 @@ class VersionTest extends TestCase
 {
     public function test_version_comes_from_composer_json(): void
     {
-        $composer = json_decode(
-            (string) file_get_contents(dirname(__DIR__, 2).'/composer.json'),
-            true
-        );
+        /*
+         * ⚠️ 拆包后「composer.json」有歧义：一次安装会引入三个包。
+         *
+         * 对外版本号是 **framework 元包**的，不是 laravel 驱动包的 ——
+         * 用户装的是 framework，后台界面显示的也该是那个号码。
+         * 所以这里比对 framework 的 composer.json。
+         */
+        $path = dirname(__DIR__, 2).'/../framework/composer.json';
+
+        if (! is_file($path)) {
+            // 只装了 laravel 驱动包时退回本包
+            $path = dirname(__DIR__, 2).'/composer.json';
+        }
+
+        $composer = json_decode((string) file_get_contents($path), true);
 
         $this->assertSame(
             $composer['version'] ?? null,
             Aimanong::version(),
-            'Aimanong::version() 必须与 composer.json 的 version 一致'
+            'Aimanong::version() 必须与产品包（framework）的 composer.json 一致'
         );
     }
 

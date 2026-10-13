@@ -3,7 +3,8 @@
 # 发布 Composer 包到 Packagist（subtree split 方式）
 #
 # 用法：
-#   ./scripts/publish-framework.sh           # 发布 core + framework + region
+#   ./scripts/publish-framework.sh           # 发布 core + laravel + framework + region
+#   ./scripts/publish-framework.sh laravel   # 只发布 laravel 驱动
 #   ./scripts/publish-framework.sh core      # 只发布 core（拆包后的内核）
 #   ./scripts/publish-framework.sh framework # 只发布 framework
 #   ./scripts/publish-framework.sh region    # 只发布 region
@@ -189,12 +190,16 @@ for k in d.get('require', {}):
 
 # ── 主流程 ──
 #
-# ⚠️ 顺序有意义：**core 必须最先发**。
-# framework 依赖 aimanong/core，先发 framework 会得到一个
+# ⚠️ 顺序有意义：**core → laravel → framework**。
+# 后者依赖前者，顺序反了会得到一个
 # 「永远装不上」的包（发布过程本身却一切正常）。
 # publish_one 里的依赖守卫也会硬拦这种情况，这里是第一道。
 if [ "$ONLY" = "core" ] || [ "$ONLY" = "all" ]; then
     publish_one core
+fi
+
+if [ "$ONLY" = "laravel" ] || [ "$ONLY" = "all" ]; then
+    publish_one laravel
 fi
 
 if [ "$ONLY" = "framework" ] || [ "$ONLY" = "all" ]; then

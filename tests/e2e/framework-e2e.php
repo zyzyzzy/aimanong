@@ -25,6 +25,38 @@ $fail = 0;
  * 没跑到结尾就退出 = 中途崩了 = 失败。
  * 见文件末尾的说明：Laravel 的异常处理器不会改变退出码。
  */
+
+/*
+ * 拆包后的目录布局（所有路径判断都基于这两个变量，别写死）：
+ *
+ *   packages/core       框架无关内核（Grid / Form / Schema ...）
+ *   packages/laravel    Laravel 驱动 + 包资源（views / config / routes / database）
+ *   packages/framework  元包 —— **没有文件**，不能拿它当路径用
+ *
+ * 原先 `$fw` 指向 packages/framework，拆包后那里只剩一个 composer.json，
+ * 于是「模板存在性守卫」读不到模板 —— 这条断言够硬，直接报错。
+ */
+$fw = dirname(__DIR__, 2).'/packages/laravel';
+$corePkg = dirname(__DIR__, 2).'/packages/core';
+
+function fwSrc(string $rel): string
+{
+    global $fw, $corePkg;
+
+    static $cache = [];
+
+    foreach ([$corePkg, $fw] as $pkg) {
+        $path = $pkg.'/'.$rel;
+
+        if (is_file($path)) {
+            return $cache[$path] ??= (string) file_get_contents($path);
+        }
+    }
+
+    fwrite(STDERR, "❌ 找不到源码文件：{$rel}（已搜 packages/core 与 packages/laravel）\n");
+    exit(1);
+}
+
 $completed = false;
 register_shutdown_function(static function (): void {
     global $completed;
@@ -347,7 +379,7 @@ t("能力面暴露字典清单", is_array($dictCaps), count($dictCaps).' 个');
  *
  * 这条断言检查模板里对**可选插件**的调用都带存在性守卫。
  */
-$tplPath = dirname(__DIR__, 2).'/packages/framework/resources/views/resource.blade.php';
+$tplPath = $fw.'/resources/views/resource.blade.php';
 $tpl = is_file($tplPath) ? (string) file_get_contents($tplPath) : '';
 
 if ($tpl === '') {
@@ -431,39 +463,6 @@ t("region 不在 framework 的 require 中", ! isset($fwRequire['aimanong/region
  * 现在插件通过 Extension::fieldView() / fieldScript() 自带 UI，
  * 框架只负责在合适的字段类型上渲染它们。
  */
-$fw = dirname(__DIR__, 2).'/packages/framework';
-$corePkg = dirname(__DIR__, 2).'/packages/core';
-
-/*
- * 读框架源码 —— 同时搜 core 与 framework 两个包。
- *
- * ## 为什么不能写死路径
- *
- * 拆包后 `Aimanong\` 这个命名空间横跨两个包：Grid / Form / Schema 在 core，
- * Http / Console 在 framework。原先这里写死 `$fw.'/src/Grid/Grid.php'`，
- * 搬包那一刻就变成「文件不存在」—— 而 Laravel 的异常处理器会把
- * ErrorException 渲染出来却**不改变退出码**，于是 pre-release 仍然
- * 报「✅ framework-e2e 通过」。一个崩了的测试被显示成通过。
- *
- * 所以这里两点一起改：路径搜索 + 末尾的退出码保证。
- */
-function fwSrc(string $rel): string
-{
-    global $fw, $corePkg;
-
-    static $cache = [];
-
-    foreach ([$corePkg, $fw] as $pkg) {
-        $path = $pkg.'/'.$rel;
-
-        if (is_file($path)) {
-            return $cache[$path] ??= (string) file_get_contents($path);
-        }
-    }
-
-    fwrite(STDERR, "❌ 找不到源码文件：{$rel}（已搜 packages/core 与 packages/framework）\n");
-    exit(1);
-}
 
 // 1) 框架核心不得再出现插件自己的类
 $coreTpl = (string) file_get_contents($fw.'/resources/views/resource.blade.php');
@@ -656,8 +655,7 @@ t("guard 可被真实解析", $failed === [] && $resolved !== [],
  * 第六轮 AI 实测的真实反馈：「我最后移除了这个声明 ——
  * 留着只会骗下一个读 schema 的人」。
  */
-$tpl = (string) file_get_contents(dirname(__DIR__, 2)
-    .'/packages/framework/resources/views/resource.blade.php');
+$tpl = (string) file_get_contents($fw.'/resources/views/resource.blade.php');
 
 t("筛选器有 UI（filterableColumns）",
     str_contains($tpl, 'filterableColumns')

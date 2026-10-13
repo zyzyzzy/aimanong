@@ -2,6 +2,58 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.9.0] - 2026-10-13
+
+> 主题：**把框架拆成「内核 + 驱动」，为多框架适配铺路**。
+>
+> 对使用者**没有可见变化** —— `composer require aimanong/framework`
+> 照旧、命名空间照旧、后台照旧。改的是包的内部结构。
+
+### 变更：`aimanong/framework` 变成元包
+
+一次安装现在会引入三个包：
+
+| 包 | 版本 | 作用 |
+|---|---|---|
+| `aimanong/framework` | 1.9.0 | **元包** —— 用户装的、对外的产品版本 |
+| `aimanong/laravel` | 1.0.0 | Laravel 12 驱动（Eloquent / Blade / 路由 / 认证 / 控制台 / MCP） |
+| `aimanong/core` | 1.0.0 | 框架无关内核（声明 DSL + 四产物编译）**零 illuminate 依赖** |
+
+**为什么要拆**：`aimanong/framework` 原先把 `illuminate/*` 列为直接依赖，
+于是能被装进任何非 Laravel 项目，然后以一个残缺的全局 `env()` 炸掉宿主
+（详见 [多框架适配-PoC报告.md](./internal-docs/多框架适配-PoC报告.md)）。
+拆出零依赖的 `core` 之后，这个可能性从根上消失。
+
+### 新增：驱动接缝
+
+`core` 与驱动之间只有一个接缝 —— `Aimanong\Support\Drivers`：
+
+- `SchemaIntrospector` —— 幽灵列检测所需的内省（表名 / 列清单 / 关联）
+- `DictionarySource` —— 数据字典
+- `PermissionChecker` —— 权限判定
+- `UploadSpec` —— 上传能力描述
+
+**两类缺失，处理方式不同**：字典 / 权限 / 上传缺驱动时**抛异常**
+（声明了能力却兑现不了就是幽灵能力）；Schema 内省缺驱动时返回 null
+（这项检查本就尽力而为）。
+
+### 变更：`Aimanong::version()` 的语义
+
+拆包后版本号有歧义（三个包各有自己的版本）。现在明确：
+**对外版本号 = `aimanong/framework` 的版本**，后台界面、README 徽章、
+文档里写的都是它。内部包升版不影响用户看到的数字。
+
+### 顺带修复
+
+- `aimanong/core` 里不再可能混入 `illuminate/*` 依赖 —— 新增 CI 硬门禁
+  `scripts/check-core-purity.sh` 拦住（已用真实反例验证会拦）。
+- 发布脚本增加**依赖守卫**：发 `aimanong/framework` 前确认它依赖的
+  `aimanong/*` 已在 Packagist 上，否则会发出一个「永远装不上」的包。
+- e2e 脚本补上**退出码保证**：跑不完或断言失败必须非 0。
+  此前 Laravel 的全局异常处理器会把崩溃渲染出来却**不改变退出码**，
+  于是 `pre-release.sh` 把 `92 / 94`、`9 / 24` 都显示成「✅ 通过」。
+  修完后真实结果是 `95 / 95`、`24 / 24`。
+
 ## [1.8.1] - 2026-10-13
 
 > 主题：**堵掉一个「装得上、不报错、然后炸掉宿主」的坑**。

@@ -68,7 +68,7 @@ final class InstallCommand extends Command
         $output->writeln('');
         $output->writeln('<info>╔══════════════════════════════════════╗</info>');
         $output->writeln('<info>║   AI 码农 · Aimanong 安装程序         ║</info>');
-        
+
         $output->writeln('<info>╚══════════════════════════════════════╝</info>');
         $output->writeln('');
 

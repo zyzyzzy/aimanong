@@ -2,7 +2,34 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
-## [1.10.0] - 2026-10-14
+## [1.10.1] - 2026-10-14
+
+> 主题：修掉一个**只有真从 Packagist 装一次才会暴露**的发布事故。
+
+### 事故：`aimanong/core` 1.0.0 在 Packagist 上是旧的
+
+装 `aimanong/thinkphp` 1.0.0 后一跑就 `Class "Aimanong\Aimanong" not found`。
+
+原因是：core 这一轮新增了公开入口 `Aimanong`、`Contracts\DataSource` /
+`FrameworkRuntime` / `PageResult`、`Ai\ScopeHooks`、`Ai\Verifier`，
+但 `version` 一直没升（还是 1.0.0）—— 发版脚本按版本派生包 tag，
+于是**同名 tag `v1.0.0` 被 force-update 到新 commit**，
+而 **Packagist 不会重新索引一个已存在的 tag**：
+
+    远端 tag v1.0.0 → f5f1d673（新，含 Aimanong.php）
+    Packagist 记录  → 50bbc0d3（旧，不含）
+
+修法：core 升到 **1.1.0**（它确实新增了公开 API），新 tag 会被正常索引。
+
+> 又一次印证：**仓内测试全绿 ≠ 用户装得到对的东西**。
+> demo 用 path 仓库指向本地源码，永远看不到「已发布的包是旧的」。
+
+### 变更
+
+- `aimanong/core` 1.0.0 → **1.1.0**（新增公开入口与契约）
+- `aimanong/framework` 1.10.0 → **1.10.1**
+
+
 
 > 主题：**多框架支持** —— 同一套 Resource 声明，Laravel 12 与 ThinkPHP 8 都能跑。
 

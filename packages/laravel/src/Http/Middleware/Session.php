@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\Http\Middleware;
 
 use Aimanong\Aimanong;
+use Aimanong\Application\ApplicationContext;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,6 +24,7 @@ class Session
          * 直接读会让 admin 请求拿到 merchant 的值
          * （cookie path 写错 → CSRF 419、登录态丢失）。
          */
+        /** @var ApplicationContext $context */
         $context = Aimanong::context();
 
         config(['session.path' => '/'.$context->prefix()]);

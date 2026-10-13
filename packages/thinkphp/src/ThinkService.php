@@ -36,6 +36,9 @@ class ThinkService extends Service
         Drivers::registerDictionary(new ThinkDictionary);
         Drivers::registerPermissionChecker(new ThinkPermissionChecker);
         Drivers::registerUploadSpec(new ThinkUploadSpec);
+
+        // 公开入口 Aimanong\Aimanong 在 core，它需要的框架设施接在这里
+        \Aimanong\Aimanong::bindRuntime(new ThinkRuntime);
     }
 
     /**
@@ -50,5 +53,6 @@ class ThinkService extends Service
         Drivers::registerDictionary(new ThinkDictionary);
         Drivers::registerPermissionChecker(new ThinkPermissionChecker);
         Drivers::registerUploadSpec(new ThinkUploadSpec);
+        \Aimanong\Aimanong::bindRuntime(new ThinkRuntime);
     }
 }

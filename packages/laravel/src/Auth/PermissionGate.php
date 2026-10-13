@@ -87,7 +87,9 @@ class PermissionGate
      */
     public static function user(): ?Administrator
     {
-        $user = Aimanong::guard()->user();
+        /** @var AdminGuard $guard */
+        $guard = Aimanong::guard();
+        $user = $guard->user();
 
         return $user instanceof Administrator ? $user : null;
     }

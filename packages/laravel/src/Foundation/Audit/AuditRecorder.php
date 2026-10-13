@@ -285,7 +285,10 @@ class AuditRecorder
     protected function currentUser(): ?Authenticatable
     {
         try {
-            return Aimanong::user();
+            $user = Aimanong::user();
+
+            // 入口返回 ?object（core 不认识 Authenticatable），这里收敛回契约类型
+            return $user instanceof Authenticatable ? $user : null;
         } catch (Throwable) {
             return null;
         }

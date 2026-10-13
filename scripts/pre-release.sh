@@ -190,13 +190,24 @@ if [ "$WITH_E2E" = "1" ]; then
   # demo 项目路径（可按需调整）
   export DEMO_PATH="${DEMO_PATH:-$ROOT/../demo-app}"
 
+  # ⚠️ 退出码 + **汇总行**双重判定。
+  #
+  # 只信退出码是不够的：实测遇到过 e2e 在 `require vendor/autoload.php` 阶段
+  # 就挂掉（demo 的 autoloader 指向已删除的文件），退出码却是 0 ——
+  # 于是这里打印「✅ framework-e2e 通过」，而实际上一个断言都没跑。
+  #
+  # 汇总行 '通过 N / N' 只会在全部跑完时打印，所以用它兜底。
+  R=""
   if php tests/e2e/framework-e2e.php > /tmp/amn-e2e.log 2>&1; then
     R=$(grep -oE '通过 [0-9]+ / [0-9]+' /tmp/amn-e2e.log | tail -1)
-    ok "framework-e2e ${R:-通过}"
+  fi
+
+  if [ -n "$R" ]; then
+    ok "framework-e2e $R"
   else
-    bad "framework-e2e 失败"
+    bad "framework-e2e 失败（未产出汇总行 = 没跑完）"
     # 只列出失败项 —— 全量日志太长，且 CI 上无意义
-    grep -E '❌|Fatal|Error' /tmp/amn-e2e.log | head -20 | sed 's/^/      /'
+    grep -E '❌|Fatal|Error|Failed to open' /tmp/amn-e2e.log | head -20 | sed 's/^/      /'
   fi
 
   # 生成的 types.ts 能否通过真实 tsc 编译。

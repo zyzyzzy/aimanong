@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Aimanong\Http\Controllers;
 
 use Aimanong\Aimanong;
+use Aimanong\Auth\AdminGuard;
 use Aimanong\Auth\LoginThrottle;
 use Aimanong\Foundation\Audit\AuditRecorder;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -53,7 +55,10 @@ class AuthController extends Controller
          */
         LoginThrottle::ensureNotLockedOut($request, $credentials);
 
-        if (! Aimanong::guard()->attempt($credentials)) {
+        /** @var AdminGuard $guard */
+        $guard = Aimanong::guard();
+
+        if (! $guard->attempt($credentials)) {
             // 失败：计数（下次就会被拦）
             LoginThrottle::hit($request, $credentials);
 
@@ -96,6 +101,7 @@ class AuthController extends Controller
      */
     protected function markLoggedIn(Request $request): void
     {
+        /** @var Authenticatable|null $user */
         $user = Aimanong::user();
 
         if ($user !== null && method_exists($user, 'markLoggedIn')) {
@@ -105,14 +111,18 @@ class AuthController extends Controller
 
     protected function currentUserId(): ?int
     {
-        $id = Aimanong::user()?->getAuthIdentifier();
+        /** @var Authenticatable|null $current */
+        $current = Aimanong::user();
+        $id = $current?->getAuthIdentifier();
 
         return is_numeric($id) ? (int) $id : null;
     }
 
     public function logout(Request $request): JsonResponse|RedirectResponse
     {
-        Aimanong::guard()->logout();
+        /** @var AdminGuard $guard */
+        $guard = Aimanong::guard();
+        $guard->logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

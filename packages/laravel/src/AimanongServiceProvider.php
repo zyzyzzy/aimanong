@@ -96,6 +96,18 @@ class AimanongServiceProvider extends ServiceProvider
         $this->registerAuthGuard();
         $this->registerCommands();
         $this->registerDrivers();
+        $this->registerRuntime();
+    }
+
+    /**
+     * 绑定框架运行时 —— 公开入口 `Aimanong\Aimanong` 住在 core，
+     * 它需要的那部分 Laravel 设施由这里接出去。
+     *
+     * ⚠️ 必须在 register() 阶段、且早于任何 `Aimanong::` 调用。
+     */
+    protected function registerRuntime(): void
+    {
+        Aimanong::bindRuntime(new LaravelRuntime);
     }
 
     /**

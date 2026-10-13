@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\Extend;
 
 use Aimanong\Aimanong;
+use Aimanong\Application\ApplicationContext;
 use Aimanong\Contracts\Resource;
 use Aimanong\Support\FieldType;
 use Illuminate\Support\Facades\Route;
@@ -94,7 +95,9 @@ abstract class Extension
     protected function routes(\Closure $callback): void
     {
         // 走 context 而非 config —— 多应用下扩展路由也要挂到正确的后台
-        $prefix = Aimanong::context()->prefix();
+        /** @var ApplicationContext $context */
+        $context = Aimanong::context();
+        $prefix = $context->prefix();
 
         Route::middleware('admin')
             ->prefix($prefix.'/extensions/'.$this->name())

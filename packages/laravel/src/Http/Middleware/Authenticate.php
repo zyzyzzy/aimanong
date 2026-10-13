@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\Http\Middleware;
 
 use Aimanong\Aimanong;
+use Aimanong\Application\ApplicationContext;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,7 +21,11 @@ class Authenticate
     public function handle(Request $request, Closure $next, ?string $guard = null): Response
     {
         // 多应用：支持 admin.auth:merchant 这样指定 guard
-        $guard ??= Aimanong::context()->guard();
+        if ($guard === null) {
+            /** @var ApplicationContext $context */
+            $context = Aimanong::context();
+            $guard = $context->guard();
+        }
 
         $resolved = auth()->guard($guard);
 

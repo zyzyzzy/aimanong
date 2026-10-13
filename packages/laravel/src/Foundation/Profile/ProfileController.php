@@ -7,6 +7,7 @@ namespace Aimanong\Foundation\Profile;
 use Aimanong\Aimanong;
 use Aimanong\Foundation\Resources\AdminUserResource;
 use Aimanong\Foundation\Upload\Uploader;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
@@ -37,6 +38,7 @@ class ProfileController extends Controller
     {
         $this->assertEnabled();
 
+        /** @var Authenticatable|null $user */
         $user = Aimanong::user();
 
         return view('aimanong::profile', [
@@ -58,6 +60,7 @@ class ProfileController extends Controller
     {
         $this->assertEnabled();
 
+        /** @var Authenticatable|null $user */
         $user = Aimanong::user();
 
         if ($user === null) {
@@ -102,6 +105,7 @@ class ProfileController extends Controller
     {
         $this->assertEnabled();
 
+        /** @var Authenticatable|null $user */
         $user = Aimanong::user();
 
         if ($user === null) {
@@ -148,6 +152,7 @@ class ProfileController extends Controller
      */
     protected function userData(): array
     {
+        /** @var Authenticatable|null $user */
         $user = Aimanong::user();
         $out = [];
 
@@ -171,6 +176,7 @@ class ProfileController extends Controller
      */
     protected function roleNames(): array
     {
+        /** @var Authenticatable|null $user */
         $user = Aimanong::user();
 
         if ($user === null || ! method_exists($user, 'roles')) {
@@ -201,6 +207,7 @@ class ProfileController extends Controller
      */
     protected function permissionSlugs(): array
     {
+        /** @var Authenticatable|null $user */
         $user = Aimanong::user();
 
         if ($user === null) {
@@ -262,7 +269,9 @@ class ProfileController extends Controller
             return [];
         }
 
-        $id = Aimanong::user()?->getAuthIdentifier();
+        /** @var Authenticatable|null $current */
+        $current = Aimanong::user();
+        $id = $current?->getAuthIdentifier();
 
         if (! is_numeric($id)) {
             return [];

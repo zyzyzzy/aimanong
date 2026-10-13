@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\Console;
 
 use Aimanong\Aimanong;
+use Aimanong\Extend\ExtensionManager;
 use Illuminate\Console\Command;
 
 /**
@@ -21,6 +22,7 @@ class ExtensionsCommand extends Command
 
     public function handle(): int
     {
+        /** @var ExtensionManager $manager */
         $manager = Aimanong::extensions();
         $list = $manager->toArray();
         $isJson = (bool) $this->option('json');

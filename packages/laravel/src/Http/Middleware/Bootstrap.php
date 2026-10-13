@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\Http\Middleware;
 
 use Aimanong\Aimanong;
+use Aimanong\Auth\AdminGuard;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Context;
@@ -21,7 +22,9 @@ class Bootstrap
     {
         Aimanong::bootstrap();
 
-        $user = Aimanong::guard()->user();
+        /** @var AdminGuard $guard */
+        $guard = Aimanong::guard();
+        $user = $guard->user();
         if ($user !== null) {
             Context::add('aimanong.user_id', $user->getAuthIdentifier());
         }

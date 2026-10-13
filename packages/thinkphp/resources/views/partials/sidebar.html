@@ -48,7 +48,7 @@
   </div>
 
   <nav class="am-sidebar__nav">
-    {volist name="$menu" id="item"}
+    {foreach $menu as $item}
       {if !empty($item['isGroup'])}
         {php}
           /*
@@ -79,14 +79,14 @@
           </button>
           <div class="am-nav__children">
             <div class="am-nav__inner">
-              {volist name="$item['children']" id="child"}
+              {foreach $item['children'] as $child}
                 <a class="am-nav__item <?php echo ($child['uri'] ?? '') === $current ? 'is-active' : ''; ?>"
                    href="<?php echo url(\Aimanong\Aimanong::url($child['uri'] ?? '')); ?>"
                    title="<?php echo $child['label']; ?>">
                   {include file="partials/icon" /}
                   <span class="am-truncate am-nav__label"><?php echo $child['label']; ?></span>
                 </a>
-              {/volist}
+              {/foreach}
             </div>
           </div>
         </div>
@@ -98,7 +98,7 @@
           <span class="am-truncate am-nav__label"><?php echo $item['label']; ?></span>
         </a>
       {/if}
-    {/volist}
+    {/foreach}
   </nav>
 </aside>
 

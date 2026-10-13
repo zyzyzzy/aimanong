@@ -243,9 +243,9 @@
                回归：region 的三级联动 UI 曾经硬编码在这里，
                而 framework 并未依赖 region —— 只装核心包的用户
                打开列表页直接 Fatal error。 */}
-          {volist name="$pluginFieldViews" id="pluginView" key="pluginType"}
+          {foreach $pluginFieldViews as $pluginType => $pluginView}
             {include file="$pluginView" /}
-          {/volist}
+          {/foreach}
 
           <input v-else-if="f.type === 'color'" type="color" v-model="form[f.name]" class="am-input" style="width:56px;padding:2px">
           <input v-else-if="f.type === 'slider'" type="range" v-model="form[f.name]" class="am-input" style="padding:0">
@@ -776,9 +776,9 @@ const app = createApp({
          */
         let pluginFieldInit = null;
 
-        {volist name="$pluginScripts" id="pluginScript"}
+        {foreach $pluginScripts as $pluginScript}
             {include file="$pluginScript" /}
-        {/volist}
+        {/foreach}
 
         /** 条件高亮的 CSS 类 */
         function cellClass(col, row) {

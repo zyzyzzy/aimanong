@@ -25,7 +25,7 @@
   </div>
 
   <div class="am-themepanel__body">
-    {volist name="$allOptions" id="opt" key="key"}
+    {foreach $allOptions as $key => $opt}
       <div class="am-themepanel__row">
         <div class="am-themepanel__label">
           <?php echo $opt['label']; ?>
@@ -35,9 +35,7 @@
         </div>
 
         <div class="am-themepanel__ctrl">
-          {/* switch $opt['type'] → 需人工改写为 if */}
-
-            {/* case 'color' */}
+          {if $opt['type'] == 'color'}
               <div class="am-themepanel__color">
                 <input type="color" value="<?php echo $ui[$key] ?: '#007643'; ?>" data-pref="{$key}">
                 <input type="text" class="am-input am-input--sm" value="<?php echo $ui[$key]; ?>"
@@ -46,25 +44,28 @@
               </div>
               
 
-            {/* case 'radio' */}
+            
+{elseif $opt['type'] == 'radio'}
               <div class="am-segmented">
-                {volist name="$opt['choices']" id="text" key="val"}
+                {foreach $opt['choices'] as $val => $text}
                   <button type="button" data-pref="{$key}" data-value="{$val}"
                           {if ($ui[$key] ?? '') === $val} aria-pressed="true" {/if}>{$text}</button>
-                {/volist}
+                {/foreach}
               </div>
               
 
-            {/* case 'switch' */}
+            
+{elseif $opt['type'] == 'switch'}
               <label class="am-switch">
-                <input type="checkbox" data-pref-switch="{$key}" {if $ui[$key] ?? false}checked{/if}>
+                <input type="checkbox" data-pref-switch="{$key}" @checked($ui[$key] ?? false)>
                 <span></span>
               </label>
               
           
+{/if}
         </div>
       </div>
-    {/volist}
+    {/foreach}
   </div>
 
   <div class="am-themepanel__foot">

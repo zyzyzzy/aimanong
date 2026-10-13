@@ -1,0 +1,32 @@
+=== /admin 在 ThinkPHP 上返回 200（2026-10-14）===
+
+## 环境
+  /tmp/tp-verify —— 只 require topthink/framework ^8.0 + aimanong/thinkphp（path）
+  验证方式：真实 HTTP（php -S 127.0.0.1:8898 -t public + curl /admin）
+
+## 结果
+  HTTP 200   30026 字节
+  标题: 控制台 · Aimanong
+  侧边栏 / 主题面板 / SVG 图标 / 版本号 —— 全部渲染 ✅
+  主题面板两个分支都正确：
+    type=color → 取色器（不再去取不存在的 choices）
+    type=radio → 跟随系统 / 浅色 / 深色 / 舒适 / 紧凑
+
+## 这一轮修掉的问题
+
+1. {volist} → {foreach}
+   think-template 的 volist 会为隔行变色生成 $mod = ($key % 2)；
+   theme-panel 的 $allOptions 是**字符串键**数组 → 'primary' % 2
+   → TypeError: Unsupported operand types: string % int
+   Blade 的 @foreach 语义本就对应 TP 的 {foreach}（不掺附加逻辑）。
+
+2. @switch/@case 真正转换（原先只标注不转换）
+   不转换 = **所有分支都执行** → type=color 那项没有 choices 键，
+   在 radio 分支炸 Undefined array key "choices"。
+   注：「没转但没报错」比直接报错更难查 —— 它会渲染出乱七八糟的页面。
+
+3. 转换器自身两个正则错误（都是「转换成功但结果不对」这类）
+   a) re.split 捕获组写成 @(case...) → @ 被吃进匹配不进 parts
+      → re.match(r'@case...') 永不匹配 → 所有分支退化成 {else}
+   b) \\b 跟在 @case(...) 的 ) 后面永远不成立（) 与 \n 都不是单词字符）
+      → @case 整个分支失配，只有 @default 生效

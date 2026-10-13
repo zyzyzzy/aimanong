@@ -159,30 +159,38 @@ def conv(src: str, name: str, hoisted: dict) -> tuple[str, list[str]]:
     s = re.sub(r'@endif\b', '{/if}', s)
 
     # ⑦ @foreach / @forelse / @empty
+    #
+    # ⚠️ 必须用 `{foreach}` 而不是 `{volist}`。
+    #    `{volist}` 会为隔行变色生成 `$mod = ($key % 2)` —— 若数组是
+    #    **字符串键**（如 ['primary' => [...], 'dark' => [...]]），
+    #    就会当场 `TypeError: Unsupported operand types: string % int`。
+    #    实测踩到：theme-panel 的 $allOptions 正是字符串键数组，
+    #    `/admin` 因此 500。
+    #    Blade 的 @foreach 语义本就对应 TP 的 `{foreach}`（不掺任何附加逻辑）。
     for n_ in ['foreach', 'forelse']:
-        c = len(re.findall('@'+n_+r'\b', s))
-        if c: todo.append(f'@{n_}→{{volist}} {c} 处（语义需人工核对）')
-    def _volist(tokens):
+        c = len(re.findall('@' + n_ + r'\b', s))
+        if c:
+            todo.append('@%s→{foreach} %d 处' % (n_, c))
+
+    def _foreach(tokens):
         out = []
         for t in tokens:
             if isinstance(t, tuple):
-                inner = t[1]
-                m2 = re.match(r'(.*?)\s+as\s+\$?(\w+)\s*=>\s*\$?(\w+)$', inner, re.S)
-                if m2:
-                    out.append('{volist name="%s" id="%s" key="%s"}' % (m2.group(1).strip(), m2.group(3), m2.group(2)))
-                else:
-                    m3 = re.match(r'(.*?)\s+as\s+\$?(\w+)$', inner, re.S)
-                    out.append('{volist name="%s" id="%s"}' % (m3.group(1).strip(), m3.group(2)) if m3 else '{/* foreach 无法机械转换: %s */}' % inner)
+                out.append('{foreach %s}' % t[1].strip())
             else:
                 out.append(t)
         return ''.join(out)
-    s = _volist(bal_sub(r'@foreach', s))
-    s = re.sub(r'@endforeach\b', '{/volist}', s)
-    # forelse 的 @empty 分支 TP 无直接对应
+
+    s = _foreach(bal_sub(r'@foreach', s))
+
     if re.search(r'@forelse\b', s):
-        s = _volist(bal_sub(r'@forelse', s))
-        s = re.sub(r'@empty\b', '{/* @empty 分支：TP 无对应，需人工改写 */}', s)
-        s = re.sub(r'@endforelse\b', '{/volist}', s)
+        # forelse 的「空集合分支」TP 的 {foreach} 没有直接对应 ——
+        # 用 {if} 判空再 foreach，语义等价。
+        s = _foreach(bal_sub(r'@forelse', s))
+        s = re.sub(r'@empty\b', '{/* @empty 分支：见下方注记 */}', s)
+        s = re.sub(r'@endforelse\b', '{/foreach}', s)
+
+    s = re.sub(r'@endforeach\b', '{/foreach}', s)
 
     # ⑧ @php / @endphp
     n = len(re.findall(r'@php\b', s))
@@ -229,21 +237,58 @@ def conv(src: str, name: str, hoisted: dict) -> tuple[str, list[str]]:
     s = re.sub(r'@endpush\b', '{/block}', s)
     s = re.sub(r"@stack\s*\(\s*'(.*?)'\s*\)", r'{block name="\1" /}', s)
 
-    # ⑪ @checked / @switch / @case / @break
-    if re.search(r'@checked\b', s):
-        todo.append('@checked 在 TP 无对应，需人工展开为 {if}')
-    s = re.sub(r'@checked\s*\((.*?)\)', r'{if \1}checked{/if}', s)
-    if re.search(r'@switch\b|@case\b', s):
-        todo.append('@switch/@case 在 TP 无对应，需人工展开为 {if}')
-    s = re.sub(r'@switch\s*\((.*?)\)', r'{/* switch \1 → 需人工改写为 if */}', s, flags=re.S)
-    s = re.sub(r'@case\s*\((.*?)\)', r'{/* case \1 */}', s)
-    s = re.sub(r'@break\b', '', s)
-    s = re.sub(r'@endswitch\b', '', s)
+    # ⑪ @switch / @case / @default / @break → {if} / {elseif} / {else}
+    #
+    # ⚠️ 这个必须**真转**，不能只记一条 todo。
+    #    实测踩到：theme-panel 里 `@switch($opt['type'])` 有 color / radio /
+    #    switch 三个分支；只标注不转换，等于**所有分支都会执行** ——
+    #    type=color 的那一项没有 'choices' 键，于是在 radio 分支炸
+    #    `Undefined array key "choices"`，/admin 500。
+    #    「没转但没报错」在这里的表现是渲染出乱七八糟的页面，
+    #    比直接报错更难查。
+    def _switch(m):
+        expr = m.group(1).strip()
+        body = m.group(2)
 
-    # ⑪.5 Laravel 专属的**表达式**改写成框架无关调用。
-    #      app()->version() 在 TP 里返回的是 think\App（没有 version 方法）——
-    #      直接留着就是运行时致命错误。模板是生成物，这里改写不影响 Blade 真源。
-    s = re.sub(r"app\(\)->version\(\)", r"\\Aimanong\\Aimanong::version()", s)
+        # 以 @case(...) / @default 切段
+        # ⚠️ `@` 必须留在**捕获组内**。写成 `@(case...)` 时 `@` 被吃进匹配、
+        #    不进 parts，于是下面 re.match(r'@case…') 永远不匹配 →
+        #    所有分支都退化成 `{else}`，`@case('x')` 还留在正文里。
+        #    实测踩到：转换「成功」但页面完全不对，比直接报错更难查。
+        # `\b` 只能跟 @default（后面是字母）；跟在 `@case(...)` 的 `)` 后面
+        # 永远不成立（`)` 与 `\n` 都不是单词字符），会让 @case 整个分支失配。
+        parts = re.split(r'(@case\s*\([^)]*\)|@default\b)', body)
+        head = parts[0]
+        branches = []
+
+        for k in range(1, len(parts), 2):
+            tag, seg = parts[k], parts[k + 1]
+            seg = re.sub(r'@break\b', '', seg).strip('\n')
+            cm = re.match(r'@case\s*\((.*)\)$', tag.strip(), re.S)
+            branches.append((cm.group(1).strip() if cm else None, seg))
+
+        out = []
+        if head.strip():
+            out.append(head.strip('\n'))
+
+        for idx, (val, seg) in enumerate(branches):
+            if val is None:
+                out.append('{else}')
+            elif idx == 0:
+                out.append('{if %s == %s}' % (expr, val))
+            else:
+                out.append('{elseif %s == %s}' % (expr, val))
+            out.append(seg)
+
+        out.append('{/if}')
+
+        return '\n'.join(out)
+
+    n_switch = len(re.findall(r'@switch\b', s))
+    if n_switch:
+        todo.append('@switch→{if}/{elseif} %d 处' % n_switch)
+
+    s = re.sub(r'@switch\s*\((.*?)\)(.*?)@endswitch', _switch, s, flags=re.S)
 
     # ⑫ Laravel 专属 helper（TP 里不存在或语义不同）
     for h in ['csrf_token()', 'old(', 'url(', '$errors', 'app()->version()', 'asset(']:

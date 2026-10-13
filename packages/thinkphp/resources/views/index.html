@@ -70,14 +70,14 @@
       </div>
     {else /}
       <div class="am-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:var(--sp-3)">
-        {volist name="$quickLinks" id="link"}
+        {foreach $quickLinks as $link}
           <a class="am-tile" href="<?php echo url(\Aimanong\Aimanong::url($link['uri'])); ?>">
             <div class="am-tile__icon">
               {include file="partials/icon" /}
             </div>
             <div class="am-tile__label"><?php echo $link['label']; ?></div>
           </a>
-        {/volist}
+        {/foreach}
       </div>
     {/if}
   </div>
@@ -95,11 +95,11 @@
       <div class="am-field" style="margin:0">
         <div class="am-field__label">角色</div>
         <div>
-          {volist name="$roles" id="role"}
+          {foreach $roles as $role}
             <span class="am-badge am-badge--brand">{$role}</span>
-          {/* @empty 分支：TP 无对应，需人工改写 */}
+          {/* @empty 分支：见下方注记 */}
             <span class="am-text-muted">（未分配角色）</span>
-          {/volist}
+          {/foreach}
         </div>
       </div>
       <div class="am-field" style="margin:0">
@@ -127,7 +127,7 @@
       </div>
       <div class="am-desc__item">
         <div class="am-desc__label">Laravel</div>
-        <div class="am-desc__value am-mono"><?php echo \Aimanong\Aimanong::version(); ?></div>
+        <div class="am-desc__value am-mono"><?php echo app()->version(); ?></div>
       </div>
       <div class="am-desc__item">
         <div class="am-desc__label">PHP</div>

@@ -86,6 +86,25 @@ success   Complete job           ← 结论仍是 success
    让它出现在 commit / PR 的注解区
 4. Gitee 已补齐到与 GitHub 一致（main + 全部 15 个 tag）
 
+**关卡本身也验证过**（不是推测）：故意只在 GitHub 打一个探针 tag，
+Gitee 不给 → `verify` 按预期失败，输出里带着两边的 SHA 与手动同步命令：
+
+```
+尝试 5  ref=refs/tags/v0.0.0-sync-gate-probe
+  GitHub : 9e11496864ec61d34ea1a5c66282a94d088cfae6
+  Gitee  : （无）
+##[error]Gitee 未同步 refs/tags/v0.0.0-sync-gate-probe
+常见原因：未配置 GITEE_USERNAME / GITEE_TOKEN Secrets
+临时手动同步：git push gitee refs/tags/v0.0.0-sync-gate-probe
+```
+
+探针 tag 已删除；那条红色的运行记录留在 Actions 历史里作为凭证。
+证据存档：`poc-evidence/11-gitee-sync-gate-verified.txt`。
+
+**关掉这个关卡的办法**：配好那两个 Secrets（同步转自动），
+或者删掉这个 workflow（但那样就真的没有同步了）。
+不建议保留「既不配 Secrets 又关掉 verify」的状态 —— 那正是本次事故的成因。
+
 ## 决策记录
 
 ### 决策 1：保留 `.github`，不做推送过滤

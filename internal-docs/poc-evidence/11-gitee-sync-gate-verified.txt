@@ -1,0 +1,42 @@
+=== Gitee 同步关卡验证（2026-10-13）===
+
+## 背景
+mirror-to-gitee.yml 的推送步骤因未配 Secrets 而跳过（设计如此，见
+CI与同步说明.md 决策 2）。但手工同步职责原先没有任何关卡，
+导致 Gitee main 悄悄落后 6 个提交、少 v1.8.1 tag。
+
+## 新增 verify job 的有效性验证
+
+### ① 同步一致时必须通过（真实运行）
+  run 38401836000 (main)：
+    确认 Gitee 已同步 -> success
+        success  比对触发本次运行的 ref
+
+### ② 真实漂移时必须失败 —— 故意造一次漂移
+  只在 origin 打 tag v0.0.0-sync-gate-probe，Gitee 不给。
+  run 38401954592 -> 整次运行结论: failure
+    同步到 Gitee        -> success（跳过推送，设计如此）
+    确认 Gitee 已同步    -> failure  ← 关卡拦住了
+
+  verify 的实际输出：
+    尝试 1  ref=refs/tags/v0.0.0-sync-gate-probe
+      GitHub : 9e11496864ec61d34ea1a5c66282a94d088cfae6
+      Gitee  : （无）
+    ...（共重试 5 次，容忍 ref 广播延迟）...
+    ##[error]Gitee 未同步 refs/tags/v0.0.0-sync-gate-probe
+             —— GitHub=9e11496... Gitee=（缺失）
+    常见原因：未配置 GITEE_USERNAME / GITEE_TOKEN Secrets
+    临时手动同步：git push gitee refs/tags/v0.0.0-sync-gate-probe
+    ##[error]Process completed with exit code 1.
+
+  验证完已删除探针 tag（origin 与本地），Gitee 从未有过它。
+
+## 结论
+关卡的有效性不是推测的，是【真的让它红过一次】验证的。
+那条红色的运行记录保留在 Actions 历史里作为凭证。
+
+## 当前状态
+  origin main = 26e4687cb9a60770afaeb222542da9dc75e0a6c2
+  gitee  main = 26e4687cb9a60770afaeb222542da9dc75e0a6c2
+  两侧 main + 全部 tag 共 16 个 ref 完全一致
+  （已清掉误推的本地专用 tag v1.0.0-region —— origin 上并没有它）

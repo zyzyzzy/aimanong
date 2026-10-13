@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\Schema;
 
 use Aimanong\Contracts\Resource as ResourceContract;
+use Aimanong\Contracts\SchemaIntrospector;
 use Aimanong\Exceptions\GhostColumnException;
 use Aimanong\Exceptions\InvalidQueryColumnException;
 use Aimanong\Form\Form;
@@ -13,12 +14,10 @@ use Aimanong\Resource;
 use Aimanong\Schema\Ast\ColumnNode;
 use Aimanong\Schema\Ast\FieldNode;
 use Aimanong\Schema\Ast\ResourceNode;
+use Aimanong\Schema\Introspector\IntrospectorResolver;
 use Aimanong\Show\Show;
 use Aimanong\Support\ColumnResolver;
 use Aimanong\Tree\Tree;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\Relation;
-use Illuminate\Support\Facades\Schema;
 
 /**
  * Schema 编译器。
@@ -28,9 +27,24 @@ use Illuminate\Support\Facades\Schema;
  *
  * 这是整个框架的枢纽：一份声明 → 四份产物，
  * 从根上消灭文档与实现漂移（AI 出错的最大来源）。
+ *
+ * **本类零 Illuminate 依赖** —— 凡需要问 ORM 要事实（表名 / 真实列清单 /
+ * 某个方法是不是关联），一律走 `Contracts\SchemaIntrospector`。
+ * 这样幽灵列检测在 Laravel 和 ThinkPHP 上是同一份实现，
+ * 不会因为换 ORM 而静默失效。
  */
 class Compiler
 {
+    protected SchemaIntrospector $introspector;
+
+    /**
+     * @param  SchemaIntrospector|null  $introspector  不传则按可用驱动自动挑选
+     */
+    public function __construct(?SchemaIntrospector $introspector = null)
+    {
+        $this->introspector = IntrospectorResolver::resolve($introspector);
+    }
+
     /**
      * @param  class-string<ResourceContract>  $resource
      */
@@ -225,15 +239,14 @@ class Compiler
         }
 
         try {
-            /** @var Model $instance */
             $instance = new $model;
-            $table = $instance->getTable();
+            $table = $this->introspector->tableOf($instance);
 
-            if (! Schema::hasTable($table)) {
-                return; // 表不存在（如测试环境），跳过
+            if ($table === null || ! $this->introspector->hasTable($table)) {
+                return; // 表名不可判定 / 表不存在（如测试环境），跳过
             }
 
-            $real = Schema::getColumnListing($table);
+            $real = $this->introspector->columnsOf($table);
         } catch (\Throwable) {
             return; // 无数据库连接等情况，跳过检查
         }
@@ -266,7 +279,7 @@ class Compiler
                     try {
                         $result = $instance->{$relation}();
 
-                        if ($result instanceof Relation) {
+                        if ($this->introspector->isRelation($result)) {
                             continue;
                         }
                     } catch (\Throwable) {
@@ -314,50 +327,19 @@ class Compiler
     }
 
     /**
-     * 是否为虚拟属性（访问器 / 修改器 / 已声明 casts）。
+     * 是否为虚拟属性（访问器 / 修改器 / 已声明 casts / 同名关系）。
      *
-     * 注意：不能依赖 hasAttribute() —— 新建模型实例的属性
-     * 数组为空，对任何字段都返回 false。
+     * 具体判定交给驱动（`Contracts\SchemaIntrospector`）——
+     * Eloquent 的 `hasGetMutator` / `hasCast` 只在 Laravel 下存在，
+     * 写死在这里会让 ThinkPHP 上把访问器误判成幽灵列。
      */
     protected function isVirtualAttribute(mixed $instance, string $name): bool
     {
-        if (! $instance instanceof Model) {
+        if (! is_object($instance)) {
             return false;
         }
 
-        /*
-         * 访问器：两种写法都要认。
-         *
-         * Laravel 9+ 推荐 `protected function xxx(): Attribute`，
-         * 对应的检测 API 是 hasAttributeGetMutator() ——
-         * 只检查传统写法 hasGetMutator() 会把现代写法误判成「幽灵列」
-         * （CMS 场景验证发现）。
-         */
-        if ($instance->hasGetMutator($name)) {
-            return true;
-        }
-
-        if ($instance->hasAttributeGetMutator($name)) {
-            return true;
-        }
-
-        // 已声明 casts
-        if ($instance->hasCast($name)) {
-            return true;
-        }
-
-        // 已定义的同名关系
-        if (method_exists($instance, $name)) {
-            try {
-                $ref = new \ReflectionMethod($instance, $name);
-
-                return $ref->getNumberOfRequiredParameters() === 0;
-            } catch (\Throwable) {
-                return false;
-            }
-        }
-
-        return false;
+        return $this->introspector->isVirtualAttribute($instance, $name);
     }
 
     /**

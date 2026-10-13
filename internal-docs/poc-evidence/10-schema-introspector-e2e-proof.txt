@@ -1,0 +1,20 @@
+=== 拆包第 1 段验证：Schema 内省抽象后，幽灵列检测在真数据库上仍生效 ===
+
+环境：demo-app（真实 Laravel 12 + sqlite），framework 通过 symlink 指向工作区
+categories 表真实列：id,name,parent_id,sort,enabled,created_at,updated_at
+
+探针 Resource 故意把 name 写成 nmae，执行：
+  $ php artisan ai:verify App\Aimanong\ZzGhostProbeResource
+
+❌ 未通过（2 个问题）
+  [GHOST_COLUMN] 编译失败: ZzGhostProbeResource 声明了不存在的列/字段: column:nmae
+  → 是否想用: name
+  → 提示: 可用列: id, name, parent_id, sort, enabled, created_at, updated_at
+  → 示例: $grid->column('name', '...');
+  [NOT_REGISTERED] 该 Resource 尚未注册，后台无法访问
+  → 提示: 在 ServiceProvider 的 boot() 中调用 Aimanong::registry()->register(App\Aimanong\ZzGhostProbeResource::class)
+  → 示例: Aimanong::registry()->register(\App\Aimanong\ZzGhostProbeResource::class);
+
+结论：检测在真实数据库 + 真实 Laravel 应用下正常工作，
+      did_you_mean 给出正确的自愈建议（name）。
+      说明 SchemaIntrospector 抽象未改变 Eloquent 路径行为。

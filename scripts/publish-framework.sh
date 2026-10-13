@@ -119,9 +119,12 @@ publish_one() {
     done
     info "同步了 $count 个版本 tag"
     if [ "$skipped" -gt 0 ]; then
-        warn "有 $skipped 个 tag 在本地解析不出 $prefix/composer.json —— 已跳过"
-        warn "  本地 tag 可能被历史版本的脚本改写过。修复："
-        warn "  git fetch origin --tags --force"
+        # 两种可能，必须都提到，否则会误导：
+        #   ① 该 tag 属于另一个包（如 v1.0.0-region）—— 正常
+        #   ② 本地 tag 被历史版本的脚本改写成了拆分 commit —— 要修
+        warn "有 $skipped 个 tag 在 $prefix 下解析不出 composer.json，已跳过"
+        warn "  · 属于本包但被跳过 → 本地 tag 已被污染，执行修复："
+        warn "      git fetch origin --tags --force"
     fi
 
     # 5. 清理临时分支

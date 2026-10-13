@@ -52,6 +52,7 @@ class ThinkService extends Service
 
         // 控制台命令 —— TP 的 Service::commands() 会在 console 启动时挂上
         $this->commands([
+            \Aimanong\ThinkPHP\Console\InstallCommand::class,
             \Aimanong\ThinkPHP\Console\VerifyCommand::class,
             \Aimanong\ThinkPHP\Console\SchemaCommand::class,
         ]);

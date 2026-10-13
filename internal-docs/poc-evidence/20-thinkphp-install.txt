@@ -1,0 +1,44 @@
+=== ThinkPHP 安装命令：新项目闭环（2026-10-14）===
+
+## 与 Laravel 侧的关键差异：它只做脚手架
+  Laravel 的 install 还会建表 / 创建管理员 / 同步权限节点。
+  ThinkPHP 侧做不到 —— 认证与 RBAC 层还没实现。
+
+  本命令没有「假装做了」，而是把每一步的实际结果打出来：
+    ✓ 做了的
+    ⊘ 跳过的，以及为什么跳过
+
+## 输出节选
+以下步骤在 ThinkPHP 驱动上尚未实现，已跳过：
+  ⊘ 建表 —— 框架的数据表（管理员 / 角色 / 权限）随认证层一起提供，尚未移植
+  ⊘ 创建管理员 —— 认证未实现，现在建了也无法登录
+  ⊘ 同步权限节点 —— 权限目前由 config/aimanong.php 的 permissions 数组声明（默认拒绝）
+
+下一步：
+  1. 定义一个 Resource（继承 Aimanong\Resource）
+  2. 在 app/service.php 的服务里注册：Aimanong::registry()->register(XxxResource::class)
+  3. php think ai:verify          校验声明（幽灵列 / 字典 / 权限）
+  4. php think aimanong:schema    生成 JSON / TS / OpenAPI / AI 上下文
+  5. 打开 /admin 看后台，/admin/api/{uri} 取数据
+
+⚠️ 认证层尚未实现：后台目前无需登录即可访问，仅适合本地开发。
+
+## 全新项目路径（e2e 第 ⑥ 节，62/62）
+=== ⑥ 安装命令：全新项目能闭环 ===
+  install 退出码 0                                  ✅  exit=0
+  发布了 config/aimanong.php                        ✅
+  配置含 prefix/dict/permissions 等键             ✅
+  创建了 app/service.php                            ✅
+  service.php 登记了 ThinkService                   ✅
+  插到已有服务之前（第一项）              ✅
+  重复执行幂等（不重复登记）              ✅
+  明说跳过的步骤                                ✅
+  明说后台无需登录（仅本地开发）        ✅
+
+通过 62 / 62
+
+## 一个顺序上的实际后果
+  ThinkService 的 register() 绑定框架运行时与驱动，
+  排在它前面的服务调用 Aimanong::registry() 会抛未注册。
+  所以 install 会把它插到 app/service.php 的**第一项**，
+  并在 e2e 里有断言（posAimanong < posOther）。

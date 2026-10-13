@@ -314,4 +314,47 @@ file_put_contents($res, $origRes);
 
 t('声明变更后 --check 检出轨度', $code === 1, "exit={$code}");
 
+echo "\n=== ⑥ 安装命令：全新项目能闭环 ===\n";
+
+$fresh = sys_get_temp_dir().'/amn-tp-fresh-'.getmypid();
+exec('rm -rf '.escapeshellarg($fresh).' && mkdir -p '.escapeshellarg($fresh).'/app');
+
+[$code, $out] = $think('aimanong:install --dir='.escapeshellarg($fresh));
+t('install 退出码 0', $code === 0, "exit={$code}");
+t('发布了 config/aimanong.php', is_file($fresh.'/config/aimanong.php'));
+
+$cfg = is_file($fresh.'/config/aimanong.php') ? include $fresh.'/config/aimanong.php' : [];
+t('配置含 prefix/dict/permissions 等键', is_array($cfg)
+    && isset($cfg['prefix'], $cfg['dict'], $cfg['permissions'], $cfg['upload'], $cfg['ui']));
+t('创建了 app/service.php', is_file($fresh.'/app/service.php'));
+t('service.php 登记了 ThinkService', is_file($fresh.'/app/service.php')
+    && str_contains((string) file_get_contents($fresh.'/app/service.php'), 'ThinkService'));
+
+/*
+ * ⚠️ 顺序有实际后果：ThinkService 的 register() 绑定框架运行时与驱动，
+ * 排在它前面的服务调用 Aimanong::registry() 会抛未注册。
+ * 所以它必须是数组第一项。
+ */
+file_put_contents($fresh.'/app/service.php', "<?php\nreturn [\n    \\app\\MyService::class,\n];\n");
+$think('aimanong:install --dir='.escapeshellarg($fresh));
+$svc = (string) file_get_contents($fresh.'/app/service.php');
+$posAimanong = strpos($svc, 'ThinkService');
+$posOther = strpos($svc, 'MyService');
+t('插到已有服务之前（第一项）', $posAimanong !== false && $posOther !== false && $posAimanong < $posOther);
+
+// 幂等：再跑一次不应重复插入
+$think('aimanong:install --dir='.escapeshellarg($fresh));
+$svc2 = (string) file_get_contents($fresh.'/app/service.php');
+t('重复执行幂等（不重复登记）', substr_count($svc2, 'ThinkService') === 1);
+
+/*
+ * 「没做的」必须明说 —— 一个装完说「安装完成」、实际后台进不去的命令，
+ * 比没有这个命令更糟。
+ */
+[$code, $out] = $think('aimanong:install --dir='.escapeshellarg($fresh));
+t('明说跳过的步骤', str_contains($out, '尚未实现') && str_contains($out, '创建管理员'));
+t('明说后台无需登录（仅本地开发）', str_contains($out, '认证层尚未实现'));
+
+exec('rm -rf '.escapeshellarg($fresh));
+
 $completed = true;

@@ -293,16 +293,53 @@ done
 
 # ⚠️ 最容易漏的一步：tag 推了主仓库，但忘了跑 publish-framework.sh。
 # 此时 Packagist 还是旧版本，且**不会报错** —— 用户装到的是旧代码。
-# 所以这里显式比对版本号。
+#
+# ── 2026-10-13 改：判定条件收紧为「打了 tag 且该 tag 属于这个包」 ──
+#
+# 原先是直接比 `composer.json 的 version` 与 Packagist 最新版。
+# 问题：**开发过程中版本领先 Packagist 是常态** —— 每次 bump 版本到真正发布
+# 之间都会领先，于是 CI 长期挂红，而它红得没有信息量（拆包期间就踩到：
+# framework 1.9.0 依赖的 laravel 还没发布，framework 自然发不出去）。
+#
+# 真正要拦的事故只有一个：**「打了 tag 却没发」** —— 那时包状态是「已宣布发布」，
+# 而用户在 Packagist 上装到的还是旧代码。
+#
+# 所以判定改成三步，缺一不可：
+#   ① 本地存在 tag `v<version>`
+#   ② 该 tag 上确实有 `packages/<pkg>/composer.json`
+#   ③ 且它的 version 与 tag 名一致（说明这个 tag 就是本包的发行点）
+# 三条都满足 → Packagist 上必须有这个版本，否则就是发版遗漏，硬拦。
+#
+# 注意 ②③ 是必要的：本仓库的 tag 是**全仓库**的（v1.0.0 同时对应
+# core/laravel/region 等多个包），不加这两条会把「别的包的 tag」误判成本包的。
 echo ""
-echo "  版本同步状态（本地 composer.json vs Packagist）："
+echo "  发行同步状态（只对已打 tag 的版本做硬校验）："
 for pkg in core laravel framework region; do
   local_ver=$(python3 -c "import json;print(json.load(open('$ROOT/packages/${pkg}/composer.json')).get('version',''))" 2>/dev/null || echo "")
   if [ -z "$local_ver" ]; then continue; fi
 
+  tag="v${local_ver}"
+
+  # ① 有没有这个 tag
+  if ! git -C "$ROOT" rev-parse -q --verify "refs/tags/${tag}" >/dev/null 2>&1; then
+    echo "  ${C_Y}·${C_N}  ${pkg} ${local_ver}：未打 tag，视为开发中，跳过发行校验"
+    continue
+  fi
+
+  # ② 该 tag 上有没有本包的 composer.json
+  tagged_ver=$(git -C "$ROOT" show "${tag}:packages/${pkg}/composer.json" 2>/dev/null \
+      | python3 -c "import sys,json
+try: print(json.load(sys.stdin).get('version',''))
+except: print('')" 2>/dev/null || echo "")
+
+  # ③ 版本是否对得上
+  if [ "$tagged_ver" != "$local_ver" ]; then
+    echo "  ${C_Y}·${C_N}  ${pkg} ${local_ver}：tag ${tag} 不属于本包（该 tag 上是 '${tagged_ver:-无}'），跳过"
+    continue
+  fi
+
   if ! body=$(fetch_packagist "$pkg"); then
-    bad "${pkg}: 连不上 Packagist，无法比对版本（网络问题，非发版问题）"
-    echo "       → 检查网络后重跑本脚本。"
+    bad "${pkg}: 连不上 Packagist，无法核对 ${tag}（网络问题，非发版问题）"
     continue
   fi
 
@@ -310,19 +347,19 @@ for pkg in core laravel framework region; do
 try:
     d=json.load(sys.stdin)
     vs=[v['version'].lstrip('v') for v in d['packages']['aimanong/${pkg}'] if not v['version'].startswith('dev')]
-    print(sorted(vs)[-1] if vs else '')
+    print('${local_ver}' if '${local_ver}' in vs else (sorted(vs)[-1] if vs else ''))
 except: print('')" 2>/dev/null || echo "")
 
-  if [ "$local_ver" = "$remote_ver" ]; then
-    ok "${pkg}: 本地 $local_ver = Packagist $remote_ver"
+  if [ "$remote_ver" = "$local_ver" ]; then
+    ok "${pkg}: ${tag} 已发布（Packagist 有 ${local_ver}）"
   elif [ -z "$remote_ver" ]; then
-    warn "${pkg}: 尚未首次发布（无版本可比对）"
-    echo "       → 发布后本项自动转为强校验。"
+    bad "${pkg}: 打了 ${tag} 但 Packagist 上查不到任何版本 —— 发版遗漏"
+    echo "       → 需运行: ./scripts/publish-framework.sh ${pkg}"
   else
-    # 用 bad 而非 warn：这是**发版遗漏**，必须拦住。
+    # 用 bad 而非 warn：这一条就是「发版遗漏」，必须拦住。
     # 只 warn 的话 pre-release 仍显示"全部通过"，
     # 而 Packagist 上用户装到的还是旧代码。
-    bad "${pkg}: 本地 $local_ver ≠ Packagist $remote_ver"
+    bad "${pkg}: 打了 ${tag} 但 Packagist 上最新是 ${remote_ver} —— 发版遗漏"
     echo "       → 需运行: ./scripts/publish-framework.sh ${pkg}"
   fi
 done

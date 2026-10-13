@@ -30,6 +30,27 @@ use think\Service;
  */
 class ThinkService extends Service
 {
+    /**
+     * 注册后台路由。
+     *
+     * ⚠️ 必须放在 boot() 而不是 register() ——
+     * register() 阶段路由还不可用，注册了也不会生效，
+     * 表现是 TP 把它当成默认的「控制器/方法」路由去解析
+     * （实测：`/admin` 报「控制器不存在: app\controller\Admin」）。
+     */
+    public function boot(): void
+    {
+        $routeFile = __DIR__.'/../route/admin.php';
+
+        if (! is_file($routeFile)) {
+            return;
+        }
+
+        \think\facade\Route::group((new ThinkRuntime)->urlPrefix(), function () use ($routeFile): void {
+            include $routeFile;
+        });
+    }
+
     public function register(): void
     {
         Drivers::registerIntrospector(new ThinkIntrospector);

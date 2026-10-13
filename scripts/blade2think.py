@@ -124,7 +124,11 @@ def conv(src: str, name: str, hoisted: dict) -> tuple[str, list[str]]:
     # ④.5 {!! expr !!} → 原样输出（不转义）。Blade 的 raw echo。
     n_raw = len(re.findall(r'\{!!', s))
     if n_raw: todo.append('Blade 原始输出 {!! !!} %d 处 → <?php echo ... ?>（不转义）' % n_raw)
-    s = re.sub(r'\{!!(.*?)!!\}', lambda m: '{:' + m.group(1).strip() + '|raw}', s, flags=re.S)
+    # ⚠️ 用 `<?php echo …; ?>` 而不是 `{:$x|raw}`。
+    #    实测踩到：think-template 的 `{:…}` 只认函数调用，`{:$path|raw}`
+    #    会被编译成对常量 `raw` 的引用 → `Undefined constant "raw"`。
+    #    而原生 PHP 输出本来就**不转义**，正好等于 Blade 的 `{!! !!}`。
+    s = re.sub(r'\{!!(.*?)!!\}', lambda m: '<?php echo ' + m.group(1).strip() + '; ?>', s, flags=re.S)
 
     # ⑤ {{ expr }} → {$var}（纯变量）或 <?php echo expr; ?>（任意表达式）
     #    实测：think-template 的 {:...} 只认函数调用语法，`{:1+1}` 会原样输出不执行；
@@ -236,6 +240,11 @@ def conv(src: str, name: str, hoisted: dict) -> tuple[str, list[str]]:
     s = re.sub(r'@break\b', '', s)
     s = re.sub(r'@endswitch\b', '', s)
 
+    # ⑪.5 Laravel 专属的**表达式**改写成框架无关调用。
+    #      app()->version() 在 TP 里返回的是 think\App（没有 version 方法）——
+    #      直接留着就是运行时致命错误。模板是生成物，这里改写不影响 Blade 真源。
+    s = re.sub(r"app\(\)->version\(\)", r"\\Aimanong\\Aimanong::version()", s)
+
     # ⑫ Laravel 专属 helper（TP 里不存在或语义不同）
     for h in ['csrf_token()', 'old(', 'url(', '$errors', 'app()->version()', 'asset(']:
         c = len(re.findall(re.escape(h), s))
@@ -253,7 +262,19 @@ def conv(src: str, name: str, hoisted: dict) -> tuple[str, list[str]]:
         #    实测：partials/layout 与 partials/theme-tab 各一行，一次炸掉 4 个页面模板。
         for um in sorted(set(re.findall(r'\buse\s+([A-Za-z_\\][\w\\]*)\s*;', s))):
             hoisted.setdefault(um, set()).add(name)
-            todo.append('partial 里的 `use %s;` 已摘除，将由页面级模板声明' % um)
+            todo.append('partial 里的 `use %s;` 已摘除，短类名改写成全限定名' % um)
+
+            # ⚠️ 不能「上提到页面级」—— 实测发现 `{php} use X; {/php}` **不生效**：
+            #    use 语句必须是文件顶层，而 think-template 把 {php} 块编译进
+            #    生成文件的中部，use 被忽略 → 引用处报 Class "X" not found。
+            #    所以改成把**短类名替换成全限定名**，从根上不需要 use。
+            short = um.split('\\')[-1]
+            # 用 lambda 而不是替换串：$um 里含反斜杠，替换串会把 \T 之类当转义
+            s = re.sub(
+                r'(?<![\\\w])' + re.escape(short) + r'(::|\()',
+                lambda m, full=um: '\\' + full + m.group(1),
+                s,
+            )
 
         s = re.sub(r'[ \t]*use\s+[A-Za-z_\\][\w\\]*\s*;[ \t]*\n', '', s)
 
@@ -266,17 +287,6 @@ def conv(src: str, name: str, hoisted: dict) -> tuple[str, list[str]]:
         #    @include 不会被 TP 的 {include} 正则命中，留原样最安全。
         #    实测过：改写成 {include ...} 反而触发无限递归（内存耗尽）。
         s = s.replace('\x00CMT%d\x00' % i, '{/*' + body + '*/}')
-    # 页面级模板：把从 partial 摘出来的 use 统一声明一次。
-    # 编译期内联后它们对整个页面生效，且只出现一次。
-    if hoisted and not name.startswith('partials/'):
-        decls = '\n'.join('use %s;' % u for u in sorted(hoisted))
-        block = '{php}\n%s\n{/php}\n' % decls
-        m = re.search(r'^\{extend[^\n]*\}\n', s, re.M)
-        if m:
-            s = s[:m.end()] + block + s[m.end():]
-        else:
-            s = block + s
-
     return s, todo
 
 

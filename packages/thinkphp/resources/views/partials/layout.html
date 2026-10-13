@@ -15,7 +15,7 @@
     不要自己写 <html>/<head>/<body>。
 */}
 {php}
-  $ui = $ui ?? ThemeConfig::defaults();
+  $ui = $ui ?? \Aimanong\Ui\ThemeConfig::defaults();
   $asset = fn (string $p): string => \Aimanong\Aimanong::asset()->url($p);
 {/php}
 <!DOCTYPE html>

@@ -40,7 +40,10 @@
     "autoload": {
         "psr-4": {
             "Aimanong\\ThinkPHP\\": "src/"
-        }
+        },
+        "files": [
+            "src/helpers.php"
+        ]
     },
     "config": {
         "sort-packages": true

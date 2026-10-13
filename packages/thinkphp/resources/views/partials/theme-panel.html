@@ -12,8 +12,8 @@
     不要在模板里硬编码配置项 —— 用 ThemeConfig::options() 循环。
 */}
 {php}
-  $ui = $ui ?? ThemeConfig::defaults();
-  $allOptions = ThemeConfig::options();
+  $ui = $ui ?? \Aimanong\Ui\ThemeConfig::defaults();
+  $allOptions = \Aimanong\Ui\ThemeConfig::options();
 {/php}
 
 <aside class="am-themepanel" id="am-themepanel" hidden>

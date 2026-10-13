@@ -114,6 +114,31 @@ else
   bad "Pint 风格不合规"
 fi
 
+# 模板产物门禁：ThinkPHP 侧的模板是**生成物**（真源是 Laravel 那套 Blade）。
+# 生成物最典型的失效方式就是「源改了、产物忘了重生成」—— 这里重跑一遍
+# 转换并比对，不一致就拦。再做 4 条硬规则校验（PoC 实测过的三个坑）。
+if command -v python3 >/dev/null 2>&1; then
+  TMP_TPL=$(mktemp -d)
+  if python3 "$ROOT/scripts/blade2think.py" "$ROOT/packages/laravel/resources/views" "$TMP_TPL" >/dev/null 2>&1 \
+      && diff -rq "$TMP_TPL" "$ROOT/packages/thinkphp/resources/views" >/dev/null 2>&1; then
+    ok "ThinkPHP 模板产物与 Blade 真源同步"
+  else
+    bad "ThinkPHP 模板产物与 Blade 真源**不同步**"
+    echo "       → 跑：python3 scripts/blade2think.py"
+  fi
+  rm -rf "$TMP_TPL"
+else
+  warn "没有 python3，跳过模板产物同步检查"
+fi
+
+if bash "$ROOT/scripts/check-think-templates.sh" > /tmp/amn-tpl.log 2>&1; then
+  N=$(find "$ROOT/packages/thinkphp/resources/views" -name '*.html' | wc -l | tr -d ' ')
+  ok "ThinkPHP 模板产物通过 4 条硬规则（${N} 个模板）"
+else
+  bad "ThinkPHP 模板产物违反硬性规则"
+  sed 's/^/      /' /tmp/amn-tpl.log | head -20
+fi
+
 # core 纯度门禁 —— 这是多框架适配能否成立的前提。
 # core 一旦长回 Illuminate 依赖，ThinkPHP 用户就会重新掉进
 # 「装上就炸」（全局 env() 冲突）的坑，而这个坑是静默的。

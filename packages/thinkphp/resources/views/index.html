@@ -1,0 +1,157 @@
+{extend name="partials/layout" /}
+
+{php}
+  $title = '控制台';
+{/php}
+
+{block name="content"}
+<div class="am-page-head">
+  <div>
+    <h1 class="am-page-head__title">你好，<?php echo $user->name ?? $user->username ?? ''; ?></h1>
+    <div class="am-page-head__desc">
+      {if $isSuper}
+        你是超级管理员，可以访问全部 {$resourceCount} 个模块
+      {elseif $permCount > 0}
+        你当前有 {$permCount} 项权限，可访问 <?php echo count($quickLinks); ?> 个模块
+      {else /}
+        你还未被分配任何权限
+      {/if}
+    </div>
+  </div>
+</div>
+
+{/* 未授权提示：这是新用户最需要看到的 */}
+{if ! $isSuper && $permCount === 0}
+  <div class="am-alert am-alert--warning" style="margin-bottom:var(--sp-5)">
+    {include file="partials/icon" /}
+    <div>
+      <div class="am-font-medium">你还没有任何权限</div>
+      <div class="am-text-sm">请联系管理员在「角色」里为你分配权限后，左侧菜单才会出现对应模块。</div>
+    </div>
+  </div>
+{/if}
+
+{/* 统计卡 */}
+<div class="am-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-bottom:var(--sp-5)">
+  <div class="am-stat am-stat--accent">
+    <div class="am-stat__label">可访问模块</div>
+    <div class="am-stat__value"><?php echo count($quickLinks); ?></div>
+    <div class="am-stat__delta">按你的权限显示</div>
+  </div>
+  <div class="am-stat am-stat--success">
+    <div class="am-stat__label">我的权限</div>
+    <div class="am-stat__value"><?php echo $isSuper ? '全部' : $permCount; ?></div>
+    <div class="am-stat__delta"><?php echo $isSuper ? '超级管理员' : '已分配'; ?></div>
+  </div>
+  <div class="am-stat">
+    <div class="am-stat__label">已注册模块</div>
+    <div class="am-stat__value">{$resourceCount}</div>
+    <div class="am-stat__delta">框架已加载</div>
+  </div>
+  <div class="am-stat am-stat--info">
+    <div class="am-stat__label">后台账号</div>
+    <div class="am-stat__value">{$userCount}</div>
+    <div class="am-stat__delta">可登录用户</div>
+  </div>
+</div>
+
+{/* 快捷入口 */}
+<div class="am-card">
+  <div class="am-card__head">
+    <span class="am-card__title">快捷入口</span>
+    <span class="am-text-sm am-text-tertiary" style="margin-left:auto">按你的权限显示</span>
+  </div>
+  <div class="am-card__body">
+    {if count($quickLinks) === 0}
+      <div class="am-empty">
+        <div class="am-empty__icon">{include file="partials/icon" /}</div>
+        <div class="am-empty__title">暂无可用模块</div>
+        <div class="am-empty__desc">等你被分配权限后，这里会列出可以访问的功能</div>
+      </div>
+    {else /}
+      <div class="am-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:var(--sp-3)">
+        {volist name="$quickLinks" id="link"}
+          <a class="am-tile" href="<?php echo url(\Aimanong\Aimanong::url($link['uri'])); ?>">
+            <div class="am-tile__icon">
+              {include file="partials/icon" /}
+            </div>
+            <div class="am-tile__label"><?php echo $link['label']; ?></div>
+          </a>
+        {/volist}
+      </div>
+    {/if}
+  </div>
+</div>
+
+{/* 当前身份 */}
+<div class="am-card">
+  <div class="am-card__head"><span class="am-card__title">当前身份</span></div>
+  <div class="am-card__body">
+    <div class="am-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+      <div class="am-field" style="margin:0">
+        <div class="am-field__label">账号</div>
+        <div class="am-font-medium"><?php echo $user->username ?? ''; ?></div>
+      </div>
+      <div class="am-field" style="margin:0">
+        <div class="am-field__label">角色</div>
+        <div>
+          {volist name="$roles" id="role"}
+            <span class="am-badge am-badge--brand">{$role}</span>
+          {/* @empty 分支：TP 无对应，需人工改写 */}
+            <span class="am-text-muted">（未分配角色）</span>
+          {/volist}
+        </div>
+      </div>
+      <div class="am-field" style="margin:0">
+        <div class="am-field__label">权限</div>
+        <div>
+          {if $isSuper}
+            <span class="am-badge am-badge--success">超级管理员 · 全部权限</span>
+          {else /}
+            <span class="am-badge <?php echo $permCount > 0 ? 'am-badge--info' : 'am-badge--warning'; ?>">{$permCount} 项</span>
+          {/if}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{/* 系统信息 */}
+<div class="am-card">
+  <div class="am-card__head"><span class="am-card__title">系统信息</span></div>
+  <div class="am-card__body">
+    <div class="am-desc am-desc--3">
+      <div class="am-desc__item">
+        <div class="am-desc__label">框架</div>
+        <div class="am-desc__value am-mono"><?php echo \Aimanong\Aimanong::brand(); ?> v<?php echo \Aimanong\Aimanong::version(); ?></div>
+      </div>
+      <div class="am-desc__item">
+        <div class="am-desc__label">Laravel</div>
+        <div class="am-desc__value am-mono"><?php echo app()->version(); ?></div>
+      </div>
+      <div class="am-desc__item">
+        <div class="am-desc__label">PHP</div>
+        <div class="am-desc__value am-mono"><?php echo PHP_VERSION; ?></div>
+      </div>
+      <div class="am-desc__item">
+        <div class="am-desc__label">权限控制</div>
+        <div class="am-desc__value">
+          <span class="am-badge <?php echo $rbacEnabled ? 'am-badge--success' : 'am-badge--muted'; ?>">
+            <?php echo $rbacEnabled ? '已开启' : '已关闭'; ?>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    {if $isSuper}
+      <div class="am-alert am-alert--info" style="margin-top:var(--sp-4)">
+        {include file="partials/icon" /}
+        <div class="am-text-sm">
+          AI Agent 请阅读项目根目录的 <code>llms.txt</code> 与 <code>AGENTS.md</code>，
+          或调用 <code>php artisan mcp:start aimanong</code>。
+        </div>
+      </div>
+    {/if}
+  </div>
+</div>
+{/block}

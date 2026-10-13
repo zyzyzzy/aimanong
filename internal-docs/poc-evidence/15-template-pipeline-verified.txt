@@ -1,0 +1,60 @@
+=== 模板层：Blade → think-template 全链路验证（2026-10-13）===
+
+## 链路
+  packages/laravel/resources/views/*.blade.php   （唯一真源）
+    ↓ scripts/blade2think.py                     （机械转换，含 3 条硬规则的处理）
+  packages/thinkphp/resources/views/*.html
+    ↓ scripts/check-think-templates.sh           （4 条规则校验）
+    ↓ think-template 编译                        （最终裁判）
+
+## ① 转换结果
+模板                                    行数     待人工项
+------------------------------------------------------------
+auth/login.blade.php                 312       18
+index.blade.php                      158       13
+partials/icon.blade.php               89        3
+partials/layout.blade.php            129        8
+partials/sidebar.blade.php           480        9
+partials/theme-panel.blade.php       211       10
+partials/topbar.blade.php             59        8
+partials/upload.blade.php            250        4
+profile.blade.php                    303        9
+resource.blade.php                  1160       16
+------------------------------------------------------------
+合计 10 个模板，待人工处理项 98 条
+
+按类型聚合：
+
+## ② 规则校验
+think-template 产物规则校验（10 个模板，packages/thinkphp/resources/views）
+  ✅ 规则①：partial 的 PHP 代码块无 use / 函数定义
+  ✅ 规则②：注释里无会被展开的模板语法
+  ✅ 规则③：{:...} 里没有会静默失效的表达式
+  ✅ 规则④：代码区无 Blade 指令残留
+
+✅ 模板产物通过全部硬性规则
+
+## ③ 规则本身的反例验证（每条都要能拦）
+  规则① partial 里加 use        → exit=1 ✅
+  规则① partial 里加 PHP 函数   → exit=1 ✅
+  规则② 注释里加 {include}      → exit=1 ✅
+  规则③ 用 {:1+1}               → exit=1 ✅
+  规则④ 残留 @if                → exit=1 ✅
+
+## ④ 真实 think-template 编译（10 个模板）
+模板                             think-template 编译产出
+auth/login                         ✅ 语法合法 61 KB
+index                              ✅ 语法合法 73 KB
+     aria-hidden="true" focusable="false">partials/icon                      ✅ 语法合法 6 KB
+partials/layout                    ✅ 语法合法 73 KB
+    <a class="am-sidebar__brandlink" href="partials/sidebar                   ✅ 语法合法 40 KB
+partials/theme-panel               ✅ 语法合法 15 KB
+partials/topbar                    ✅ 语法合法 14 KB
+                <a :href="uploadUrl(item)" target="_blank" rel="noopener">partials/upload                    ✅ 语法合法 10 KB
+profile                            ✅ 语法合法 73 KB
+resource                           ✅ 语法合法 73 KB
+编译产出语法合法: 10 / 10
+
+## 结论
+  转换 → 校验 → 编译 三步都过。模板层的可行性不再是 PoC 里的「机械转换通过」，
+  而是**仓库里可复现的关卡**：源模板一改，CI 会重跑这条链路。

@@ -141,6 +141,22 @@ jobs:
         run: bash scripts/setup-demo.sh
 
       #
+      # ThinkPHP 演示项目 —— 与 demo-app 并列。
+      #
+      # 为什么必须有：ThinkPHP 侧的模板转换器出的问题**不报错**。
+      # 退出码 0、模板 4 条规则全过、think-template 也能编译，
+      # 产物只是渲染得不对（实测踩过 {volist} 字符串键 % 2、
+      # @switch 只标注不转换、转换器正则错误）。单测 / PHPStan /
+      # 代码风格 / 模板规则全都拦不住 —— 唯一的裁判是真跑一遍页面。
+      #
+      # 这个步骤顺便断言 vendor/illuminate **不存在**：
+      # PoC 阶段实测过，illuminate/support 会抢注全局 env()，
+      # 导致 ThinkPHP 启动即致命。拆包就是为了消灭这个冲突。
+      #
+      - name: 准备 ThinkPHP 演示项目
+        run: bash scripts/setup-thinkphp-demo.sh
+
+      #
       # 启动 demo 服务。
       #
       # ⚠️ 必须真的起服务 —— `pre-release.sh --with-e2e` 要跑

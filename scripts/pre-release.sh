@@ -246,6 +246,31 @@ if [ "$WITH_E2E" = "1" ]; then
          请先启动：cd <demo-app> && php artisan serve --port=8899
          确实无法启动时，显式设 AMN_SKIP_HTTP_E2E=1 跳过（会记入风险）"
   fi
+  # ThinkPHP 侧端到端：从零搭的 TP 项目里 /admin 真的能打开。
+  #
+  # 存在的理由：模板转换器出的问题**不报错** —— 退出码 0、4 条规则全过、
+  # think-template 也能编译，产物只是渲染得不对。实测踩过三次
+  # （{volist} 字符串键 % 2 / @switch 只标注不转换 / 转换器正则错误）。
+  # 单测、PHPStan、代码风格、模板规则全都拦不住，唯一的裁判是真跑一遍。
+  if [ -f "$ROOT/../thinkphp-demo/vendor/autoload.php" ]; then
+    R3=""
+    if php tests/e2e/thinkphp-e2e.php > /tmp/amn-tp-e2e.log 2>&1; then
+      R3=$(grep -oE '通过 [0-9]+ / [0-9]+' /tmp/amn-tp-e2e.log | tail -1)
+    fi
+
+    if [ -n "$R3" ]; then
+      ok "thinkphp-e2e $R3"
+    else
+      bad "thinkphp-e2e 失败（未产出汇总行 = 没跑完）"
+      grep -E '❌|错误:|Fatal|Error' /tmp/amn-tp-e2e.log | head -15 | sed 's/^/        /'
+    fi
+  elif [ "${AMN_SKIP_TP_E2E:-0}" = "1" ]; then
+    warn "ThinkPHP 演示项目不存在，且已显式设置 AMN_SKIP_TP_E2E=1，跳过"
+  else
+    bad "ThinkPHP 演示项目不存在（../thinkphp-demo）—— 无法验证 TP 侧页面。
+         请先跑：bash scripts/setup-thinkphp-demo.sh
+         确实不跑时，显式设 AMN_SKIP_TP_E2E=1 跳过（会记入风险）"
+  fi
 else
   warn "跳过端到端（加 --with-e2e 启用，需 demo 环境）"
 fi

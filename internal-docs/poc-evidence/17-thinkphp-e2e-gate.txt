@@ -1,0 +1,54 @@
+=== ThinkPHP 端到端关卡（2026-10-14）===
+
+## 为什么要有它
+  /admin 200 此前只在本机手验过一次。而模板转换器的问题**不报错**：
+  退出码 0、4 条规则全过、think-template 也能编译，产物只是渲染得不对。
+  实测踩过三次：{volist} 字符串键 % 2 / @switch 只标注不转换 / 转换器正则错误。
+  单测、PHPStan、代码风格、模板规则——没有一个能拦住。
+
+## 组成
+  scripts/setup-thinkphp-demo.sh   从零搭 TP 项目（含 vendor/illuminate 不存在断言）
+  tests/e2e/thinkphp-e2e.php       起服务 + curl /admin + 内容断言
+  接入 pre-release.sh（退出码 + 汇总行双重判定）与 CI 的端到端 job
+
+## 正例：全部通过
+=== ① 依赖纯净性（拆包的根本目的）===
+  vendor/illuminate 不存在                          ✅
+  aimanong/core 已装                                 ✅
+  aimanong/thinkphp 已装                             ✅
+
+=== ② 数据层在真实 ThinkPHP 上可用 ===
+  4 个驱动已注册                                 ✅
+  公开入口已绑定                                ✅
+  Aimanong::url()                                      ✅  /admin/orders
+  DataSource::paginate()                               ✅
+  perPage() 走 listRows()                             ✅
+  DataSource::find() 找不到抛异常                ✅
+  内省：columnsOf 含 name                          ✅
+  内省：isRelation 不误判普通值               ✅
+  内省：访问器识别为虚拟属性              ✅
+  内省：拼错列名不放过                       ✅
+  内省：$type 声明的列算真实列              ✅
+
+=== ③ 真实 HTTP：/admin 能打开 ===
+  /admin 返回 200                                    ✅  HTTP 200
+  不是错误页                                      ✅
+  含 <title>                                          ✅
+  标题含品牌名                                   ✅  控制台 · Aimanong
+  侧边栏已渲染                                   ✅
+  主题面板已渲染                                ✅
+  SVG 图标已渲染                                  ✅
+  switch: color 分支渲染取色器                  ✅
+  switch: radio 分支渲染选项                     ✅
+  版本号已渲染                                   ✅
+
+通过 24 / 24
+
+## 反例：关卡必须会拦（真施加探针后测得）
+  探针 = 把 @switch 的分支守卫去掉（模拟「所有分支都执行」）
+  退出码=1 （期望 1，实际 1 项失败）
+  通过 14 / 15
+  错误: Undefined array key "accordion"
+
+## 反例：关卡必须会拦（退出码）
+  还原后：退出码=0，通过 24 / 24（见上「正例」）

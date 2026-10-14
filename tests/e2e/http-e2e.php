@@ -4,6 +4,22 @@
  * 本脚本只跑 HTTP（不依赖 demo 的 autoload），
  * 但保留 DEMO_PATH 校验以便提示正确用法。
  */
+/*
+ * 跨框架共同的真值（与 ThinkPHP 的 e2e 共用同一份文件）。
+ *
+ * 项目主张「同一套声明，多框架行为一致」—— 而两端是两份驱动代码。
+ * 各自硬编码期望值 = 「各自能跑」，漂移了也看不出来。
+ * 从同一份文件读，漂移的那一侧才会红。
+ *
+ * 实测教训：这两个数字（404 / 跳转目标）两端各写错过一次。
+ */
+$multiAppExp = json_decode((string) file_get_contents(__DIR__.'/fixtures/multi-app-expectations.json'), true);
+
+if (! is_array($multiAppExp)) {
+    fwrite(STDERR, "❌ 读不到跨框架期望文件 tests/e2e/fixtures/multi-app-expectations.json\n");
+    exit(1);
+}
+
 $demo = getenv('DEMO_PATH') ?: __DIR__.'/../../../demo-app';
 
 if (! is_dir($demo)) {
@@ -339,9 +355,15 @@ $loginPage = function (string $app) use ($base): array {
     return http("$base/$app/auth/login");
 };
 
+$expectLoginStatus = (int) $multiAppExp['http']['login_page_status'];
+
 foreach (['user', 'agent'] as $app) {
     $r = $loginPage($app);
-    t("/$app 登录页 200", $r['code'] === 200, "HTTP {$r['code']}");
+    t(
+        "/$app 登录页 {$expectLoginStatus}",
+        $r['code'] === $expectLoginStatus,
+        "HTTP {$r['code']}"
+    );
 }
 
 /*
@@ -378,11 +400,14 @@ $anon = function (string $url) {
 
 @unlink('/tmp/e2e-anon-cookie.txt');
 
+$redirectTpl = (string) $multiAppExp['http']['unauthenticated_redirect_template'];
+
 foreach (['admin', 'user', 'agent'] as $app) {
     $r = $anon("$base/$app");
+    $expectRedirect = str_replace('{app}', $app, $redirectTpl);
     t(
-        "未登录 /$app → 跳 $app 登录页",
-        $r['code'] === 302 && str_contains($r['location'], "/$app/auth/login"),
+        "未登录 /$app → 跳 $expectRedirect",
+        $r['code'] === 302 && str_contains($r['location'], $expectRedirect),
         "HTTP {$r['code']} → {$r['location']}"
     );
 }
@@ -498,10 +523,11 @@ curl_setopt_array($ch, [
 curl_exec($ch);
 unset($ch);
 
+$expectCross = (int) $multiAppExp['http']['cross_app_status'];
 $crossCode = $agentAnon("$base/agent/api/admin-users");
 t(
-    "跨后台访问 admin 专属 Resource → 404",
-    $crossCode === 404,
+    "跨后台访问 admin 专属 Resource → {$expectCross}",
+    $crossCode === $expectCross,
     "HTTP {$crossCode}".($crossCode === 403 ? '（403 会泄露资源存在）' : '')
 );
 

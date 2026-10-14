@@ -1,0 +1,43 @@
+{
+  "_comment": [
+    "跨框架共同的真值 —— Laravel 与 ThinkPHP 的 e2e 都读这个文件并断言。",
+    "",
+    "## 为什么要这个文件",
+    "",
+    "项目主张「同一套声明，多框架行为一致」。但两端的驱动是两份代码，",
+    "「各自能跑」不等于「行为一样」—— 实测中两端各犯过同一类 bug：",
+    "",
+    "  · 归属校验排在权限校验之后，跨应用访问返回 403（应 404）",
+    "  · session key 不带应用维度，登录写一个 key、读取查另一个",
+    "",
+    "这些没有任何测试会发现，因为两侧的断言各写各的、期望值各写各的。",
+    "",
+    "## 怎么用",
+    "",
+    "两端的 e2e 从这里读期望值，而不是各自硬编码。",
+    "于是「行为漂移」会直接让漂移的那一侧变红。",
+    "改这里等于同时改两端的验收标准 —— 这是刻意的：",
+    "只改一侧的期望值，另一侧会立刻失败。"
+  ],
+
+  "slug": {
+    "single_app": "{uri}.{action}",
+    "multi_app": "{app}.{uri}.{action}",
+    "_note": "只有开启多应用时才带应用前缀；单应用必须与改动前逐字相同"
+  },
+
+  "belongs_to": {
+    "undeclared_means_all_apps": true,
+    "declared_limits_to_listed": true
+  },
+
+  "http": {
+    "cross_app_status": 404,
+    "_cross_app_note": "跨后台访问不属于本后台的 Resource：必须 404（403 会泄露「资源存在」）",
+
+    "unauthenticated_redirect_template": "/{app}/auth/login",
+    "_redirect_note": "未登录访问某后台，跳转目标必须是该后台自己的登录页",
+
+    "login_page_status": 200
+  }
+}

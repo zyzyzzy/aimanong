@@ -814,6 +814,55 @@ t('install 真的建了管理员', str_contains($out, '已创建管理员') || s
  */
 echo "\n=== ⑪ 多应用隔离（/admin + /agent）===\n";
 
+/*
+ * 跨框架共同的真值（与 Laravel 的 http-e2e 共用同一份文件）。
+ *
+ * 项目主张「同一套声明，多框架行为一致」—— 而两端是两份驱动代码。
+ * 各自硬编码期望值 = 「各自能跑」，漂移了也看不出来。
+ *
+ * ⚠️ 实测：这个 404 就是**先在这一侧写错**的（归属校验排在权限校验之后，
+ * 返回了 403），改完回头才发现 Laravel 侧同样中招。
+ */
+$multiAppExp = json_decode(
+    (string) file_get_contents(__DIR__.'/fixtures/multi-app-expectations.json'),
+    true
+);
+
+if (! is_array($multiAppExp)) {
+    t('读得到跨框架期望文件', false, 'tests/e2e/fixtures/multi-app-expectations.json');
+    $multiAppExp = ['http' => ['login_page_status' => 200, 'cross_app_status' => 404, 'unauthenticated_redirect_template' => '/{app}/auth/login']];
+} else {
+    t('读得到跨框架期望文件', true);
+}
+
+/*
+ * ⓐ slug 形状对拍（与 Laravel 的 MultiApplicationPermissionTest 读同一份文件）。
+ *
+ * slug 的拼法两端各写一份，**会漂移** —— 各自硬编码期望值验不出来。
+ */
+$checker = new Aimanong\ThinkPHP\ThinkPermissionChecker;
+
+$expectSingleSlug = str_replace(
+    ['{uri}', '{action}'],
+    ['orders', 'index'],
+    (string) $multiAppExp['slug']['single_app']
+);
+$expectMultiSlug = str_replace(
+    ['{app}', '{uri}', '{action}'],
+    ['agent', 'orders', 'index'],
+    (string) $multiAppExp['slug']['multi_app']
+);
+
+t(
+    'slug 多应用形状与共享期望一致',
+    $checker->appSlug('agent', 'orders', 'index') === $expectMultiSlug,
+    $checker->appSlug('agent', 'orders', 'index')." (期望 {$expectMultiSlug})"
+);
+
+$expectLoginStatus = (int) $multiAppExp['http']['login_page_status'];
+$expectCross = (int) $multiAppExp['http']['cross_app_status'];
+$redirectTpl = (string) $multiAppExp['http']['unauthenticated_redirect_template'];
+
 /** 无登录态发一个请求，返回 [状态码, Location]。 */
 $anonProbe = function (string $path, string $jarName): array {
     $anonJar = sys_get_temp_dir().'/amn-tp-anon-'.$jarName;
@@ -840,15 +889,16 @@ $anonProbe = function (string $path, string $jarName): array {
 // ① 两个后台的登录页都要能打开
 foreach (['admin', 'agent'] as $probeApp) {
     [$ac] = $anonProbe("/{$probeApp}/auth/login", $probeApp.'-login');
-    t("/{$probeApp} 登录页 200", $ac === 200, "HTTP {$ac}");
+    t("/{$probeApp} 登录页 {$expectLoginStatus}", $ac === $expectLoginStatus, "HTTP {$ac}");
 }
 
 // ② 未登录跳转必须指向**自己**的登录页，不是别人的
 foreach (['admin', 'agent'] as $probeApp) {
     [$ac, $loc] = $anonProbe("/{$probeApp}", $probeApp.'-home');
+    $expectLoc = str_replace('{app}', $probeApp, $redirectTpl);
     t(
-        "未登录 /{$probeApp} → 跳 {$probeApp} 登录页",
-        $ac === 302 && str_contains($loc, "/{$probeApp}/auth/login"),
+        "未登录 /{$probeApp} → 跳 {$expectLoc}",
+        $ac === 302 && str_contains($loc, $expectLoc),
         "HTTP {$ac} → {$loc}"
     );
 }
@@ -907,8 +957,8 @@ t("agent 登录成功", in_array($agentLoginCode, [200, 302], true), "HTTP {$age
  */
 [$crossCode] = $agentGet('/agent/api/customers');
 t(
-    "跨后台访问 admin 专属 Resource → 404",
-    $crossCode === 404,
+    "跨后台访问 admin 专属 Resource → {$expectCross}",
+    $crossCode === $expectCross,
     "HTTP {$crossCode}".($crossCode === 403 ? '（403 会泄露资源存在）' : '')
 );
 

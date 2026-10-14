@@ -103,6 +103,57 @@ class MultiApplicationPermissionTest extends TestCase
     }
 
     /**
+     * 与 ThinkPHP 侧**对拍**：读同一份共享期望文件。
+     *
+     * 项目主张「同一套声明，多框架行为一致」——
+     * 而 slug 的拼法是两端各自实现的（Laravel `PermissionGate::appSlug`、
+     * TP `ThinkPermissionChecker::appSlug`），**会漂移**。
+     *
+     * 各自硬编码期望值 = 「各自能跑」；从同一份文件读，
+     * 漂移的那一侧才会红。
+     */
+    public function test_slug_shape_matches_shared_expectation(): void
+    {
+        $exp = self::sharedExpectations();
+
+        // 单应用：{uri}.{action}（与改动前逐字相同 —— 兼容性红线）
+        $expectSingle = str_replace(
+            ['{uri}', '{action}'],
+            ['orders', 'index'],
+            (string) $exp['slug']['single_app']
+        );
+
+        $this->assertInstanceOf(SingleApplication::class, Drivers::application());
+        $this->assertSame($expectSingle, PermissionGate::slug('orders'));
+
+        // 多应用：{app}.{uri}.{action}
+        $expectMulti = str_replace(
+            ['{app}', '{uri}', '{action}'],
+            ['admin', 'orders', 'index'],
+            (string) $exp['slug']['multi_app']
+        );
+
+        $this->assertSame($expectMulti, PermissionGate::appSlug('admin', 'orders', 'index'));
+    }
+
+    /**
+     * 共享期望文件（与 TP 的 e2e 读同一份）。
+     *
+     * @return array<string, mixed>
+     */
+    protected static function sharedExpectations(): array
+    {
+        $path = dirname(__DIR__, 4).'/tests/e2e/fixtures/multi-app-expectations.json';
+        $data = json_decode((string) file_get_contents($path), true);
+
+        if (! is_array($data)) {
+            self::fail("读不到跨框架期望文件: {$path}");
+        }
+
+        return $data;
+    }
+
+    /**
      * 显式指定应用时**强制**加前缀，即使当前是单应用。
      *
      * 为什么这样设计（而不是「单应用就不加」）：

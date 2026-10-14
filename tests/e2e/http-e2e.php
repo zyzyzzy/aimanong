@@ -413,7 +413,14 @@ foreach (['权限节点', '数据字典', '操作日志', '登录日志'] as $ne
     t("agent 后台不含「{$needle}」", ! str_contains($agBody, $needle));
 }
 
-// ③ 对照：同一台机器上 admin 后台**应该**有这些（证明不是「全都过滤掉了」）
+/*
+ * ③ 对照：同一台机器上 admin 后台**应该**有系统管理菜单
+ *    （证明不是「所有人都被过滤光了」）。
+ *
+ * ⚠️ 用「登录日志」而不是「权限节点」：前者是**必装**的内置 Resource
+ * （全新项目就有），后者只在某些配置/扩展下注册 —— 用它做对照会在
+ * 精简 demo 上误报。对照项必须是「任何环境都该有」的东西。
+ */
 $ad = http("$base/admin/auth/login");
 preg_match('/name="_token" value="([^"]+)"/', $ad['body'], $adt);
 http("$base/admin/auth/login", 'POST', [
@@ -422,7 +429,8 @@ http("$base/admin/auth/login", 'POST', [
     'password' => 'admin123',
 ]);
 $adBody = (string) http("$base/admin/")['body'];
-t("admin 后台含「权限节点」（对照）", str_contains($adBody, '权限节点'));
+t("admin 后台含「登录日志」（对照）", str_contains($adBody, '登录日志'));
+t("admin 后台含「管理员」菜单（对照）", str_contains($adBody, '管理员'));
 
 echo "\n";
 printf("通过 %d / %d\n", $pass, $pass + $fail);

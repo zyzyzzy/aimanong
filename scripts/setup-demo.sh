@@ -163,6 +163,15 @@ $s = substr($s, 0, $pos)
 file_put_contents($f, $s);
 '
 
+# ── 多应用（三后台）──
+#
+# ⚠️ 必须在 demo 里真的配出多应用，否则 e2e 的多应用隔离断言
+# 只能「跳过」—— 那等于 CI 永远测不到多应用（本项目吃过的亏）。
+echo "  → 配置多应用（admin / user / agent）"
+php "$ROOT/scripts/setup-demo-multiapp.php" 2>&1 | sed 's/^/  /' || {
+    echo "  ⚠️  多应用配置失败（e2e 会跳过相关断言）"
+}
+
 echo
 echo "✅ demo 项目就绪: $DEMO"
 echo "   启动服务: cd $DEMO && php artisan serve --port=8899"

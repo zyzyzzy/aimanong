@@ -12,6 +12,7 @@ use Aimanong\Schema\Ast\ResourceNode;
 use Aimanong\Schema\Compiler;
 use Aimanong\Services\Exporter;
 use Aimanong\Services\TreeBuilder;
+use Aimanong\Support\Drivers;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -731,6 +732,21 @@ class ResourceController extends Controller
         $class = Aimanong::registry()->find($uri);
 
         if ($class === null) {
+            abort(404, "Resource [{$uri}] 未注册");
+        }
+
+        /*
+         * 跨后台访问保护：不在当前后台的 Resource 一律 404。
+         *
+         * ⚠️ **必须是 404，不能是 403。**
+         *
+         * 403 等于告诉对方「这个资源存在，只是你没权限」——
+         * 那是把后台结构泄露出去了。404 让它看起来就像不存在，
+         * 与「真的没注册」无法区分。
+         */
+        $apps = Drivers::application();
+
+        if ($apps->enabled() && ! Aimanong::registry()->belongsTo($uri, $apps->current())) {
             abort(404, "Resource [{$uri}] 未注册");
         }
 

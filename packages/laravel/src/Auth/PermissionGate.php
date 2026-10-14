@@ -10,6 +10,7 @@ use Aimanong\Models\Permission;
 use Aimanong\Models\Role;
 use Aimanong\Schema\Ast\ResourceNode;
 use Aimanong\Schema\Compiler;
+use Aimanong\Support\Drivers;
 use Illuminate\Support\Collection;
 
 /**
@@ -101,7 +102,45 @@ class PermissionGate
      */
     public static function slug(string $uri, array|string|null $action = null): string
     {
-        return $uri.'.'.(is_array($action) ? 'index' : ($action ?? 'index'));
+        return self::appSlug(null, $uri, $action);
+    }
+
+    /**
+     * 带应用维度的权限节点。
+     *
+     * ## 为什么要加应用前缀
+     *
+     * 多应用下 `{uri}.{action}` 是**跨后台共享的同一个节点**：
+     * 给代理商开了 `orders.index`，等于也开了总后台的 `orders.index`。
+     * 权限必须跟菜单一样按后台隔离。
+     *
+     * 加了前缀之后（`admin.orders.index` / `agent.orders.index`），
+     * **菜单隔离也自动成立** —— 因为菜单是按权限过滤的。
+     * 一处改动解决两件事。
+     *
+     * ## 兼容性：单应用零影响
+     *
+     * **只在多应用开启时加前缀**。`applications` 为空（单后台）时
+     * 仍是 `orders.index`，与改动前逐字相同 —— 已有授权不受影响。
+     *
+     * @param  string|null  $app  应用名；null = 当前应用
+     */
+    public static function appSlug(?string $app, string $uri, array|string|null $action = null): string
+    {
+        $base = $uri.'.'.(is_array($action) ? 'index' : ($action ?? 'index'));
+
+        $apps = Drivers::application();
+
+        // 显式指定应用时**强制加前缀**（即使当前是多应用未开启 / CLI 场景）
+        if ($app !== null) {
+            return $app.'.'.$base;
+        }
+
+        if (! $apps->enabled()) {
+            return $base;
+        }
+
+        return $apps->current().'.'.$base;
     }
 
     /**
@@ -130,7 +169,15 @@ class PermissionGate
      *
      * @return array{created: int, existing: int}
      */
-    public static function sync(): array
+    /**
+     * @param  string|null  $forApp  只为某应用建节点；null = 按当前上下文
+     *                               （多应用时建全部应用，单应用时建不带前缀的）
+     *
+     * 为什么需要它：CLI（如迁移命令）没有请求上下文，
+     * `Drivers::application()->current()` 拿不到当前后台 ——
+     * 必须能显式指定「给哪个后台建节点」。
+     */
+    public static function sync(?string $forApp = null): array
     {
         $created = 0;
         $existing = 0;
@@ -162,22 +209,45 @@ class PermissionGate
              * 否则权限列表里会出现「操作日志 · 新增」这种
              * 点了也一定 403 的假权限 —— 管理员会以为配错了。
              */
-            foreach (self::actionsFor($node) as $action) {
-                $slug = self::slug($uri, $action);
+            /*
+             * 多应用时，权限节点要按「应用 × 属于它的 Resource」展开。
+             *
+             * 否则 `/agent` 后台根本没有自己的节点可分配 ——
+             * 而 `slug()` 已经在查 `agent.orders.index`，于是永远 403。
+             * （只按当前应用建也不行：同步通常在总后台跑，那样代理商后台
+             *   就一个节点都没有。）
+             */
+            $apps = Drivers::application();
 
-                if (Permission::query()->where('slug', $slug)->exists()) {
-                    $existing++;
+            if ($forApp !== null) {
+                $appList = [$forApp];
+            } else {
+                $appList = $apps->enabled() ? $apps->names() : [null];
+            }
 
+            foreach ($appList as $app) {
+                if ($app !== null && ! Aimanong::registry()->belongsTo($uri, $app)) {
                     continue;
                 }
 
-                Permission::query()->create([
-                    'slug' => $slug,
-                    'name' => $label.' · '.self::actionLabel($action),
-                    'group' => $label,
-                ]);
+                foreach (self::actionsFor($node) as $action) {
+                    $slug = self::appSlug($app, $uri, $action);
 
-                $created++;
+                    if (Permission::query()->where('slug', $slug)->exists()) {
+                        $existing++;
+
+                        continue;
+                    }
+
+                    Permission::query()->create([
+                        'slug' => $slug,
+                        'name' => $label.' · '.self::actionLabel($action)
+                            .($app !== null ? '（'.$apps->title($app).'）' : ''),
+                        'group' => $app !== null ? $apps->title($app).' / '.$label : $label,
+                    ]);
+
+                    $created++;
+                }
             }
         }
 

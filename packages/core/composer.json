@@ -1,6 +1,6 @@
 {
     "name": "aimanong/core",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "description": "Aimanong 框架无关内核 —— 声明 DSL 与四产物编译（零 illuminate 依赖）",
     "type": "library",
     "keywords": [
@@ -11,7 +11,7 @@
         "ai-first"
     ],
     "homepage": "https://aimanong.com",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "authors": [
         {
             "name": "Aimanong",

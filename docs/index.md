@@ -45,6 +45,6 @@ features:
     details: 浏览器里直接改 Resource 声明，实时看到 schema.json、TypeScript 类型、OpenAPI 文档、AI 上下文四份产物的变化。真实解析，不是录屏。
 
   - icon: 🌱
-    title: MIT 开源
+    title: Apache-2.0 开源
     details: 完整文档、可复现的测试、公开的 AI 实测记录。无商业授权限制。
 ---

@@ -9,8 +9,8 @@
 
 基于 **Laravel 12 + Vue 3**，专为 AI Agent 设计，同时为人类保留完整文档。
 
-[![Version](https://img.shields.io/badge/version-1.10.1-blue.svg)](./CHANGELOG.md)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
+[![Version](https://img.shields.io/badge/version-1.11.0-blue.svg)](./CHANGELOG.md)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![PHP](https://img.shields.io/badge/PHP-%5E8.2-blue.svg)](https://www.php.net)
 [![Laravel](https://img.shields.io/badge/Laravel-%5E12.0-red.svg)](https://laravel.com)
 
@@ -52,7 +52,7 @@ Aimanong 为此明确牺牲部分"灵活性"来换取"确定性"：
 
 ## 快速开始
 
-**最新版本 v1.10.1** —— 全部里程碑（M0–M6）完成，
+**最新版本 v1.11.0** —— 全部里程碑（M0–M6）完成，
 且已补齐「带地基的平台」六项基座能力（登录日志 / 操作日志 / 数据字典 /
 文件上传 / 个人中心 / 管理员账号）。
 
@@ -378,12 +378,35 @@ Aimanong 从 v1.3.0 起转向「**带地基的平台**」，v1.6.0 补齐了 P0 
 
 ## 许可
 
-**MIT License** —— 允许免费商用，包括闭源商用。
+**Apache License 2.0** —— 允许免费商用，包括闭源商用；并**明文授予专利许可**。
 
 | 你可以 | 你不可以 |
 |---|---|
 | ✅ 商用、修改、分发、闭源 | ❌ 用 "Aimanong" 命名你的 fork 或产品 |
 | ✅ 用于公司内部系统 | ❌ 暗示官方背书 |
+| ✅ 获得贡献者的**明文专利授权** | ❌ 就本项目专利起诉他人（授权自动终止） |
+
+### 许可历史（重要）
+
+**1.10.1 及更早的版本按 MIT 授权，且永远保持 MIT。**
+Apache-2.0 从 **1.11.0** 起对新版本生效。MIT 不可撤回，所以：
+
+| 版本 | 许可 |
+|---|---|
+| `framework` ≤ 1.10.1 · `core` ≤ 1.1.0 · `laravel` ≤ 1.0.1 · `thinkphp` ≤ 1.0.0 | MIT |
+| 更晚的版本 | Apache-2.0 |
+
+两者都是宽松许可，**都能免费商用、修改、闭源**，实际自由度没有变化。
+
+### 依赖方许可
+
+本项目自身是 Apache-2.0，依赖的第三方组件许可如下（互不冲突）：
+
+| 组件 | 许可 |
+|---|---|
+| Laravel / `illuminate/*` | MIT |
+| ThinkPHP / `think-template` | Apache-2.0 |
+| 内置 Vue 3.5.43（`resources/assets/js/`） | MIT（声明保留在文件头） |
 
 见 [LICENSE](./LICENSE)、[商标政策](./TRADEMARK.md)、[商业化说明](./COMMERCIAL.md)。
 

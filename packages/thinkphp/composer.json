@@ -1,6 +1,6 @@
 {
     "name": "aimanong/thinkphp",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Aimanong 的 ThinkPHP 8 驱动 —— ThinkORM 数据源 / 模板 / 路由 / 认证",
     "type": "library",
     "keywords": [
@@ -11,7 +11,7 @@
         "ai-first"
     ],
     "homepage": "https://aimanong.com",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "authors": [
         {
             "name": "Aimanong",

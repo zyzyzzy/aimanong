@@ -1,6 +1,6 @@
 {
     "name": "aimanong/region",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Aimanong 官方扩展 —— 中国省市区三级联动选择器",
     "type": "library",
     "keywords": [
@@ -11,7 +11,7 @@
         "city",
         "district"
     ],
-    "license": "MIT",
+    "license": "Apache-2.0",
     "authors": [
         {
             "name": "Aimanong",

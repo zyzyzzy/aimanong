@@ -1,6 +1,6 @@
 {
     "name": "aimanong/laravel",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "Aimanong 的 Laravel 12 驱动 —— Eloquent / Blade / 路由 / 认证 / 控制台 / MCP",
     "type": "library",
     "keywords": [
@@ -12,7 +12,7 @@
         "ai-first"
     ],
     "homepage": "https://aimanong.com",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "authors": [
         {
             "name": "Aimanong",

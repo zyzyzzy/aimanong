@@ -165,6 +165,16 @@ else
   warn "packages/thinkphp 未安装依赖，跳过其静态分析（CI 会跑）"
 fi
 
+# 许可证一致性 —— 三处必须一致（根 LICENSE / composer.json 字段 / 包内 LICENSE）。
+# 漏改一个包，Packagist 上那个包就显示旧许可；包里没有 LICENSE，
+# 用户就拿不到许可全文（Apache-2.0 §4(a) 是明确义务）。
+if bash "$ROOT/scripts/check-licenses.sh" > /tmp/amn-lic.log 2>&1; then
+  ok "许可证三处一致（$(grep -c '✅' /tmp/amn-lic.log) 项）"
+else
+  bad "许可证不一致"
+  grep -E '❌' /tmp/amn-lic.log | head -8 | sed 's/^/      /'
+fi
+
 # core 纯度门禁 —— 这是多框架适配能否成立的前提。
 # core 一旦长回 Illuminate 依赖，ThinkPHP 用户就会重新掉进
 # 「装上就炸」（全局 env() 冲突）的坑，而这个坑是静默的。

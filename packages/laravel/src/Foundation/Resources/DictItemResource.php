@@ -39,6 +39,18 @@ class DictItemResource extends Resource
         return ['group' => '系统', 'icon' => '🏷️', 'sort' => 94];
     }
 
+    /**
+     * 只属于总管理后台。
+     *
+     * 内置的系统管理类（管理员/角色/权限/日志/字典）属于框架运维面，
+     * 不该出现在用户后台或代理商后台 —— 菜单串台等于把后台结构
+     * 暴露给不该看的人。
+     */
+    public static function applications(): array
+    {
+        return ['admin'];
+    }
+
     public static function grid(Grid $grid): void
     {
         $grid->perPage(20);

@@ -69,7 +69,7 @@
     "scripts": {
         "test": "vendor/bin/phpunit",
         "phpstan": "vendor/bin/phpstan analyse",
-        "pint": "vendor/bin/pint src tests ../core/src"
+        "pint": "pint"
     },
     "extra": {
         "laravel": {

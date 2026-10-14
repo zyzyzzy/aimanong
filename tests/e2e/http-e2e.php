@@ -318,6 +318,112 @@ t("LOGO 免登录可访问", $logo['code'] === 200);
 $trav = http("$base/admin/assets/../../../.env");
 t("目录穿越被拦截", $trav['code'] === 404);
 
+/*
+ * ═══ 多应用隔离（真实三后台）═══
+ *
+ * 放在**最后**：本段会以 agent 身份登录，覆盖共享的 cookie jar，
+ * 后面的段落若还依赖 admin 登录态就会被带坏。
+ *
+ * 这一段盯的是三个**只有真配多应用才会暴露**的问题：
+ *
+ *   1. 未登录访问 /agent 时，跳转目标必须是该后台自己的登录页（不是 admin 的）
+ *      （注意：块注释里不能写「双星号 + 斜杠」的路径写法，那三个字符会闭合注释）
+ *   2. agent 后台的菜单里**不能**出现系统管理类（管理员/角色/权限/日志）
+ *   3. 权限分隔：给 agent 授了哪些节点，就只能看到哪些模块
+ *
+ * 第 2 条尤其重要 —— 菜单是入口，串台等于把后台结构暴露给不该看的人。
+ */
+echo "\n═══ 多应用隔离（三后台）═══\n";
+
+$loginPage = function (string $app) use ($base): array {
+    return http("$base/$app/auth/login");
+};
+
+foreach (['user', 'agent'] as $app) {
+    $r = $loginPage($app);
+    t("/$app 登录页 200", $r['code'] === 200, "HTTP {$r['code']}");
+}
+
+/*
+ * ① 未登录跳转必须指向该后台**自己**的登录页。
+ *
+ * ⚠️ 这里不能用上面的 http()：
+ *   1. 它固定发 `Accept: application/json` —— 未登录时服务端按设计
+ *      返回 **401 JSON**，而不是表单场景的 302 跳转（两种都对，
+ *      但这里要验的是「跳哪去」，必须走表单路径）
+ *   2. 它用共享 cookie jar，而本段之前已经以 admin 登录过，
+ *      再访问 /admin 会是 200（已登录）而不是 302
+ *
+ * 所以用独立的 jar + 不带 JSON Accept 头。
+ */
+$anon = function (string $url) {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_HEADER => true,
+        CURLOPT_TIMEOUT => 15,
+        // 独立 jar：不影响其它段落的登录态
+        CURLOPT_COOKIEJAR => '/tmp/e2e-anon-cookie.txt',
+        CURLOPT_COOKIEFILE => '/tmp/e2e-anon-cookie.txt',
+    ]);
+    $raw = (string) curl_exec($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    unset($ch);   // PHP 8 下 curl_close 是空操作，必须 unset 才落盘
+
+    preg_match('/^location:\s*(.+)$/mi', $raw, $m);
+
+    return ['code' => $code, 'location' => trim($m[1] ?? '')];
+};
+
+@unlink('/tmp/e2e-anon-cookie.txt');
+
+foreach (['admin', 'user', 'agent'] as $app) {
+    $r = $anon("$base/$app");
+    t(
+        "未登录 /$app → 跳 $app 登录页",
+        $r['code'] === 302 && str_contains($r['location'], "/$app/auth/login"),
+        "HTTP {$r['code']} → {$r['location']}"
+    );
+}
+
+// ② 以 agent 身份登录，检查菜单隔离
+$ag = http("$base/agent/auth/login");
+preg_match('/name="_token" value="([^"]+)"/', $ag['body'], $agt);
+$agLogin = http("$base/agent/auth/login", 'POST', [
+    '_token' => $agt[1] ?? '',
+    'username' => 'agent1',
+    'password' => 'agent123',
+]);
+$agHome = http("$base/agent/");
+$agBody = (string) $agHome['body'];
+
+t("agent 登录成功", in_array($agLogin['code'], [200, 302], true), "HTTP {$agLogin['code']}");
+t("agent 首页 200", $agHome['code'] === 200, "HTTP {$agHome['code']}");
+
+/*
+ * 系统管理类菜单必须**不出现**在代理后台。
+ *
+ * 这些 Resource 声明了 applications() => ['admin']，
+ * 而过滤依赖 `Drivers::application()->current()` 走**请求路径推断**。
+ * 若推断失效（曾经就是），current() 恒为 admin → 代理商后台
+ * 要么全拒（菜单空白）、要么串台（看到管理员）。两种都错。
+ */
+foreach (['权限节点', '数据字典', '操作日志', '登录日志'] as $needle) {
+    t("agent 后台不含「{$needle}」", ! str_contains($agBody, $needle));
+}
+
+// ③ 对照：同一台机器上 admin 后台**应该**有这些（证明不是「全都过滤掉了」）
+$ad = http("$base/admin/auth/login");
+preg_match('/name="_token" value="([^"]+)"/', $ad['body'], $adt);
+http("$base/admin/auth/login", 'POST', [
+    '_token' => $adt[1] ?? '',
+    'username' => 'admin',
+    'password' => 'admin123',
+]);
+$adBody = (string) http("$base/admin/")['body'];
+t("admin 后台含「权限节点」（对照）", str_contains($adBody, '权限节点'));
+
 echo "\n";
 printf("通过 %d / %d\n", $pass, $pass + $fail);
 

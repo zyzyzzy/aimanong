@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\Auth;
 
 use Aimanong\Aimanong;
+use Aimanong\Contracts\Permissible;
 use Aimanong\Models\Administrator;
 use Aimanong\Models\Permission;
 use Aimanong\Models\Role;
@@ -71,12 +72,12 @@ class PermissionGate
 
         $user = self::user();
 
-        if (! $user instanceof Administrator) {
+        if (! $user instanceof Permissible) {
             return false;
         }
 
-        // 未启用 enabled 的账号直接拒绝
-        if (! $user->enabled) {
+        // 未启用的账号直接拒绝
+        if (! $user->isEnabled()) {
             return false;
         }
 
@@ -86,13 +87,24 @@ class PermissionGate
     /**
      * 当前登录用户。
      */
-    public static function user(): ?Administrator
+    /**
+     * 当前登录用户。
+     *
+     * ⚠️ 返回类型是 `object`，**不是** `Administrator`。
+     *
+     * 多应用下每个后台有自己的用户模型（管理员 / 用户 / 代理商），
+     * 它们不是同一个类。若这里硬判 `Administrator`，
+     * 其它后台的用户会被当成「未登录」→ 权限全部拒绝（登录了也 403）。
+     *
+     * 判定改为基于**能力**：实现 `Permissible` 契约的模型都认。
+     */
+    public static function user(): ?object
     {
         /** @var AdminGuard $guard */
         $guard = Aimanong::guard();
         $user = $guard->user();
 
-        return $user instanceof Administrator ? $user : null;
+        return $user instanceof Permissible ? $user : null;
     }
 
     /**
@@ -181,6 +193,7 @@ class PermissionGate
     {
         $created = 0;
         $existing = 0;
+        $expected = [];
 
         /*
          * registry()->all() 返回的是**类名**数组（不是 ResourceNode），
@@ -223,6 +236,8 @@ class PermissionGate
                 $appList = [$forApp];
             } else {
                 $appList = $apps->enabled() ? $apps->names() : [null];
+
+                $expected = [];
             }
 
             foreach ($appList as $app) {
@@ -232,6 +247,8 @@ class PermissionGate
 
                 foreach (self::actionsFor($node) as $action) {
                     $slug = self::appSlug($app, $uri, $action);
+
+                    $expected[$slug] = true;
 
                     if (Permission::query()->where('slug', $slug)->exists()) {
                         $existing++;
@@ -251,7 +268,18 @@ class PermissionGate
             }
         }
 
-        return ['created' => $created, 'existing' => $existing];
+        $orphaned = Permission::query()
+            ->whereNotIn('slug', array_keys($expected))
+            ->count();
+
+        return [
+            'created' => $created,
+            'existing' => $existing,
+            // 孤儿子节点：库里存在，但当前没有「应用 × Resource」对得上。
+            // 常见来源：改了 Resource::applications()、或删掉了 Resource。
+            // 故意**不自动删** —— 那是用户已配置给角色的授权，误删比留着更糟。
+            'orphaned' => $orphaned,
+        ];
     }
 
     /**

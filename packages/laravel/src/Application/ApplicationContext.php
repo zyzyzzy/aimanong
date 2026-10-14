@@ -137,22 +137,54 @@ class ApplicationContext
          * 此时 config() helper 会抛异常 —— 不能让上下文推断本身崩掉，
          * 否则整个框架都无法启动。
          */
+        /*
+         * ⚠️ fallback **不能**读 `config('aimanong.route.prefix')`。
+         *
+         * `ApplicationManager::applyConfig()` 会把当前应用的配置
+         * **合并进全局 config**（改 `route.prefix` / `auth.guard`）。
+         * 那是进程内的一次性副作用，不会自动还原 ——
+         * 于是下一次（尤其 CLI 命令）再读 `route.prefix`，
+         * 拿到的是**上一次请求的应用**，fallback 就认错了后台。
+         *
+         * 实测踩到：CLI 里 `route.prefix` 变成 'agent'，
+         * 导致菜单过滤错后台、权限 slug 加错前缀。
+         *
+         * 正确做法：fallback 用 `applications` 配置里**第一个**应用
+         * （配置顺序即优先级，用户在 config 里把主后台放第一个）。
+         */
         try {
-            $defaultPrefix = config('aimanong.route.prefix');
-            $defaultGuard = config('aimanong.auth.guard');
+            /** @var ApplicationManager $apps */
+            $apps = app('aimanong.application');
+            $names = $apps->names();
         } catch (\Throwable) {
-            $defaultPrefix = null;
-            $defaultGuard = null;
+            $names = [];
         }
 
-        $defaultPrefix = is_string($defaultPrefix) ? trim($defaultPrefix, '/') : 'admin';
-        $defaultGuard = is_string($defaultGuard) ? $defaultGuard : 'admin';
+        if ($names !== []) {
+            $first = $names[0];
+            $fallback = [
+                'app' => $first,
+                'prefix' => trim((string) config("aimanong.applications.{$first}.route.prefix", $first), '/'),
+                'guard' => (string) config("aimanong.applications.{$first}.auth.guard", 'admin'),
+            ];
+        } else {
+            try {
+                $defaultPrefix = config('aimanong.route.prefix');
+                $defaultGuard = config('aimanong.auth.guard');
+            } catch (\Throwable) {
+                $defaultPrefix = null;
+                $defaultGuard = null;
+            }
 
-        $fallback = [
-            'app' => $defaultPrefix,
-            'prefix' => $defaultPrefix,
-            'guard' => $defaultGuard,
-        ];
+            $defaultPrefix = is_string($defaultPrefix) ? trim($defaultPrefix, '/') : 'admin';
+            $defaultGuard = is_string($defaultGuard) ? $defaultGuard : 'admin';
+
+            $fallback = [
+                'app' => $defaultPrefix,
+                'prefix' => $defaultPrefix,
+                'guard' => $defaultGuard,
+            ];
+        }
 
         try {
             /** @var ApplicationManager $apps */

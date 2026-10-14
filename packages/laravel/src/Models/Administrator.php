@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Models;
 
+use Aimanong\Contracts\Permissible;
 use Illuminate\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -21,7 +22,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 /**
  * @use HasFactory<Factory<static>>
  */
-class Administrator extends Model implements AuthenticatableContract
+class Administrator extends Model implements AuthenticatableContract, Permissible
 {
     use Authenticatable;
     use HasFactory;
@@ -47,7 +48,25 @@ class Administrator extends Model implements AuthenticatableContract
      */
     public function roles(): BelongsToMany
     {
-        return $this->belongsToMany(Role::class, 'admin_role_user', 'user_id', 'role_id');
+        /*
+         * ⚠️ 必须按 `user_type` 过滤。
+         *
+         * `admin_role_user` 只有 `user_id`，而多应用下每个后台有自己的
+         * 用户表（admin_users / users / agents），不同表的 id 会**碰撞**：
+         * 实测 Administrator id=1 与 Agent id=1 命中同一行，
+         * 于是给管理员挂的超管角色，代理商也拿到了 —— **越权**。
+         */
+        /*
+         * ⚠️ 用 `withPivotValue` 而不是 `wherePivot`。
+         *
+         * `wherePivot` **只作用于读取**，写入（attach/sync）不会带上该字段 ——
+         * 于是插进去的行 user_type 为空，读的时候又被过滤掉，
+         * 表现是「刚授的权立刻查不到」（实测踩到：admin 授权后 roles() 为空）。
+         *
+         * `withPivotValue` 读写都生效：查询加条件，写入自动填值。
+         */
+        return $this->belongsToMany(Role::class, 'admin_role_user', 'user_id', 'role_id')
+            ->withPivotValue('user_type', static::class);
     }
 
     /**

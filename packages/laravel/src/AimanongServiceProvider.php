@@ -127,6 +127,16 @@ class AimanongServiceProvider extends ServiceProvider
         Drivers::registerDictionary(new Dictionary);
         Drivers::registerPermissionChecker(new PermissionGateChecker);
         Drivers::registerUploadSpec(new Uploader);
+
+        /*
+         * 多应用解析器。
+         *
+         * ⚠️ 这一步**不能漏** —— 漏了的话 `Drivers::application()` 会回退到
+         * `SingleApplication`，于是：菜单不过滤、权限 slug 不加前缀、
+         * `sync()` 只建一个应用的节点，**而这一切都不会报错**，
+         * 只是多应用静默失效（第一次配三个后台时就踩到了）。
+         */
+        Drivers::registerApplicationResolver($this->app->make('aimanong.application'));
     }
 
     public function boot(): void
@@ -621,15 +631,34 @@ class AimanongServiceProvider extends ServiceProvider
             ->prefix($prefix)
             ->name('aimanong.'.$name.'.')
             ->group(function () use ($name, $apps, $title): void {
-                // 进入该应用路由时切换上下文
+                /*
+                 * 进入该应用路由时切换上下文。
+                 *
+                 * ⚠️ 但这个 switch 只是为了让 `routes/admin.php` 里的
+                 * **相对路由**按该应用解析（前缀/名字），它不应把
+                 * 「当前应用」永久留在最后一个注册的应用上。
+                 *
+                 * CLI 下所有应用都会注册一遍，于是 `current` 停在最后一个 ——
+                 * artisan 命令、队列任务全拿到错的后台，
+                 * 权限 slug 加错前缀、菜单过滤错后台。
+                 * （实测：三个应用配好后，CLI 里 current 一直是 'agent'。）
+                 *
+                 * 所以**注册完就恢复**：路由闭包只是「注册时执行一次」，
+                 * 恢复不会影响已注册的路由。
+                 */
+                $previous = $apps->current();
                 $apps->switch($name);
 
-                Route::get('__app', fn (): array => [
-                    'application' => $name,
-                    'title' => $title,
-                ])->name('info');
+                try {
+                    Route::get('__app', fn (): array => [
+                        'application' => $name,
+                        'title' => $title,
+                    ])->name('info');
 
-                require __DIR__.'/../routes/admin.php';
+                    require __DIR__.'/../routes/admin.php';
+                } finally {
+                    $apps->switch($previous);
+                }
             });
     }
 

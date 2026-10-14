@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\Application;
 
 use Aimanong\Aimanong;
+use Aimanong\Contracts\ApplicationResolver;
 use Illuminate\Support\Facades\Context;
 
 /**
@@ -20,7 +21,7 @@ use Illuminate\Support\Facades\Context;
  *      （比全局单例安全：并发请求不会串味）
  *   3. 每个应用有独立的 auth guard 与 providers
  */
-class ApplicationManager
+class ApplicationManager implements ApplicationResolver
 {
     public const CONTEXT_KEY = 'aimanong.application';
 
@@ -62,17 +63,57 @@ class ApplicationManager
         return $this->applications[$name] ?? null;
     }
 
+    /**
+     * 防止 current() → context()->app() → … → current() 的递归。
+     */
+    protected static bool $resolving = false;
+
     public function current(): string
     {
-        // 优先从 Context 取（请求级隔离）
-        try {
-            $ctx = Context::get(self::CONTEXT_KEY);
+        if (! $this->hasRequestContext()) {
+            /*
+             * CLI / 队列 / 测试：用实例状态。
+             *
+             * ⚠️ 这里**绝不能**读 Context —— 它是进程级单例，不随
+             * 「命令结束」清零，上一次请求 switch 过的应用会跨命令残留。
+             */
+            return $this->current;
+        }
 
-            if (is_string($ctx) && $ctx !== '') {
-                return $ctx;
+        /*
+         * HTTP 请求：当前应用以**请求路径**为准，即 ApplicationContext。
+         *
+         * ⚠️ 这是多应用能不能工作的关键。
+         *
+         * `ApplicationContext` 才是权威（它的注释写着「不信任 config、
+         * 只信任当前请求路径」），但 `ApplicationManager::current()`
+         * 原先只读 Context / 实例状态 —— 而**没有任何一处会在请求期写它**
+         * （`switch()` 只在路由注册时按应用各调一次，且注册完就恢复了）。
+         *
+         * 后果：HTTP 下 current() 恒为默认应用（admin），于是
+         *   · 代理商后台的权限判定去查 `admin.*` 节点 → 全拒 → 菜单空白
+         *   · 用户后台同理
+         * 而 `/admin` 恰好是对的，所以**只有非默认后台会坏**，
+         * 且不报错（只是「什么都没有」）。
+         *
+         * 实测：CLI 下 agent 有 26 个菜单项，HTTP 下 0 个 —— 就是这个原因。
+         */
+        if (self::$resolving) {
+            return $this->current;
+        }
+
+        self::$resolving = true;
+
+        try {
+            $app = app('aimanong.context')->app();
+
+            if (is_string($app) && $app !== '' && $this->has($app)) {
+                return $app;
             }
         } catch (\Throwable) {
-            // 无容器时回退到实例状态
+            // 容器未就绪 → 回退实例状态
+        } finally {
+            self::$resolving = false;
         }
 
         return $this->current;
@@ -89,10 +130,24 @@ class ApplicationManager
         if ($this->has($name)) {
             $this->current = $name;
 
-            try {
-                Context::add(self::CONTEXT_KEY, $name);
-            } catch (\Throwable) {
-                // 无容器时仅用实例状态
+            /*
+             * ⚠️ **只在有 HTTP 请求时才写 Context**。
+             *
+             * Laravel 的 Context 是**进程级**单例，在 CLI / 队列里不会随
+             * 「请求结束」清零。若在 CLI 下也写，下一次命令（或同一个
+             * worker 里的下一个任务）会读到上一次残留的应用名 ——
+             * 表现是 `Drivers::application()->current()` 莫名变成别的应用，
+             * 于是权限 slug 加错前缀、菜单过滤错后台。
+             *
+             * 实测踩到：CLI 里跑菜单检查，current 一直是 'agent'
+             * （上一次 HTTP 请求 switch 过去的）。
+             */
+            if ($this->hasRequestContext()) {
+                try {
+                    Context::add(self::CONTEXT_KEY, $name);
+                } catch (\Throwable) {
+                    // 无容器时仅用实例状态
+                }
             }
 
             $this->applyConfig($name);
@@ -129,6 +184,22 @@ class ApplicationManager
     }
 
     /**
+     * 当前是否处于 HTTP 请求上下文中。
+     *
+     * CLI / 队列 / 测试里没有请求 —— 这时绝不能把应用名写进
+     * 进程级的 Context（见 switch() 的说明）。
+     */
+    protected function hasRequestContext(): bool
+    {
+        try {
+            return app()->runningInConsole() === false
+                && app('request') !== null;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
      * 当前应用的路由前缀。
      */
     public function prefix(?string $name = null): string
@@ -160,6 +231,33 @@ class ApplicationManager
     public function enabled(): bool
     {
         return $this->applications !== [];
+    }
+
+    /**
+     * 某应用的用户模型类名。
+     *
+     * @return class-string
+     */
+    public function model(string $name): string
+    {
+        $config = $this->config($name);
+        $model = $config['auth']['model'] ?? null;
+
+        /** @var class-string $model */
+        $model = is_string($model) && $model !== '' ? $model : \stdClass::class;
+
+        return $model;
+    }
+
+    /**
+     * 某应用的显示标题（后台标题、菜单分组用）。
+     */
+    public function title(string $name): string
+    {
+        $config = $this->config($name);
+        $title = $config['title'] ?? null;
+
+        return is_string($title) && $title !== '' ? $title : $name;
     }
 
     /**

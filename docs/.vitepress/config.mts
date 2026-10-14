@@ -83,7 +83,7 @@ export default defineConfig({
     ],
 
     footer: {
-      message: '基于 MIT 许可开源 · 允许免费商用',
+      message: '基于 Apache-2.0 许可开源 · 允许免费商用 · 含明文专利授权',
       copyright: 'Aimanong（AI 码农）',
     },
 

@@ -18,6 +18,7 @@ export default defineConfig({
     logo: '/assets/logo.png',
     nav: [
       { text: '指南', link: '/guide/quickstart' },
+      { text: '多框架', link: '/guide/multi-framework' },
       { text: 'API 参考', link: '/api/' },
       { text: 'AI 使用手册', link: '/guide/ai-handbook' },
       { text: 'Playground', link: '/playground/' },
@@ -46,6 +47,7 @@ export default defineConfig({
           text: '基座能力',
           items: [
             { text: '基座能力总览', link: '/guide/foundation' },
+            { text: '多框架支持', link: '/guide/multi-framework' },
           ],
         },
         {

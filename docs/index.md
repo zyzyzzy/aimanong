@@ -37,8 +37,8 @@ features:
     details: 文本、数值、选择、日期、颜色、评分、滑块、上传（image/images/file/files）等开箱即用，配 10 个列展示器（徽章、金额、进度条、布尔标签、图片、文件、链接等）。
 
   - icon: ⚡
-    title: 基于 Laravel 12
-    details: PHP 8.2+，Symfony 7，Carbon 3。用 Laravel 12 的原生 Schema API，不依赖已移除的 doctrine/dbal。
+    title: 双框架支持
+    details: Laravel 12 与 ThinkPHP 8 都能跑，声明代码完全一样。框架拆成「零依赖内核 + 各框架驱动」，ThinkPHP 项目不会被拖进 illuminate。
 
   - icon: 🎮
     title: Playground 在线试玩

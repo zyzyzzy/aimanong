@@ -5,6 +5,11 @@
 > 本页面向**有编程基础的程序员**（参照[项目宪法](https://github.com/zyzyzzy/aimanong/blob/main/CONSTITUTION.md)）——
 > 你负责需求与验收，编码交给 AI。
 
+::: tip 用的是 ThinkPHP？
+本页以 Laravel 为例。ThinkPHP 8 的安装步骤、能力对照表、
+以及**哪些功能只有 Laravel 有**，都在 [多框架支持](./multi-framework) 里。
+:::
+
 ## 环境要求
 
 | 项 | 要求 |

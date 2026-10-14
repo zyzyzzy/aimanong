@@ -766,6 +766,26 @@ class ResourceController extends Controller
     protected function authorize_(string $uri, string $action): void
     {
         /*
+         * ⚠️ **归属校验必须排在权限校验之前**（返回 404 而不是 403）。
+         *
+         * `authorize_()` 在 `resolve()` 之前调用，所以归属检查只写在
+         * `resolve()` 里是**轮不到**的：代理商的角色没有
+         * `agent.orders.index` 这个节点，会先被权限关拦下变成 403。
+         *
+         * 而 403 等于告诉对方「这个资源存在，只是你没权限」——
+         * 那是把后台结构泄露出去。404 才与「真的没注册」不可区分。
+         *
+         * ⚠️ 这个顺序问题是**在 ThinkPHP 侧先踩到**的（那边断言期望 404
+         * 却拿到 403），回头检查发现 Laravel 侧同样中招 ——
+         * 两边各写一遍的代码，同一类 bug 也会各犯一遍。
+         */
+        $apps = Drivers::application();
+
+        if ($apps->enabled() && ! Aimanong::registry()->belongsTo($uri, $apps->current())) {
+            abort(404, "Resource [{$uri}] 未注册");
+        }
+
+        /*
          * 只读校验**必须在 RBAC 判断之前**。
          *
          * RBAC 默认关闭时 authorize_ 会直接放行；若把只读校验写在后面，

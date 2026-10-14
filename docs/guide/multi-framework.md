@@ -71,6 +71,7 @@ composer require aimanong/thinkphp
 | ✅ 多租户数据作用域 | `ScopeHooks`（查询 + 写入），搜索/排序/筛选都绕不过 |
 | ✅ 四份产物 | `aimanong:schema` → JSON Schema / TypeScript / OpenAPI / AI 上下文 |
 | ✅ 声明自检 | `ai:verify`（含 `--json`） |
+| ✅ **多应用（多后台）** | 一个项目跑多个互相隔离的后台，各自独立的登录 / 菜单 / 权限 |
 
 ### 只有 Laravel 有
 
@@ -80,7 +81,6 @@ composer require aimanong/thinkphp
 | ❌ 内置 Resource | 管理员账号 / 操作日志 / 登录日志 / 字典管理 / 个人中心 |
 | ❌ MCP 工具 | 8 个 MCP 工具（AI Agent 直接调用） |
 | ❌ 扩展机制 | `aimanong:make-extension` / `extensions` |
-| ❌ 多应用 | `ThinkRuntime` 返回空对象，只有单应用 |
 | ❌ 上传落盘 | 只有**能力描述**（前端该知道的参数），真正的存文件没实现 |
 | ❌ 数据库字典 | 只读代码声明，没有后台可维护的字典表 |
 | ❌ 登录日志 / 操作日志 | —— |
@@ -100,6 +100,10 @@ composer require aimanong/thinkphp
 | `schema` 默认输出目录 | `resource_path('aimanong')` | `<项目根>/aimanong` |
 
 配置文件**不能互换** —— 上面这些键名不同。声明代码（Resource）可以。
+
+> **多应用是例外**：两个框架的 `applications` 配置**结构完全相同**
+> （`title` / `route.prefix` / `auth.guard` / `auth.model`），
+> 同一个项目的两端可以对照着看。
 
 ---
 
@@ -194,6 +198,74 @@ region    ──→ framework
 
 **`framework` 没有 `src/` 目录**，它是 metapackage。真正的框架代码在
 `core` / `laravel` / `thinkphp` 里。
+
+---
+
+## 多应用（多后台）
+
+一个项目里同时跑多个互相隔离的后台。**两个框架都支持，配置结构相同。**
+
+```php
+// config/aimanong.php
+'applications' => [
+    'admin' => [
+        'title' => '总管理后台',
+        'route' => ['prefix' => 'admin'],
+        'auth'  => ['guard' => 'admin', 'model' => App\Models\Administrator::class],
+    ],
+    'agent' => [
+        'title' => '代理商后台',
+        'route' => ['prefix' => 'agent'],
+        'auth'  => ['guard' => 'agent', 'model' => App\Models\Agent::class],
+    ],
+],
+```
+
+每个后台有自己的：**路由前缀 · 登录守卫 · 用户模型 · 菜单 · 权限节点**。
+
+### Resource 声明归属
+
+```php
+class OrderResource extends Resource
+{
+    // 属于哪些后台。**不写 = 所有后台都能看到**
+    public static function applications(): array
+    {
+        return ['admin', 'agent'];
+    }
+}
+```
+
+### 权限按后台隔离
+
+开启多应用后，权限节点自动带上后台前缀：
+
+```
+单应用：  orders.index
+多应用：  admin.orders.index  /  agent.orders.index
+```
+
+**给代理商开的权限，不等于给总后台开了。** 而且菜单是按权限过滤的，
+所以**权限一隔离，菜单隔离也自动成立**。
+
+> **单应用项目零影响**：只在配了 `applications` 时才加前缀 ——
+> 已有项目的授权不受影响。
+
+### 升级已有项目
+
+权限节点改名后，旧的授权需要迁一次：
+
+```bash
+php artisan aimanong:permission migrate-permissions --to=admin
+```
+
+**旧节点全部保留** —— 回滚只需把 `applications` 清空。
+
+### 跨后台访问返回 404，不是 403
+
+在代理商后台访问只属于总后台的资源，返回 **404**（看起来就像不存在），
+而不是 403 —— 403 等于告诉对方「这个资源存在，只是你没权限」，
+那是把后台结构泄露出去。
 
 ---
 

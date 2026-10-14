@@ -138,6 +138,66 @@ class Customer extends \think\Model
 }
 PHPEOF
 
+cat > "$TARGET/app/Agent.php" <<'PHPEOF'
+<?php
+namespace app;
+
+use Aimanong\Contracts\Permissible;
+
+/**
+ * 代理商（代理商后台的登录用户）。
+ *
+ * 实现 Permissible —— 多应用下每个后台有自己的用户模型，
+ * 权限判定基于**能力**而不是具体类（硬判 Administrator 会让
+ * 其它后台的用户被判成「未登录」）。
+ */
+class Agent extends \think\Model implements Permissible
+{
+    protected $name = 'agents';
+    protected $type = ['enabled' => 'integer'];
+    protected $hidden = ['password'];
+
+    public function roles(): \think\model\relation\BelongsToMany
+    {
+        return $this->belongsToMany(\Aimanong\ThinkPHP\Models\Role::class, 'admin_role_user', 'user_id', 'role_id')
+            ->wherePivot('user_type', static::class);
+    }
+
+    public function isSuper(): bool
+    {
+        foreach ($this->roles as $role) {
+            if ($role->isSuper()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function hasPermission(string $slug): bool
+    {
+        if ($this->isSuper()) {
+            return true;
+        }
+
+        foreach ($this->roles as $role) {
+            foreach ($role->permissions as $permission) {
+                if ((string) $permission->getAttr('slug') === $slug) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public function isEnabled(): bool
+    {
+        return (bool) $this->getAttr('enabled');
+    }
+}
+PHPEOF
+
 cat > "$TARGET/config/app.php" <<'PHPEOF'
 <?php
 return ['app_debug' => true, 'default_app' => 'index'];
@@ -186,6 +246,28 @@ return [
         'rbac' => true,
     ],
 
+    /*
+     * 多应用（多后台）。
+     *
+     * 与 Laravel 侧**同一套结构**（title / route.prefix / auth.guard /
+     * auth.model），同一个项目的配置可以对照着看。
+     *
+     * ⚠️ 顺序即优先级：第一个是「无请求上下文时」的默认应用
+     * （CLI / 队列拿不到请求路径）。
+     */
+    'applications' => [
+        'admin' => [
+            'title' => '总管理后台',
+            'route' => ['prefix' => 'admin'],
+            'auth'  => ['guard' => 'admin', 'model' => \Aimanong\ThinkPHP\Models\Administrator::class],
+        ],
+        'agent' => [
+            'title' => '代理商后台',
+            'route' => ['prefix' => 'agent'],
+            'auth'  => ['guard' => 'agent', 'model' => \app\Agent::class],
+        ],
+    ],
+
     // 数据字典（配置声明式，与 Laravel 侧同一份格式）
     'dict' => [
         'declarations' => [
@@ -222,6 +304,9 @@ $db = $argv[1];
 $pdo = new PDO("sqlite:".$db);
 $pdo->exec("CREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT, industry TEXT, level TEXT, credit_days INTEGER, create_time TEXT)");
 $pdo->exec("INSERT INTO customers VALUES (1,\"深圳宏远精密\",\"制造业\",\"A\",30,\"2026-10-12 10:00:00\"),(2,\"杭州云图数据\",\"服务业\",\"B\",15,\"2026-10-12 11:00:00\")");
+// 代理商后台的登录用户（多应用验证用）
+$pdo->exec("CREATE TABLE agents (id INTEGER PRIMARY KEY, username TEXT UNIQUE, name TEXT, password TEXT, company TEXT, enabled INTEGER DEFAULT 1)");
+$pdo->exec("INSERT INTO agents VALUES (1,\"agent1\",\"代理A\",\"".password_hash("agent123", PASSWORD_BCRYPT)."\",\"华北代理\",1)");
 ' "$TARGET/runtime/aimanong-e2e.sqlite"
 
 # 框架数据表与管理员交给 install 命令建 —— 走真实路径，不用另写一套 SQL

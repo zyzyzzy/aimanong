@@ -29,7 +29,7 @@ final class Authenticate
 
     public function handle(Request $request, \Closure $next): Response
     {
-        if ((new ThinkGuard)->check() || $this->shouldPassThrough($request)) {
+        if ($this->guard()->check() || $this->shouldPassThrough($request)) {
             return $next($request);
         }
 
@@ -43,6 +43,24 @@ final class Authenticate
         }
 
         return redirect($loginPath);
+    }
+
+    /**
+     * 当前后台的会话守卫。
+     *
+     * ⚠️ **必须走运行时**（`Aimanong::guard()`），不能 `new ThinkGuard`。
+     *
+     * 多应用下 session key 带应用维度（`<base>_<app>`），而
+     * `new ThinkGuard` 用的是**默认** key —— 于是「登录写默认 key、
+     * 读取查带应用的 key」，两边对不上：**登录成功但立刻 403/掉线**。
+     * 这个 bug 实测踩到过（配了多应用后所有接口 403）。
+     */
+    protected function guard(): ThinkGuard
+    {
+        /** @var ThinkGuard $guard */
+        $guard = Aimanong::guard();
+
+        return $guard;
     }
 
     protected function shouldPassThrough(Request $request): bool

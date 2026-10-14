@@ -27,6 +27,18 @@ class CustomerResource extends Resource
         return 'customers';
     }
 
+    /**
+     * 只属于**总管理后台**。
+     *
+     * 用来验证跨后台隔离：代理商后台访问 /agent/api/customers 应得 **404**
+     * （不是 403 —— 403 等于告诉对方「资源存在，只是你没权限」，
+     * 那是把后台结构泄露出去）。
+     */
+    public static function applications(): array
+    {
+        return ['admin'];
+    }
+
     public static function grid(\Aimanong\Grid\Grid $grid): void
     {
         $grid->column('id', 'ID')->sortable();

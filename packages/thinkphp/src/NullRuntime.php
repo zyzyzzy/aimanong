@@ -47,25 +47,6 @@ final class NullContext
     }
 }
 
-/** 多应用管理器：尚未实现，只有单一应用。 */
-final class NullApplication
-{
-    public function __construct(private readonly string $prefix = '/admin') {}
-
-    /**
-     * @return array<string, mixed>
-     */
-    public function current(): array
-    {
-        return ['name' => 'default', 'prefix' => $this->prefix];
-    }
-
-    public function switch(string $name): void
-    {
-        // 未实现多应用 —— 显式空操作，不谎报
-    }
-}
-
 /** 扩展管理器：尚未实现，没有任何扩展。 */
 final class NullExtensions
 {

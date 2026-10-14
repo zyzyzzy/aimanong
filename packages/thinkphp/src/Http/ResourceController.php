@@ -244,6 +244,21 @@ final class ResourceController
             throw new HttpException(404, "Resource [{$uri}] 未注册");
         }
 
+        /*
+         * 跨后台访问保护：不在当前后台的 Resource 一律 404。
+         *
+         * ⚠️ **必须是 404，不能是 403。**
+         *
+         * 403 等于告诉对方「这个资源存在，只是你没权限」——
+         * 那是把后台结构泄露出去。404 让它看起来就像不存在，
+         * 与「真的没注册」无法区分。（与 Laravel 侧同一套语义。）
+         */
+        $apps = Drivers::application();
+
+        if ($apps->enabled() && ! Aimanong::registry()->belongsTo($uri, $apps->current())) {
+            throw new HttpException(404, "Resource [{$uri}] 未注册");
+        }
+
         return $this->node = (new Compiler)->compile($class);
     }
 
@@ -273,6 +288,24 @@ final class ResourceController
      */
     protected function deny(string $uri, string $action): ?Response
     {
+        /*
+         * ⚠️ **归属校验必须排在权限校验之前**（返回 404 而不是 403）。
+         *
+         * `deny()` 在 `resolve()` 之前被调用，所以归属检查只写在
+         * `resolve()` 里是**轮不到**的：代理商的角色没有
+         * `agent.customers.index` 这个节点，会先被权限关拦下变成 403。
+         *
+         * 而 403 等于告诉对方「这个资源存在，只是你没权限」——
+         * 那是把后台结构泄露出去。404 才与「真的没注册」不可区分。
+         *
+         * ⚠️ 这个顺序问题实测踩到：断言期望 404，实际拿到 403。
+         */
+        $apps = Drivers::application();
+
+        if ($apps->enabled() && ! Aimanong::registry()->belongsTo($uri, $apps->current())) {
+            throw new HttpException(404, "Resource [{$uri}] 未注册");
+        }
+
         /*
          * 只读校验**必须在 RBAC 之前**。
          *

@@ -238,10 +238,21 @@ final class InstallCommand extends Command
                 permission_id {$bigint} NOT NULL,
                 PRIMARY KEY (role_id, permission_id)
             )",
+            /*
+             * ⚠️ `user_type` 不能少。
+             *
+             * 多应用下每个后台有**自己的用户表**（admin_users / users / agents），
+             * 不同表的 id 会**碰撞** —— 只有 (role_id, user_id) 的话，
+             * Administrator id=1 与 Agent id=1 是同一行，于是给管理员挂的
+             * 超管角色，代理商登录后也拿到了（**越权**，Laravel 侧实测踩到过）。
+             *
+             * 存模型类名，读取时按类型过滤。
+             */
             "CREATE TABLE IF NOT EXISTS admin_role_user (
                 role_id {$bigint} NOT NULL,
                 user_id {$bigint} NOT NULL,
-                PRIMARY KEY (role_id, user_id)
+                user_type VARCHAR(190) NOT NULL DEFAULT '',
+                PRIMARY KEY (role_id, user_id, user_type)
             )",
         ];
 
@@ -367,12 +378,14 @@ final class InstallCommand extends Command
             $exists = Db::name('admin_role_user')
                 ->where('role_id', $role->getKey())
                 ->where('user_id', $user->getKey())
+                ->where('user_type', Administrator::class)
                 ->find();
 
             if ($exists === null) {
                 Db::name('admin_role_user')->insert([
                     'role_id' => $role->getKey(),
                     'user_id' => $user->getKey(),
+                    'user_type' => Administrator::class,
                 ]);
 
                 $output->writeln('<info>✓ 已把管理员挂到超级管理员角色</info>');

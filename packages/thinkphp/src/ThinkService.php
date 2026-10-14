@@ -6,6 +6,7 @@ namespace Aimanong\ThinkPHP;
 
 use Aimanong\Aimanong;
 use Aimanong\Support\Drivers;
+use Aimanong\ThinkPHP\Application\ThinkApplication;
 use Aimanong\ThinkPHP\Console\InstallCommand;
 use Aimanong\ThinkPHP\Console\SchemaCommand;
 use Aimanong\ThinkPHP\Console\VerifyCommand;
@@ -52,9 +53,28 @@ class ThinkService extends Service
             return;
         }
 
-        Route::group((new ThinkRuntime)->urlPrefix(), function () use ($routeFile): void {
-            include $routeFile;
-        });
+        $runtime = new ThinkRuntime;
+        $apps = $runtime->application();
+
+        if ($apps->enabled()) {
+            /*
+             * 多应用：每个后台各自注册一份路由（前缀不同）。
+             *
+             * 同一个 route/admin.php 被 include 多次是**有意为之** ——
+             * 它只声明相对路径，具体前缀由外层的 group 决定。
+             * 这样「一套路由定义服务多个后台」，与 Laravel 侧一致。
+             */
+            foreach ($apps->names() as $name) {
+                Route::group($runtime->prefixOf($name), function () use ($routeFile): void {
+                    include $routeFile;
+                });
+            }
+        } else {
+            // 单应用：行为与改动前逐字相同
+            Route::group($runtime->urlPrefix(), function () use ($routeFile): void {
+                include $routeFile;
+            });
+        }
 
         /*
          * 会话中间件。
@@ -85,6 +105,15 @@ class ThinkService extends Service
         Drivers::registerDictionary(new ThinkDictionary);
         Drivers::registerPermissionChecker(new ThinkPermissionChecker);
         Drivers::registerUploadSpec(new ThinkUploadSpec);
+
+        /*
+         * 多应用解析器。
+         *
+         * ⚠️ 与 Laravel 侧同样**不能漏** —— 漏了会回退 SingleApplication，
+         * 于是菜单不过滤、权限 slug 不加前缀，且**不报错**，
+         * 只是多应用静默失效（Laravel 侧就踩过这个）。
+         */
+        Drivers::registerApplicationResolver(new ThinkApplication);
 
         // 公开入口 Aimanong\Aimanong 在 core，它需要的框架设施接在这里
         Aimanong::bindRuntime(new ThinkRuntime);
@@ -143,6 +172,15 @@ class ThinkService extends Service
         Drivers::registerDictionary(new ThinkDictionary);
         Drivers::registerPermissionChecker(new ThinkPermissionChecker);
         Drivers::registerUploadSpec(new ThinkUploadSpec);
+
+        /*
+         * 多应用解析器。
+         *
+         * ⚠️ 与 Laravel 侧同样**不能漏** —— 漏了会回退 SingleApplication，
+         * 于是菜单不过滤、权限 slug 不加前缀，且**不报错**，
+         * 只是多应用静默失效（Laravel 侧就踩过这个）。
+         */
+        Drivers::registerApplicationResolver(new ThinkApplication);
         Aimanong::bindRuntime(new ThinkRuntime);
     }
 }

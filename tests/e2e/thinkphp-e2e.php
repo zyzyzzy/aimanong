@@ -77,7 +77,21 @@ $app->initialize();
 
 Aimanong\ThinkPHP\ThinkService::bootstrap();
 
-t('4 个驱动已注册', count(Aimanong\Support\Drivers::registeredNames()) === 4);
+/*
+ * 驱动清单。
+ *
+ * ⚠️ 断言**具体名字**而不是「数量 == N」：数量一改就得跟着改，
+ * 而且数字错了看不出缺哪个。多应用解析器（ApplicationResolver）
+ * 是第 5 个 —— 漏注册它不会报错，只会让多应用静默失效。
+ */
+$expectedDrivers = ['SchemaIntrospector', 'DictionarySource', 'PermissionChecker', 'UploadSpec', 'ApplicationResolver'];
+$actualDrivers = Aimanong\Support\Drivers::registeredNames();
+$missing = array_diff($expectedDrivers, $actualDrivers);
+t(
+    '5 个驱动已注册（含多应用解析器）',
+    $missing === [],
+    $missing === [] ? implode(', ', $actualDrivers) : '缺: '.implode(', ', $missing)
+);
 t('公开入口已绑定', Aimanong\Aimanong::runtime() instanceof Aimanong\ThinkPHP\ThinkRuntime);
 t('Aimanong::url()', Aimanong\Aimanong::url('orders') === '/admin/orders', Aimanong\Aimanong::url('orders'));
 
@@ -783,6 +797,128 @@ t('明说尚未实现的步骤', str_contains($out, '尚未实现') && str_conta
 t('明说限流已启用', str_contains($out, '登录限流') && str_contains($out, '已启用'));
 t('install 真的建了表', str_contains($out, 'admin_users'));
 t('install 真的建了管理员', str_contains($out, '已创建管理员') || str_contains($out, '已存在管理员'));
+
+/*
+ * ═══ ⑪ 多应用隔离（/admin + /agent）═══
+ *
+ * 放在服务 teardown **之前**（这一段需要服务在跑）。
+ *
+ * 盯的是只有真配多应用才会暴露的问题 —— Laravel 侧实测挖出 5 个
+ * **静默失效**的 bug，都是同一类：
+ *
+ *   · 解析器没注册 → 菜单不过滤、slug 不加前缀（不报错）
+ *   · HTTP 下 current() 不走请求路径推断 → 非默认后台权限全拒
+ *   · session key 不带应用维度 → 登录写一个 key、读取查另一个（全站 403）
+ *
+ * 所以断言必须落在「用户/接口实际看到什么」，而不是「配置里有没有写」。
+ */
+echo "\n=== ⑪ 多应用隔离（/admin + /agent）===\n";
+
+/** 无登录态发一个请求，返回 [状态码, Location]。 */
+$anonProbe = function (string $path, string $jarName): array {
+    $anonJar = sys_get_temp_dir().'/amn-tp-anon-'.$jarName;
+    @unlink($anonJar);
+
+    $ch = curl_init("http://127.0.0.1:{$GLOBALS['port']}{$path}");
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_HEADER => true,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_COOKIEJAR => $anonJar,
+        CURLOPT_COOKIEFILE => $anonJar,
+    ]);
+    $raw = (string) curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    unset($ch);   // PHP 8 下 curl_close 是空操作，必须 unset 才落盘
+
+    preg_match('/^location:\s*(.+)$/mi', $raw, $lm);
+
+    return [$status, trim($lm[1] ?? '')];
+};
+
+// ① 两个后台的登录页都要能打开
+foreach (['admin', 'agent'] as $probeApp) {
+    [$ac] = $anonProbe("/{$probeApp}/auth/login", $probeApp.'-login');
+    t("/{$probeApp} 登录页 200", $ac === 200, "HTTP {$ac}");
+}
+
+// ② 未登录跳转必须指向**自己**的登录页，不是别人的
+foreach (['admin', 'agent'] as $probeApp) {
+    [$ac, $loc] = $anonProbe("/{$probeApp}", $probeApp.'-home');
+    t(
+        "未登录 /{$probeApp} → 跳 {$probeApp} 登录页",
+        $ac === 302 && str_contains($loc, "/{$probeApp}/auth/login"),
+        "HTTP {$ac} → {$loc}"
+    );
+}
+
+// ③ 用代理商身份登录（账号由 setup-thinkphp-demo.sh 建）
+$agentJar = sys_get_temp_dir().'/amn-tp-agent-'.getmypid().'.jar';
+@unlink($agentJar);
+
+$agentGet = function (string $path) use ($agentJar): array {
+    $ch = curl_init("http://127.0.0.1:{$GLOBALS['port']}{$path}");
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_COOKIEJAR => $agentJar,
+        CURLOPT_COOKIEFILE => $agentJar,
+    ]);
+    $body = (string) curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    unset($ch);
+
+    return [$status, $body];
+};
+
+[$lc, $lbody] = $agentGet('/agent/auth/login');
+preg_match('/name="_token" value="([^"]+)"/', $lbody, $lm2);
+
+$ch = curl_init("http://127.0.0.1:{$GLOBALS['port']}/agent/auth/login");
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST => true,
+    CURLOPT_POSTFIELDS => http_build_query([
+        '_token' => $lm2[1] ?? '',
+        'username' => 'agent1',
+        'password' => 'agent123',
+    ]),
+    CURLOPT_COOKIEJAR => $agentJar,
+    CURLOPT_COOKIEFILE => $agentJar,
+    CURLOPT_FOLLOWLOCATION => false,
+    CURLOPT_TIMEOUT => 15,
+]);
+curl_exec($ch);
+$agentLoginCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+unset($ch);
+
+t("agent 登录成功", in_array($agentLoginCode, [200, 302], true), "HTTP {$agentLoginCode}");
+
+/*
+ * ④ 跨后台访问：客户 Resource 声明了 applications() => ['admin']，
+ *    从代理商后台访问必须 **404**。
+ *
+ *    这条一次验两件事：
+ *      · 归属过滤真的生效（不是「配了但没用」）
+ *      · 返回 404 而不是 403 —— 403 等于告诉对方「资源存在，只是你没权限」，
+ *        那是把后台结构泄露出去
+ */
+[$crossCode] = $agentGet('/agent/api/customers');
+t(
+    "跨后台访问 admin 专属 Resource → 404",
+    $crossCode === 404,
+    "HTTP {$crossCode}".($crossCode === 403 ? '（403 会泄露资源存在）' : '')
+);
+
+// ⑤ 代理商后台自己的登录态是独立的：不该能用它访问 /admin
+[$adminAsAgentCode] = $agentGet('/admin');
+t(
+    "代理商的 cookie 访问 /admin 仍需登录",
+    in_array($adminAsAgentCode, [302, 403], true),
+    "HTTP {$adminAsAgentCode}"
+);
 
 exec('rm -rf '.escapeshellarg($fresh));
 

@@ -10,6 +10,7 @@ use Aimanong\ThinkPHP\Auth\ThinkGuard;
 use Aimanong\ThinkPHP\View\NullErrors;
 use Aimanong\ThinkPHP\View\ThinkView;
 use Aimanong\ThinkPHP\View\ViewErrors;
+use think\Model;
 use think\Request;
 use think\Response;
 
@@ -33,7 +34,7 @@ final class AuthController
     public function showLoginForm(Request $request): Response
     {
         // 已登录还访问登录页 → 直接回后台，避免"登录了却停在登录页"的困惑
-        if ((new ThinkGuard)->check()) {
+        if ($this->guard()->check()) {
             return redirect(Aimanong::url(''));
         }
 
@@ -81,7 +82,7 @@ final class AuthController
         }
 
         try {
-            $ok = (new ThinkGuard)->attempt($username, $password, $remember);
+            $ok = $this->guard()->attempt($username, $password, $remember);
         } catch (\RuntimeException $e) {
             // 账号被禁用 —— 与「密码错误」区分开，否则管理员查不出原因
             LoginThrottle::hit($request, $throttleKey);
@@ -111,7 +112,7 @@ final class AuthController
 
     public function logout(Request $request): Response
     {
-        (new ThinkGuard)->logout();
+        $this->guard()->logout();
 
         if ($request->isAjax() || str_contains($this->acceptHeader($request), 'application/json')) {
             return Response::create(['message' => '已退出登录'], 'json', 200);
@@ -125,12 +126,39 @@ final class AuthController
      *
      * ⚠️ 记不上**不应**导致登录失败 —— 用户在字段缺失的老库上也能登进来。
      */
+
+    /**
+     * 当前后台的会话守卫。
+     *
+     * ⚠️ **必须走运行时**（`Aimanong::guard()`），不能 `new ThinkGuard`。
+     *
+     * 多应用下 session key 带应用维度（`<base>_<app>`），而
+     * `new ThinkGuard` 用的是**默认** key —— 于是「登录写默认 key、
+     * 读取查带应用的 key」，两边对不上：**登录成功但立刻 403/掉线**。
+     * 这个 bug 实测踩到过（配了多应用后所有接口 403）。
+     */
+    protected function guard(): ThinkGuard
+    {
+        /** @var ThinkGuard $guard */
+        $guard = Aimanong::guard();
+
+        return $guard;
+    }
+
     protected function touchLogin(Request $request): void
     {
         try {
-            $user = (new ThinkGuard)->user();
+            $user = $this->guard()->user();
 
-            if ($user === null) {
+            /*
+             * ⚠️ 必须显式收窄成 `think\Model`。
+             *
+             * 多应用下登录用户可能是**任意**实现了 `Permissible` 的模型，
+             * 所以守卫的返回类型是 `object`（框架契约定死的）。
+             * 这里要用模型自身的 `getData()` / `save()`，就得自己判断 ——
+             * 不能假设它一定是某个具体类。
+             */
+            if (! $user instanceof Model) {
                 return;
             }
 

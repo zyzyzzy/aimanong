@@ -17,6 +17,32 @@ return [
     'prefix' => '/admin',
 
     /*
+    |--------------------------------------------------------------------------
+    | 多应用（多后台）
+    |--------------------------------------------------------------------------
+    |
+    | 一个项目里跑多个互相隔离的后台。留空表示只用默认单后台。
+    |
+    | 与 Laravel 侧**同一套结构**（title / route.prefix / auth.guard /
+    | auth.model），这样同一个项目的配置可以对照着看，换框架不用重新理解。
+    |
+    | 'applications' => [
+    |     'admin' => [
+    |         'title' => '总管理后台',
+    |         'route' => ['prefix' => 'admin'],
+    |         'auth'  => ['guard' => 'admin', 'model' => \Aimanong\ThinkPHP\Models\Administrator::class],
+    |     ],
+    |     'agent' => [
+    |         'title' => '代理商后台',
+    |         'route' => ['prefix' => 'agent'],
+    |         'auth'  => ['guard' => 'agent', 'model' => \app\model\Agent::class],
+    |     ],
+    | ],
+    |
+    */
+    'applications' => [],
+
+    /*
      * 认证。
      *
      * ⚠️ ThinkPHP 侧的认证层**尚未实现**（见 ThinkRuntime 的注释）。

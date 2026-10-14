@@ -429,6 +429,82 @@ http("$base/admin/auth/login", 'POST', [
     'password' => 'admin123',
 ]);
 $adBody = (string) http("$base/admin/")['body'];
+/*
+ * ④ 跨后台访问：admin 专属的 Resource（管理员/日志等）从**代理商后台**
+ *    访问必须 **404**，不是 403。
+ *
+ *    403 等于告诉对方「资源存在，只是你没权限」—— 那是把后台结构
+ *    泄露出去。404 才与「真的没注册」不可区分。
+ *
+ *    ⚠️ 这条是「顺序 bug」的守门人：归属检查必须排在权限检查**之前**。
+ *    只在 resolve() 里做归属检查是轮不到的 —— 权限关会先返回 403。
+ *    ThinkPHP 侧先踩到，回头发现 Laravel 侧同样中招。
+ */
+http("$base/agent/auth/login");
+$agTok = '';
+$agPage = http("$base/agent/auth/login");
+preg_match('/name="_token" value="([^"]+)"/', $agPage['body'], $agm);
+http("$base/agent/auth/login", 'POST', [
+    '_token' => $agm[1] ?? '',
+    'username' => 'agent1',
+    'password' => 'agent123',
+]);
+
+// 用**独立的 jar** 请求，避免与上面的 admin 登录态混用
+$agentAnon = function (string $url) {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_COOKIEJAR => '/tmp/e2e-agent-cookie.txt',
+        CURLOPT_COOKIEFILE => '/tmp/e2e-agent-cookie.txt',
+    ]);
+    curl_exec($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    unset($ch);
+
+    return $code;
+};
+
+@unlink('/tmp/e2e-agent-cookie.txt');
+
+// 先以 agent 身份登录（独立 jar）
+$ch = curl_init("$base/agent/auth/login");
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_COOKIEJAR => '/tmp/e2e-agent-cookie.txt',
+    CURLOPT_COOKIEFILE => '/tmp/e2e-agent-cookie.txt',
+    CURLOPT_TIMEOUT => 15,
+]);
+$agLoginPage = (string) curl_exec($ch);
+unset($ch);
+preg_match('/name="_token" value="([^"]+)"/', $agLoginPage, $agTokM);
+
+$ch = curl_init("$base/agent/auth/login");
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST => true,
+    CURLOPT_POSTFIELDS => http_build_query([
+        '_token' => $agTokM[1] ?? '',
+        'username' => 'agent1',
+        'password' => 'agent123',
+    ]),
+    CURLOPT_COOKIEJAR => '/tmp/e2e-agent-cookie.txt',
+    CURLOPT_COOKIEFILE => '/tmp/e2e-agent-cookie.txt',
+    CURLOPT_FOLLOWLOCATION => false,
+    CURLOPT_TIMEOUT => 15,
+]);
+curl_exec($ch);
+unset($ch);
+
+$crossCode = $agentAnon("$base/agent/api/admin-users");
+t(
+    "跨后台访问 admin 专属 Resource → 404",
+    $crossCode === 404,
+    "HTTP {$crossCode}".($crossCode === 403 ? '（403 会泄露资源存在）' : '')
+);
+
 t("admin 后台含「登录日志」（对照）", str_contains($adBody, '登录日志'));
 t("admin 后台含「管理员」菜单（对照）", str_contains($adBody, '管理员'));
 

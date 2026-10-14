@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Aimanong\ThinkPHP\Models;
 
+use Aimanong\Contracts\Permissible;
+use think\facade\Db;
 use think\Model;
 use think\model\relation\BelongsToMany;
 
@@ -22,7 +24,7 @@ use think\model\relation\BelongsToMany;
  * 所以同一个哈希在两侧都能通过校验，用户从 Laravel 迁到 TP 不用重设密码。
  * 这一点是刻意保证的，不是巧合。
  */
-class Administrator extends Model
+class Administrator extends Model implements Permissible
 {
     /** @var string */
     protected $name = 'admin_users';
@@ -56,7 +58,65 @@ class Administrator extends Model
      */
     public function roles(): BelongsToMany
     {
-        return $this->belongsToMany(Role::class, 'admin_role_user', 'user_id', 'role_id');
+        /*
+         * ⚠️ 必须按 `user_type` 过滤：多应用下各后台有各自的用户表，
+         * 不同表的 id 会碰撞（Administrator id=1 与 Agent id=1 是同一行）。
+         *
+         * ⚠️ 而 ThinkORM 的 `wherePivot` **同样只作用于读取** ——
+         * 写入（attach/sync）不会带上该字段。所以挂角色必须走
+         * `assignRole()`（显式写 user_type），不能用裸 attach。
+         * （Laravel 侧同源的坑：wherePivot 写入不生效，要 withPivotValue。）
+         */
+        return $this->belongsToMany(Role::class, 'admin_role_user', 'user_id', 'role_id')
+            ->wherePivot('user_type', static::class);
+    }
+
+    /**
+     * 挂角色（显式写 user_type，保证与 `roles()` 的过滤对得上）。
+     *
+     * @param  array<int, int>|int  $roles
+     */
+    public function assignRole(array|int $roles): void
+    {
+        $ids = is_array($roles) ? $roles : [$roles];
+
+        foreach ($ids as $roleId) {
+            $exists = Db::name('admin_role_user')
+                ->where('role_id', $roleId)
+                ->where('user_id', $this->getKey())
+                ->where('user_type', static::class)
+                ->find();
+
+            if ($exists === null) {
+                Db::name('admin_role_user')->insert([
+                    'role_id' => $roleId,
+                    'user_id' => $this->getKey(),
+                    'user_type' => static::class,
+                ]);
+            }
+        }
+    }
+
+    public function hasPermission(string $slug): bool
+    {
+        if ($this->isSuper()) {
+            return true;
+        }
+
+        foreach ($this->roles as $role) {
+            foreach ($role->permissions as $permission) {
+                if ((string) $permission->getAttr('slug') === $slug) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public function isEnabled(): bool
+    {
+        return (bool) $this->getAttr('enabled');
     }
 
     public function isSuper(): bool

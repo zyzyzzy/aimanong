@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Aimanong\ThinkPHP\Auth;
 
+use Aimanong\Contracts\Permissible;
+use Aimanong\ThinkPHP\Application\ThinkApplication;
 use Aimanong\ThinkPHP\Models\Administrator;
 use think\facade\Config;
 use think\facade\Cookie;
@@ -29,6 +31,25 @@ final class ThinkGuard
 
     protected function modelClass(): string
     {
+        /*
+         * 多应用：当前后台用**自己的**用户模型。
+         *
+         * 优先级：应用配置 > 全局 auth.model > 构造参数 > Administrator。
+         *
+         * ⚠️ 少了这一层，`/agent` 后台会拿 `Administrator` 去查 id ——
+         * 要么查不到（表现为「登录了但立刻掉线」），
+         * 要么查到同 id 的另一个人（**越权**）。
+         */
+        $apps = app(ThinkApplication::class);
+
+        if ($apps->enabled()) {
+            $perApp = $apps->model($apps->current());
+
+            if ($perApp !== '' && $perApp !== \stdClass::class && class_exists($perApp)) {
+                return $perApp;
+            }
+        }
+
         /** @var mixed $configured */
         $configured = Config::get('aimanong.auth.model');
 
@@ -44,7 +65,20 @@ final class ThinkGuard
         return Administrator::class;
     }
 
-    public function user(): ?Administrator
+    /**
+     * 当前登录用户。
+     *
+     * ⚠️ 返回类型是 `object`，**不是** `Administrator`。
+     *
+     * 多应用下每个后台有自己的用户模型，硬判 `Administrator` 会把
+     * 其它后台的用户当成「未登录」（Laravel 侧同源 bug：登录了但菜单全空）。
+     * 判定改为基于**能力**（core 的 `Contracts\Permissible`）。
+     *
+     * 返回 `object` 而不是 `Permissible`，是因为调用方（登录流程）还需要
+     * 模型自身的 `save()` / `getData()` —— 契约只约定权限判定那三个方法。
+     * 但**返回的一定是 Permissible**（下面显式判过），权限判定方可直接当契约用。
+     */
+    public function user(): ?object
     {
         try {
             $id = Session::get($this->sessionKey);
@@ -53,7 +87,7 @@ final class ThinkGuard
                 $model = $this->modelClass();
                 $user = $model::find($id);
 
-                if ($user instanceof Administrator && (bool) $user->getAttr('enabled')) {
+                if ($user instanceof Permissible && $user->isEnabled()) {
                     return $user;
                 }
 
@@ -85,7 +119,13 @@ final class ThinkGuard
         $model = $this->modelClass();
         $user = $model::where('username', $username)->find();
 
-        if (! $user instanceof Administrator) {
+        /*
+         * ⚠️ 判 `Permissible`，不是判 `Administrator`。
+         *
+         * 多应用下每个后台有自己的用户模型；硬判具体类会让
+         * `/agent` 的用户永远登不进来（实测：agent 登录 401）。
+         */
+        if (! $user instanceof Permissible) {
             /*
              * 用户不存在时也走一次哈希校验（对着一个固定串），
              * 让「用户不存在」与「密码错误」的耗时接近 ——
@@ -98,11 +138,24 @@ final class ThinkGuard
 
         // 被禁用的账号即使密码正确也不放行 —— 而且要给出与密码错误**不同**
         // 的提示，否则管理员查半天不知道是被停用了。
-        if (! (bool) $user->getAttr('enabled')) {
+        if (! $user->isEnabled()) {
             throw new \RuntimeException('账号已被禁用，请联系管理员。');
         }
 
-        if (! $user->verifyPassword($password)) {
+        /*
+         * 密码校验**直接读属性**，不依赖模型自带的 `verifyPassword()`。
+         *
+         * 原因：那不在 `Permissible` 契约里 —— 要求每个后台的用户模型
+         * 都实现它，等于给「接入多应用」加了一道隐藏门槛（实测踩到：
+         * 代理商的模型没这个方法是登录 401 的原因）。
+         *
+         * 模型**有**该方法时仍优先用它（允许自定义，如多算法兼容）。
+         */
+        $ok = method_exists($user, 'verifyPassword')
+            ? (bool) $user->verifyPassword($password)
+            : password_verify($password, (string) $user->getAttr('password'));
+
+        if (! $ok) {
             return false;
         }
 
@@ -111,7 +164,13 @@ final class ThinkGuard
         return true;
     }
 
-    public function login(Administrator $user, bool $remember = false): void
+    /**
+     * 写入登录态。
+     *
+     * 返回 `object`（而非具体类）—— 多应用下用户模型不唯一；
+     * 这里只用它的主键与「记住我」相关属性。
+     */
+    public function login(object $user, bool $remember = false): void
     {
         Session::set($this->sessionKey, $user->getKey());
 

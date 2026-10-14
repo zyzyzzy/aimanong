@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Aimanong\ThinkPHP;
 
 use Aimanong\Aimanong;
+use Aimanong\Contracts\Permissible;
 use Aimanong\Contracts\PermissionChecker;
+use Aimanong\ThinkPHP\Application\ThinkApplication;
 use Aimanong\ThinkPHP\Models\Administrator;
 use think\facade\Config;
 
@@ -35,8 +37,17 @@ final class ThinkPermissionChecker implements PermissionChecker
     {
         $user = Aimanong::user();
 
+        /*
+         * ⚠️ 按**能力**判定，不硬判具体类。
+         *
+         * 多应用下每个后台有自己的用户模型（管理员 / 用户 / 代理商），
+         * 硬判 `Administrator` 会把其它后台的用户当成「未登录」→ 全拒
+         * （Laravel 侧就是这么踩的：登录了但菜单全空）。
+         */
+        $permissible = $user instanceof Permissible;
+
         // ① 超级管理员绕过一切判定
-        if ($user instanceof Administrator && $user->isSuper()) {
+        if ($permissible && $user->isSuper()) {
             return true;
         }
 
@@ -46,11 +57,16 @@ final class ThinkPermissionChecker implements PermissionChecker
         }
 
         // ③ RBAC 开着但没登录 → 拒绝（不能让未登录者凭「没角色」蒙混过关）
-        if (! $user instanceof Administrator) {
+        if (! $permissible) {
             return false;
         }
 
-        // ④ 查该用户所有角色的权限节点
+        // ④ 账号被停用 → 拒绝
+        if (! $user->isEnabled()) {
+            return false;
+        }
+
+        // ⑤ 查该用户所有角色的权限节点
         foreach ($user->roles as $role) {
             foreach ($role->permissions as $permission) {
                 if ((string) $permission->getAttr('slug') === $slug) {
@@ -59,7 +75,7 @@ final class ThinkPermissionChecker implements PermissionChecker
             }
         }
 
-        // ⑤ 没命中
+        // ⑥ 没命中
         return false;
     }
 
@@ -77,12 +93,50 @@ final class ThinkPermissionChecker implements PermissionChecker
      */
     public function slug(string $uri, array|string|null $action = null): string
     {
+        return $this->appSlug(null, $uri, $action);
+    }
+
+    /**
+     * 带应用维度的权限节点（与 Laravel 侧同一套语义）。
+     *
+     * ## 为什么加应用前缀
+     *
+     * 多应用下 `{uri}.{action}` 是**跨后台共享的同一个节点** ——
+     * 给代理商开了 `crm-customers.index`，等于也开了总后台的。
+     *
+     * 加了前缀之后**菜单隔离也自动成立**（菜单按权限过滤），
+     * 一处改动解决两件事。
+     *
+     * ## 兼容性：单应用零影响
+     *
+     * **只在多应用开启时加前缀**。未配 `applications` 时仍是
+     * `crm-customers.index`，与改动前逐字相同。
+     *
+     * ## 显式指定应用时**强制**加前缀
+     *
+     * CLI（权限同步 / 迁移）没有请求上下文，拿不到「当前是哪个后台」，
+     * 只能靠调用方指定。若这时还受 enabled() 影响，命令就永远建不出
+     * 目标节点（Laravel 侧踩过）。
+     *
+     * @param  string|null  $app  应用名；null = 当前应用
+     * @param  array<int, string>|string|null  $action
+     */
+    public function appSlug(?string $app, string $uri, array|string|null $action = null): string
+    {
         if (is_array($action)) {
             $action = $action[0] ?? null;
         }
 
         $action = is_string($action) && $action !== '' ? $action : 'index';
 
-        return trim($uri, '/').'.'.$action;
+        $base = trim($uri, '/').'.'.$action;
+
+        if ($app !== null) {
+            return $app.'.'.$base;
+        }
+
+        $apps = app(ThinkApplication::class);
+
+        return $apps->enabled() ? $apps->current().'.'.$base : $base;
     }
 }

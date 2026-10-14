@@ -18,6 +18,12 @@ class MenuItem
         public readonly string $icon = '',
         public readonly int $sort = 100,
         public readonly bool $visible = true,
+        /**
+         * 属于哪些后台。空数组 = 所有后台都能看到。
+         *
+         * @var array<int, string>
+         */
+        public readonly array $applications = [],
     ) {}
 
     /**
@@ -41,7 +47,42 @@ class MenuItem
             icon: is_string($decl['icon'] ?? null) ? (string) $decl['icon'] : '',
             sort: is_numeric($decl['sort'] ?? null) ? (int) $decl['sort'] : 100,
             visible: (bool) ($decl['visible'] ?? true),
+            applications: self::applicationsOf($class),
         );
+    }
+
+    /**
+     * 取 Resource 声明的归属后台。
+     *
+     * @param  class-string  $class
+     * @return array<int, string>
+     */
+    protected static function applicationsOf(string $class): array
+    {
+        if (! method_exists($class, 'applications')) {
+            return [];
+        }
+
+        try {
+            /** @var mixed $declared */
+            $declared = $class::applications();
+        } catch (\Throwable) {
+            return [];
+        }
+
+        if (! is_array($declared)) {
+            return [];
+        }
+
+        $out = [];
+
+        foreach ($declared as $app) {
+            if (is_string($app) && $app !== '') {
+                $out[] = $app;
+            }
+        }
+
+        return $out;
     }
 
     /**

@@ -48,6 +48,31 @@ abstract class Resource implements ResourceContract
     }
 
     /**
+     * 本 Resource 属于哪些后台（应用）。
+     *
+     * ```php
+     * public static function applications(): array
+     * {
+     *     return ['admin', 'agent'];   // 总后台与代理商后台都能看到
+     * }
+     * ```
+     *
+     * **返回空数组 = 属于所有后台**（默认）。
+     * 这样单应用项目零改动，多应用项目只需给「不该出现在某后台」的
+     * Resource 显式声明归属。
+     *
+     * 为什么放在 Resource 里而不是注册时指定：
+     * 声明要**自包含** —— AI 读一个 Resource 就知道它属于哪些后台，
+     * 不用去 ServiceProvider 里翻。
+     *
+     * @return array<int, string>
+     */
+    public static function applications(): array
+    {
+        return [];
+    }
+
+    /**
      * 列表页定义。子类覆盖。
      */
     public static function grid(Grid $grid): void

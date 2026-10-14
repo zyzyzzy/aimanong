@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Support;
 
+use Aimanong\Contracts\ApplicationResolver;
 use Aimanong\Contracts\DictionarySource;
 use Aimanong\Contracts\PermissionChecker;
 use Aimanong\Contracts\SchemaIntrospector;
@@ -39,6 +40,8 @@ final class Drivers
     private static ?UploadSpec $upload = null;
 
     private static ?SchemaIntrospector $introspector = null;
+
+    private static ?ApplicationResolver $application = null;
 
     /** 禁止实例化 —— 纯注册表 */
     private function __construct() {}
@@ -116,6 +119,35 @@ final class Drivers
     // Schema 内省（可缺 —— 见类注释里的区分）
     // ─────────────────────────────────────────────
 
+    // ─────────────────────────────────────────────
+    // 多应用（多后台）
+    // ─────────────────────────────────────────────
+
+    public static function registerApplicationResolver(ApplicationResolver $driver): void
+    {
+        self::$application = $driver;
+    }
+
+    public static function hasApplicationResolver(): bool
+    {
+        return self::$application !== null;
+    }
+
+    /**
+     * 当前应用解析器。
+     *
+     * ⚠️ 与其他驱动**唯一不同**的地方：它**不抛**
+     * `DriverNotRegisteredException`，而是回退到 `SingleApplication`。
+     *
+     * 为什么：单应用（只有一个后台）是**默认状态**，不是「缺了什么」。
+     * 没注册解析器 ≠ 框架坏了，只是用户没开多应用。
+     * 让所有按应用过滤的代码无需分叉 —— 单应用就是「只有一个应用的多应用」。
+     */
+    public static function application(): ApplicationResolver
+    {
+        return self::$application ?? new SingleApplication;
+    }
+
     public static function registerIntrospector(SchemaIntrospector $driver): void
     {
         self::$introspector = $driver;
@@ -166,6 +198,10 @@ final class Drivers
             $names[] = 'UploadSpec';
         }
 
+        if (self::$application !== null) {
+            $names[] = 'ApplicationResolver';
+        }
+
         return $names;
     }
 
@@ -178,5 +214,6 @@ final class Drivers
         self::$permissions = null;
         self::$upload = null;
         self::$introspector = null;
+        self::$application = null;
     }
 }

@@ -85,7 +85,29 @@ class MenuRegistry
         // 权限驱动只取一次：它不是无状态猜测，而是「当前登录用户的判定器」
         $gate = Drivers::permissions();
 
+        /*
+         * 当前后台（应用）。
+         *
+         * ⚠️ 这一层是**菜单隔离**的关键：不按应用过滤的话，
+         * 用户后台会看到「管理员账号」「操作日志」这类本该只属于总后台的菜单 ——
+         * 菜单是入口，串台等于把后台结构暴露给了不该看的人。
+         *
+         * ⚠️ 但**只在多应用开启时才过滤**。
+         *
+         * 单应用（enabled() === false）时不过滤，一律放行。
+         * 否则一个声明了 `applications(['admin', 'agent'])` 的 Resource
+         * 在单应用项目里会**凭空消失** —— 那里根本没有 admin/agent 之分。
+         * （这个 bug 是测试抓到的：单应用回归断言立刻红了。）
+         */
+        $apps = Drivers::application();
+        $filterByApp = $apps->enabled();
+        $currentApp = $apps->current();
+
         foreach ($this->all() as $item) {
+            if ($filterByApp && ! Aimanong::registry()->belongsTo($item->uri, $currentApp)) {
+                continue;
+            }
+
             $slug = $gate->slug($item->uri, 'index');
 
             if (! $gate->check($slug)) {

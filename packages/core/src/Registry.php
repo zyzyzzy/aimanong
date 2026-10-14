@@ -25,6 +25,13 @@ class Registry
     protected array $failures = [];
 
     /**
+     * 各 Resource 属于哪些后台。uri => 应用名数组。**空数组 = 所有后台**。
+     *
+     * @var array<string, array<int, string>>
+     */
+    protected array $applications = [];
+
+    /**
      * 登记一个 Resource。
      *
      * 容错设计：类不存在时**记录失败而非抛异常**。
@@ -37,7 +44,11 @@ class Registry
      *
      * @param  class-string<Contracts\Resource>|string  $resource
      */
-    public function register(string $resource): static
+    /**
+     * @param  class-string<Contracts\Resource>|string  $resource
+     * @param  array<int, string>|null  $applications  归属后台；null = 取 Resource::applications()
+     */
+    public function register(string $resource, ?array $applications = null): static
     {
         if (! class_exists($resource)) {
             $this->failures[] = $resource;
@@ -61,7 +72,74 @@ class Registry
 
         $this->resources[$uri] = $resource;
 
+        // 注册时显式指定优先，否则用 Resource 自己的声明
+        if ($applications !== null) {
+            $this->applications[$uri] = array_values(array_filter(
+                $applications,
+                // 参数已是 array<int, string>，只需去掉空串与重复项
+                static fn (string $a): bool => $a !== '',
+            ));
+        } else {
+            $this->applications[$uri] = method_exists($resource, 'applications')
+                ? self::normalizeApplications($resource::applications())
+                : [];
+        }
+
         return $this;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected static function normalizeApplications(mixed $declared): array
+    {
+        if (! is_array($declared)) {
+            return [];
+        }
+
+        $out = [];
+
+        foreach ($declared as $app) {
+            if (is_string($app) && $app !== '') {
+                $out[] = $app;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * 某 Resource 属于哪些后台。**空数组 = 属于所有后台。**
+     *
+     * @return array<int, string>
+     */
+    public function applicationsFor(string $uri): array
+    {
+        $key = $this->normalizeUri($uri);
+
+        if (isset($this->applications[$key])) {
+            return $this->applications[$key];
+        }
+
+        $class = $this->find($uri);
+
+        if ($class !== null && isset($this->applications[$this->normalizeUri($class::uri())])) {
+            return $this->applications[$this->normalizeUri($class::uri())];
+        }
+
+        return [];
+    }
+
+    /**
+     * 判断某 Resource 是否属于指定后台。
+     *
+     * 未声明归属（空数组）时属于**所有**后台。
+     */
+    public function belongsTo(string $uri, string $app): bool
+    {
+        $apps = $this->applicationsFor($uri);
+
+        return $apps === [] || in_array($app, $apps, true);
     }
 
     /**

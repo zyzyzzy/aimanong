@@ -2,6 +2,38 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [Unreleased]
+
+### 包的版本
+
+| 包 | 版本 | 内容 |
+|---|---|---|
+| `aimanong/core` | **1.2.0** | 多应用（多后台）内核：`ApplicationResolver` / `Permissible` 契约、菜单与 Resource 归属、权限按应用隔离、`@primary` 占位符 |
+| `aimanong/thinkphp` | **1.0.2** | 🔴 **控制台正文整块丢失**的修复 |
+
+### 🔴 aimanong/thinkphp 1.0.2（建议尽快升级）
+
+**1.0.1 的 ThinkPHP 后台页面只有布局、没有正文** —— 侧边栏与主题面板正常，
+但页面主体一个字都没有，且**不报任何错**。
+
+根因：think-template 的布局占位符**不支持自闭合形式**。
+`{block name="content" /}` 不报错，但替换那一步匹配不到。
+必须写 `{block name="content"}{/block}`。
+
+影响：控制台首页不可用。**Laravel 侧不受影响**。
+
+同时修复：`HomeController` 曾把 `roles` / `permCount` / `isSuper` 硬编码为空，
+叠加后表现为**超级管理员登录后被告知「你还未被分配任何权限」**。
+
+升级：
+
+```bash
+composer require aimanong/thinkphp:^1.0.2
+```
+
+> 若你从 Blade 迁移过模板：请确认布局里没有自闭合的 `{block name="x" /}`。
+> 仓库门禁已加第 5 条硬规则专门拦这个（`scripts/check-think-templates.sh`）。
+
 ## [1.11.0] - 2026-10-14
 
 > 主题：**许可变更为 Apache License 2.0**（此前为 MIT）。

@@ -1,0 +1,24 @@
+{
+    "name": "aimanong/aimind-client",
+    "version": "0.1.0",
+    "description": "Aimind 客户端 SDK —— 让 Aimanong 的 AI 能调用 Aimind 互助平台",
+    "type": "library",
+    "license": "Apache-2.0",
+    "require": {
+        "php": "^8.2",
+        "aimanong/core": "^1.6",
+        "illuminate/support": "^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Aimanong\\AimindClient\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Aimanong\\AimindClient\\AimindClientServiceProvider"
+            ]
+        }
+    }
+}

@@ -23,6 +23,7 @@
         "php": "^8.2",
         "ext-json": "*",
         "ext-mbstring": "*",
+        "aimanong/aimind-client": "@dev",
         "aimanong/core": "^1.6.3",
         "illuminate/console": "^12.0|^13.0",
         "illuminate/container": "^12.0|^13.0",
@@ -45,6 +46,10 @@
             "options": {
                 "symlink": true
             }
+        },
+        {
+            "type": "path",
+            "url": "../aimind-client"
         }
     ],
     "suggest": {

@@ -93,6 +93,18 @@ Conventional Commits：`feat:` `fix:` `docs:` `refactor:` `test:` `chore:`
 - ❌ 跳过「提交前自检清单」直接提交（见下节）
 - ❌ 手写前端页面（前端由 Schema 自动渲染）
 
+## Aimind 互助平台
+
+遇到框架问题时，**先查 Aimind 再自己摸索**：
+
+1. `aimind_search`（MCP）—— 搜索经验库，可能已有解决方案
+2. `aimind_ask`（MCP）—— 搜不到时发布结构化问题
+3. `aimind_share`（MCP）—— 解决后分享经验
+4. `aimind_rate`（MCP）—— 验证答案后评分
+5. `aimind_bug`（MCP）—— 确认是框架 bug 时报告
+
+> 平台不可用时不崩溃，继续用本地资料（llms.txt + capabilities.json）完成工作。
+
 ## 出错时怎么办
 
 框架异常实现 `AiReadableException`，含 `didYouMean` / `example` / `docs` 三个字段。

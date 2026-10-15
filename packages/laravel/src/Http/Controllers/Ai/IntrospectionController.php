@@ -7,6 +7,7 @@ namespace Aimanong\Http\Controllers\Ai;
 use Aimanong\Ai\Capabilities;
 use Aimanong\Ai\Verifier;
 use Aimanong\Aimanong;
+use Aimanong\Menu\MenuRegistry;
 use Aimanong\Schema\Compiler;
 use Aimanong\Schema\Emitters\AiPromptEmitter;
 use Aimanong\Schema\Emitters\OpenApiEmitter;
@@ -177,6 +178,38 @@ class IntrospectionController extends Controller
     /**
      * 可复制代码片段。
      */
+    /**
+     * 当前用户可见的菜单树。
+     *
+     * ## 为什么补这个端点
+     *
+     * `capabilities.menu.introspect` 里**一直写着** `GET /__ai/menu`，
+     * 但那个路由根本不存在 —— 实测一个 LLM 照着自省资料去请求，拿到 404，
+     * 只能改用浏览器看渲染结果来判断菜单。
+     *
+     * 「这个用户能看到哪些菜单」是权限系统最常用的一次自检
+     * （菜单是按权限过滤的，菜单不对 = 权限配错了），值得有独立端点。
+     */
+    public function menu(): JsonResponse
+    {
+        /*
+         * ⚠️ 返回的是**全量已声明菜单**，不是「当前用户可见的菜单」。
+         *
+         * `/__ai/*` 这组路由**没有登录上下文**（它们走的是「仅 local/debug
+         * 或 AIMONG_AI_TOKEN」那套），所以这里拿不到「当前用户」——
+         * 按权限过滤只会得到空数组，反而误导。
+         *
+         * 权限过滤发生在**渲染时**（页面侧带着真实会话），
+         * 见 MenuRegistry::visible()。要查某个用户实际能看到什么，
+         * 用他的账号登录后看页面。
+         */
+        return response()->json([
+            'menu' => (new MenuRegistry)->all(),
+            'note' => '这是**全量**已声明菜单（本接口无登录上下文，不做权限过滤）。'
+                .'某个用户实际可见的菜单在渲染时按 {uri}.index 权限过滤。',
+        ]);
+    }
+
     public function examples(string $pattern): JsonResponse
     {
         $examples = [

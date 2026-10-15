@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 |   GET  /__ai/openapi.json        全量 API 文档
 |   GET  /__ai/context             Markdown 版 AI 上下文
 |   GET  /__ai/examples/{pattern}  可复制代码片段
+|   GET  /__ai/menu               全部已声明菜单（无登录上下文，不做权限过滤）
 |   POST /__ai/verify              校验声明合法性
 |
 | 安全：默认仅 local/debug 开启；生产需 AIMANONG_AI_TOKEN。
@@ -34,6 +35,9 @@ Route::get('context', [IntrospectionController::class, 'context'])
 
 Route::get('schema/{uri}', [IntrospectionController::class, 'schema'])
     ->name('schema');
+
+Route::get('menu', [IntrospectionController::class, 'menu'])
+    ->name('menu');
 
 Route::get('examples/{pattern}', [IntrospectionController::class, 'examples'])
     ->name('examples');

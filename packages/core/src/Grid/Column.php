@@ -384,7 +384,81 @@ class Column
             filterable: $this->filterable,
             formatter: $this->formatter,
             enumClass: $this->enumClass,
-            props: $this->props,
+            props: $this->resolveEnumLabels(),
         );
+    }
+
+    /**
+     * 把枚举的**标签**解析进 `props.map`。
+     *
+     * ## 为什么必须在这里做
+     *
+     * `->using(Enum::class)` 原先只往 schema 里写了一个
+     * `formatter: enum` + `enum: App\Enums\UserStatus`（PHP 类名的**字符串**）。
+     * 而前端是 JS —— 它解析不了 PHP 类名，只会去读 `props.map` 取标签。
+     *
+     * 后果（实测）：声明合法、`ai:verify` 通过、schema 也生成了，
+     * **但列表照旧显示 `active`/`disabled` 原始值**。
+     * 一个 LLM 为此做了对照实验（给枚举加 label()/getLabel()/title()/labels()
+     * 逐个试），确认框架「一个都不调用」，只能改用 `->map()` 绕开。
+     *
+     * 而 `llms.txt` 第 154 行明写着 `->using(EnumClass::class)  // 值→标签映射`
+     * —— 文档承诺了，实现没做。这是本项目最反对的那类「声明了却不生效」。
+     *
+     * ## 标签从哪来
+     *
+     * 依次尝试，都取不到就退回**枚举 case 名**（`Active` 比 `active` 可读）：
+     *   ① `label()`   —— 最常见
+     *   ② `getLabel()` —— Filament 系习惯
+     *
+     * 已显式 `->map([...])` 时不覆盖 —— 手写的优先。
+     *
+     * @return array<string, mixed>
+     */
+    protected function resolveEnumLabels(): array
+    {
+        if ($this->enumClass === null || ! enum_exists($this->enumClass)) {
+            return $this->props;
+        }
+
+        /*
+         * 手写了 map 就不动它。
+         *
+         * ⚠️ 守卫要同时认 **stdClass** —— `map()` 存的是 stdClass 而不是
+         * 数组（为了让 JSON 序列化成 `{}` 而不是 `[]`）。第一版只判
+         * `is_array`，于是手写的 map 被枚举标签覆盖掉，而且不报错。
+         */
+        $existing = $this->props['map'] ?? null;
+
+        if ((is_array($existing) && $existing !== []) || $existing instanceof \stdClass) {
+            return $this->props;
+        }
+
+        $map = new \stdClass;
+
+        foreach ($this->enumClass::cases() as $case) {
+            $key = (string) ($case instanceof \BackedEnum ? $case->value : $case->name);
+            $map->{$key} = self::labelOf($case);
+        }
+
+        $this->props['map'] = $map;
+
+        return $this->props;
+    }
+
+    /** 取一个枚举 case 的显示标签 */
+    protected static function labelOf(\UnitEnum $case): string
+    {
+        foreach (['label', 'getLabel'] as $method) {
+            if (method_exists($case, $method)) {
+                $value = $case->{$method}();
+
+                if (is_string($value) && $value !== '') {
+                    return $value;
+                }
+            }
+        }
+
+        return $case->name;
     }
 }

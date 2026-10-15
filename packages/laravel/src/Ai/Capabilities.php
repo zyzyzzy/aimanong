@@ -68,7 +68,7 @@ class Capabilities
                 'keys' => 'group（分组）| icon（图标）| sort（排序，小的在前）| label（显示名）| visible（是否显示）',
                 'example' => "public static function menu(): array { return ['group' => '内容管理', 'icon' => '📄', 'sort' => 10]; }",
                 'permission_filter' => 'RBAC 开启时自动按「index」权限过滤，未授权的菜单不显示',
-                'introspect' => 'GET /__ai/menu 返回当前用户可见的菜单树',
+                'introspect' => 'GET /__ai/menu 返回**全部已声明**菜单（该接口无登录上下文，不做权限过滤；某用户实际可见的菜单在渲染时按权限过滤）',
             ],
             'query_columns' => $this->queryColumnRules(),
             'applications' => $this->applicationCapabilities(),

@@ -356,7 +356,8 @@ if ($cc === null) {
      * 调用方会以为排序生效了。
      */
     $bad = $cc['invalid_sort'];
-    $badRes = http("$base/admin/api/users?sort=".urlencode((string) $bad['typo']), 'GET', [], ['Accept: application/json']);
+    $badUri = (string) ($bad['resource_uri'] ?? 'departments');
+    $badRes = http("$base/admin/api/{$badUri}?sort=".urlencode((string) $bad['typo']), 'GET', [], ['Accept: application/json']);
     $badJson = json_decode((string) $badRes['body'], true) ?: [];
 
     t(
@@ -376,7 +377,7 @@ if ($cc === null) {
     );
 
     // 对照：合法排序列仍然工作（别修过头）
-    $okSort = http("$base/admin/api/users?sort=id&per_page=2", 'GET', [], ['Accept: application/json']);
+    $okSort = http("$base/admin/api/{$badUri}?sort=id&per_page=2", 'GET', [], ['Accept: application/json']);
     t('合法排序列仍返回 200', $okSort['code'] === 200, "HTTP {$okSort['code']}");
 
     /*
@@ -387,7 +388,13 @@ if ($cc === null) {
      * 而真正的问题是「这个路由不存在」。
      */
     foreach ($cc['no_create_page']['paths'] as $tpl) {
-        $url = str_replace('{uri}', 'users', $tpl);
+        /*
+         * ⚠️ 必须用**两端 demo 都有**的资源名（fixture 里声明），
+         * 不能写 users —— CI 的 demo 是 setup-demo.sh 现搭的，没有 users，
+         * 于是这里拿到的是「Resource [users] 未注册」的普通 404，
+         * 与本条断言要测的东西无关。第一版就是这么错的。
+         */
+        $url = str_replace('{uri}', (string) ($cc['no_create_page']['resource_uri'] ?? 'departments'), $tpl);
         $resp = http("$base".$url, 'GET', [], ['Accept: application/json']);
         $json = json_decode((string) $resp['body'], true) ?: [];
 

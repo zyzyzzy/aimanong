@@ -185,7 +185,9 @@
       "expect_code": 422,
       "expect_error": "SORT_COLUMN_NOT_DECLARED",
       "typo": "nam",
-      "typo_did_you_mean": "name"
+      "typo_did_you_mean": "name",
+      "resource_uri": "departments",
+      "_note": "typo 必须是**不存在**的列名；did_you_mean 指向真实存在且最接近的那一列"
     },
     "no_create_page": {
       "expect_code": 404,
@@ -193,7 +195,8 @@
       "paths": [
         "/admin/{uri}/create",
         "/admin/api/{uri}/create"
-      ]
+      ],
+      "resource_uri": "departments"
     }
   }
 }

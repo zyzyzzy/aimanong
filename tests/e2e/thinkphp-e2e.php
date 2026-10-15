@@ -1191,7 +1191,7 @@ if ($cc === null) {
 } else {
     // ② 非法排序列必须明确报错（SQLite 会静默接受 ORDER BY bogus）
     $bad = $cc['invalid_sort'];
-    [$badCode, $badBody] = $treeReq('/admin/api/departments?sort='.urlencode((string) $bad['typo']));
+    [$badCode, $badBody] = $treeReq('/admin/api/'.($bad['resource_uri'] ?? 'departments').'?sort='.urlencode((string) $bad['typo']));
     $badJson = json_decode($badBody, true) ?: [];
 
     t('非法排序列 → 422（不再静默忽略）', $badCode === $bad['expect_code'], "HTTP {$badCode}");
@@ -1206,12 +1206,12 @@ if ($cc === null) {
         (string) ($badJson['did_you_mean'] ?? '(无)')
     );
 
-    [$okCode] = $treeReq('/admin/api/departments?sort=id');
+    [$okCode] = $treeReq('/admin/api/'.($bad['resource_uri'] ?? 'departments').'?sort=id');
     t('合法排序列仍返回 200', $okCode === 200, "HTTP {$okCode}");
 
     // ③ 猜错的 create 路径必须给出方向正确的提示
     foreach ($cc['no_create_page']['paths'] as $tpl) {
-        $url = str_replace('{uri}', 'departments', $tpl);
+        $url = str_replace('{uri}', (string) ($cc['no_create_page']['resource_uri'] ?? 'departments'), $tpl);
         [$c, $b] = $treeReq($url);
         $j = json_decode($b, true) ?: [];
 

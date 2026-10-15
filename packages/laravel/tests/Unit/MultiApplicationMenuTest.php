@@ -6,8 +6,10 @@ namespace Aimanong\Tests\Unit;
 
 use Aimanong\Aimanong;
 use Aimanong\Auth\PermissionGateChecker;
+use Aimanong\Contracts\ApplicationResolver;
 use Aimanong\Drivers\Eloquent\EloquentIntrospector;
 use Aimanong\Foundation\Dict\Dictionary;
+use Aimanong\Foundation\Resources\AdminUserResource;
 use Aimanong\Foundation\Upload\Uploader;
 use Aimanong\Menu\MenuRegistry;
 use Aimanong\Support\Drivers;
@@ -17,6 +19,7 @@ use Aimanong\Tests\Unit\Fixtures\EverywhereResource;
 use Aimanong\Tests\Unit\Fixtures\FakeApplicationResolver;
 use Aimanong\Tests\Unit\Fixtures\FakeFrameworkRuntime;
 use Aimanong\Tests\Unit\Fixtures\UserOnlyResource;
+use Illuminate\Foundation\Auth\User;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -159,6 +162,56 @@ class MultiApplicationMenuTest extends TestCase
         $this->assertSame(['user'], $registry->applicationsFor('app-scoped'));
         $this->assertTrue($registry->belongsTo('app-scoped', 'user'));
         $this->assertFalse($registry->belongsTo('app-scoped', 'admin'), '显式指定应覆盖声明');
+    }
+
+    /**
+     * `@primary` 占位符解析成**第一个**应用，而不是写死的 'admin'。
+     *
+     * 为什么这条重要：框架内置的系统管理类 Resource 声明
+     * `[ApplicationResolver::PRIMARY]`。若解析成写死的 'admin'，
+     * 把应用命名为 `sys` / `merchant` 的用户会发现
+     * 管理员/角色/日志/字典页**在任何后台都看不见** —— 静默消失。
+     */
+    public function test_primary_placeholder_resolves_to_first_app(): void
+    {
+        // 主后台叫 sys（不叫 admin）
+        $apps = new FakeApplicationResolver('sys', [
+            'sys' => ['prefix' => 'sys', 'guard' => 'sys', 'model' => User::class, 'title' => '系统后台'],
+            'agent' => ['prefix' => 'agent', 'guard' => 'agent', 'model' => User::class, 'title' => '代理商'],
+        ]);
+
+        Drivers::registerApplicationResolver($apps);
+
+        $registry = Aimanong::registry();
+        $registry->register(EverywhereResource::class, [ApplicationResolver::PRIMARY]);
+
+        $this->assertTrue($registry->belongsTo('everywhere', 'sys'), '主后台应能看到 @primary 的 Resource');
+        $this->assertFalse($registry->belongsTo('everywhere', 'agent'), '非主后台不应看到');
+    }
+
+    /**
+     * 内置 Resource 真的是「只属于主后台」—— 主后台改名了也成立。
+     */
+    public function test_builtin_resources_follow_primary(): void
+    {
+        $apps = new FakeApplicationResolver('ops', [
+            'ops' => ['prefix' => 'ops', 'guard' => 'ops', 'model' => User::class, 'title' => '运营'],
+            'agent' => ['prefix' => 'agent', 'guard' => 'agent', 'model' => User::class, 'title' => '代理商'],
+        ]);
+
+        Drivers::registerApplicationResolver($apps);
+
+        // 声明用的是 PRIMARY 占位符，而不是字面量 'admin'
+        $this->assertSame(
+            [ApplicationResolver::PRIMARY],
+            AdminUserResource::applications()
+        );
+
+        $registry = Aimanong::registry();
+        $registry->register(AdminUserResource::class);
+
+        $this->assertTrue($registry->belongsTo('admin-users', 'ops'));
+        $this->assertFalse($registry->belongsTo('admin-users', 'agent'));
     }
 
     /**

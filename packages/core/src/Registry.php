@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Aimanong;
 
+use Aimanong\Support\Drivers;
+
 /**
  * Resource 注册表。
  *
@@ -139,7 +141,28 @@ class Registry
     {
         $apps = $this->applicationsFor($uri);
 
-        return $apps === [] || in_array($app, $apps, true);
+        // 未声明归属 = 属于**所有**后台
+        if ($apps === []) {
+            return true;
+        }
+
+        /*
+         * 解析 `@primary` 占位符 → `names()` 里的第一个应用。
+         *
+         * 内置的系统管理类 Resource 用它声明「只属于主后台」。
+         * 写死应用名会让「主后台不叫 admin」的用户**静默失去**这些页面。
+         */
+        if (in_array(Contracts\ApplicationResolver::PRIMARY, $apps, true)) {
+            $names = Drivers::application()->names();
+
+            if (($names[0] ?? null) === $app) {
+                return true;
+            }
+
+            $apps = array_values(array_diff($apps, [Contracts\ApplicationResolver::PRIMARY]));
+        }
+
+        return in_array($app, $apps, true);
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Foundation\Resources;
 
+use Aimanong\Contracts\ApplicationResolver;
 use Aimanong\Form\Form;
 use Aimanong\Foundation\Dict\DictType;
 use Aimanong\Grid\Grid;
@@ -48,7 +49,7 @@ class DictTypeResource extends Resource
      */
     public static function applications(): array
     {
-        return ['admin'];
+        return [ApplicationResolver::PRIMARY];
     }
 
     public static function grid(Grid $grid): void

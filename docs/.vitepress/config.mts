@@ -48,6 +48,7 @@ export default defineConfig({
           items: [
             { text: '基座能力总览', link: '/guide/foundation' },
             { text: '多框架支持', link: '/guide/multi-framework' },
+            { text: '多应用：从零配一遍', link: '/guide/multi-app' },
           ],
         },
         {

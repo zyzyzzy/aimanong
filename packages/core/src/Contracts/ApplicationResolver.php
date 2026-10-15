@@ -73,6 +73,28 @@ namespace Aimanong\Contracts;
 interface ApplicationResolver
 {
     /**
+     * 占位符：属于「默认（第一个）应用」。
+     *
+     * ## 为什么需要它
+     *
+     * 框架内置的系统管理类 Resource（管理员账号 / 角色 / 日志 / 字典）
+     * 应当只出现在**主后台**里。但「主后台叫什么名字」是用户定的 ——
+     * 写死 `'admin'` 的话，把应用命名为 `sys` / `merchant` 的用户
+     * 会发现这些页面**在任何后台都看不见**（静默消失，没有任何报错）。
+     *
+     * 所以声明时用这个占位符，由 `Registry::belongsTo()` 在运行时
+     * 解析成 `names()` 里的**第一个**应用。
+     *
+     * ```php
+     * public static function applications(): array
+     * {
+     *     return [ApplicationResolver::PRIMARY];   // 只属于主后台
+     * }
+     * ```
+     */
+    public const PRIMARY = '@primary';
+
+    /**
      * 当前应用名。
      *
      * 无请求上下文（CLI）时返回默认应用名，不得返回空字符串或 null。

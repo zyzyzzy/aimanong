@@ -9,7 +9,37 @@
 | 包 | 版本 | 内容 |
 |---|---|---|
 | `aimanong/core` | **1.2.0** | 多应用（多后台）内核：`ApplicationResolver` / `Permissible` 契约、菜单与 Resource 归属、权限按应用隔离、`@primary` 占位符 |
+| `aimanong/laravel` | **1.1.0** | 多应用（多后台）完整落地：应用解析注册、权限按后台加前缀、`user_type` 角色隔离迁移、`migrate-permissions` 命令、内置 Resource 归属声明 |
 | `aimanong/thinkphp` | **1.0.2** | 🔴 **控制台正文整块丢失**的修复 |
+
+### aimanong/laravel 1.1.0（多应用落地）
+
+1.0.2 里多应用处于「配了但没接上」的状态（`ApplicationManager` 未注册进
+`Drivers`），后果是**静默失效**：菜单不过滤、权限 slug 不加前缀、不报错。
+
+1.1.0 补全：
+
+- `ApplicationManager` 实现 `ApplicationResolver` 并注册进 `Drivers`
+- HTTP 下当前应用按**请求路径**推断（此前恒为默认应用，非默认后台权限全拒）
+- CLI 下不读进程级残留（此前跨命令串应用）
+- 权限 slug 按后台加前缀（`admin.orders.index`）；**单应用零影响**
+- `admin_role_user` 加 `user_type` 列（迁移自动回填既有数据）——
+  修复多用户表 id 碰撞导致的**角色串台（越权）**
+- 跨后台访问返回 **404**（不是 403，避免泄露资源存在）
+- `aimanong:permission migrate-permissions --to=<app>`：升级迁移命令，
+  旧节点保留、可回滚
+- 内置 Resource（管理员/角色/日志/字典）声明 `@primary`：
+  主后台改名（不叫 admin）也正确归属
+
+升级：
+
+```bash
+composer require aimanong/laravel:^1.1.0
+php artisan migrate        # user_type 迁移会自动回填
+```
+
+**从单应用升级的项目**：开启多应用后跑一次
+`php artisan aimanong:permission migrate-permissions --to=admin`。
 
 ### 🔴 aimanong/thinkphp 1.0.2（建议尽快升级）
 

@@ -164,6 +164,32 @@ PUT  /admin/api/departments/4/move → 200  ❌ parent_id 真的被改了
 
 | 包 | 版本 | 内容 |
 |---|---|---|
+### 1.6.2 / 1.3.2 / 1.4.2
+
+L1/L2 **复测**（同条件第二遍）中暴露的问题 —— 都是「声明合法、运行期不对」：
+
+- **枚举的标签又漏了两条路径**：表单 `->options(Enum::cases())` 写死了
+  `label => value`（下拉显示英文），表单 `->using(Enum::class)` **从不填 options**
+  （下拉是空的）。连同上一版修的列表列，同一个 bug 出现**三次** ——
+  取标签的规则已收敛到 `Aimanong\Support\EnumLabel` 一处。
+- **`->rules('a|b')` 提交时 500**：`Field::rules()` 用 `(array)` 包字符串，
+  整串被当成一个规则名（`validateNullable|in does not exist`）。
+  Laravel 里字符串会按 `|` 拆、数组元素不会 —— 已按字符串语义拆分。
+- **`?sort=` 现在只接受声明过 `->sortable()` 的列**（宪法 ②「声明唯一」）。
+  存在但没声明的列以前能排 —— 而 `openapi.json` 的 `sort` enum 只列了声明过的，
+  文档与行为不一致。现在返回 422 并**说清怎么加**：
+  `hint: 在 grid() 里给这一列加 ->sortable()`
+- **`ai:verify` 补了规则校验**（`RULE_NOT_SPLIT` / `UNKNOWN_RULE` + `did_you_mean`），
+  把「声明合法但提交必 500」那类提前暴露。此前它只能证明「声明合法」，
+  证明不了「声明真的能跑」。
+- 自省资料补了 **字段类型 ≠ 校验规则**（`$form->email()` 不会自动加 email 规则）。
+
+| 包 | 版本 | 本次 |
+|---|---|---|
+| `aimanong/core` | **1.6.2** | `EnumLabel` 收敛 · rules 拆分 · `ai:verify` 规则校验 |
+| `aimanong/laravel` | **1.3.2** | 排序列必须声明过 sortable |
+| `aimanong/thinkphp` | **1.4.2** | 同上（两端对称） |
+
 ### 1.6.1 / 1.3.1 / 1.4.1
 
 修 L1/L2 十五题实测暴露的三条「文档/一致性」问题 —— 都不缺能力，

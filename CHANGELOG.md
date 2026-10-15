@@ -46,12 +46,15 @@ PUT  /admin/api/departments/4/move → 200  ❌ parent_id 真的被改了
 
 | 包 | 版本 | 内容 |
 |---|---|---|
-| `aimanong/core` | **1.3.0** | 前端资源统一收归 core（`Asset::path()`）；修 `Asset::url()` 的平台依赖与 `Aimanong::url('')` 的尾斜杠 |
-| `aimanong/laravel` | **1.1.1** | 资源路由改用 core 的 `Asset::path()`（包内不再重复存一份资产） |
-| `aimanong/thinkphp` | **1.1.0** | **资源页面（HTML）与静态资源上线**；修 Vue 插值被转换器吃掉导致的 500 |
+| `aimanong/core` | **1.4.0** | `TreeBuilder` 移入 core（两端共用建树/环检测）；URL 前缀归一化 |
+| `aimanong/laravel` | **1.1.2** | 🔴 **安全**：`tree()` / `move()` 补权限校验；树形渲染接线 |
+| `aimanong/thinkphp` | **1.2.0** | 补 `/api/{uri}/tree`；树形渲染接线 |
 
-> ⚠️ `aimanong/laravel` 与 `aimanong/thinkphp` 本版都要求 `aimanong/core: ^1.3`
-> （需要 core 里的前端资源与 `Asset::path()`）。只升驱动不升 core 会解不出依赖。
+> ⚠️ 三个包都要一起升。`laravel` / `thinkphp` 本版要求 `aimanong/core: ^1.4`
+> （`TreeBuilder` 换了包）。只升驱动不升 core 会解不出依赖。
+>
+> 从源码或 path 仓库安装的，升级后跑一次 `composer dump-autoload`
+> （classmap 里 `TreeBuilder` 的旧路径要重生成）。正常 `composer update` 会自动做。
 
 ### aimanong/thinkphp 1.1.0（资源页面可用）
 

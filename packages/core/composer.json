@@ -1,6 +1,6 @@
 {
     "name": "aimanong/core",
-    "version": "1.4.0",
+    "version": "1.5.0",
     "description": "Aimanong 框架无关内核 —— 声明 DSL 与四产物编译（零 illuminate 依赖）",
     "type": "library",
     "keywords": [

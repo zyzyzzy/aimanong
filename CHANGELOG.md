@@ -116,9 +116,9 @@ PUT  /admin/api/departments/4/move → 200  ❌ parent_id 真的被改了
 
 | 包 | 版本 | 内容 |
 |---|---|---|
-| `aimanong/core` | **1.4.0** | `TreeBuilder` 移入 core（两端共用建树/环检测）；URL 前缀归一化 |
-| `aimanong/laravel` | **1.1.2** | 🔴 **安全**：`tree()` / `move()` 补权限校验；树形渲染接线 |
-| `aimanong/thinkphp` | **1.2.0** | 补 `/api/{uri}/tree`；树形渲染接线 |
+| `aimanong/core` | **1.5.0** | 条件显示 `visibleWhen` · 可自愈报错（`did_you_mean`）· `PermissionNodes` 移入 core |
+| `aimanong/laravel` | **1.2.0** | **按钮级权限**（无权限的按钮服务端不渲染）· 能力自省文档更新 |
+| `aimanong/thinkphp` | **1.3.0** | 🔴 **RBAC 四个关联全写反**（一直不生效）· 补权限同步命令 · 按钮级权限 |
 
 > ⚠️ 三个包都要一起升。`laravel` / `thinkphp` 本版要求 `aimanong/core: ^1.4`
 > （`TreeBuilder` 换了包）。只升驱动不升 core 会解不出依赖。

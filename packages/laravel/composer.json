@@ -1,6 +1,6 @@
 {
     "name": "aimanong/laravel",
-    "version": "1.1.2",
+    "version": "1.2.0",
     "description": "Aimanong 的 Laravel 12 驱动 —— Eloquent / Blade / 路由 / 认证 / 控制台 / MCP",
     "type": "library",
     "keywords": [
@@ -23,7 +23,7 @@
         "php": "^8.2",
         "ext-json": "*",
         "ext-mbstring": "*",
-        "aimanong/core": "^1.4",
+        "aimanong/core": "^1.5",
         "illuminate/console": "^12.0|^13.0",
         "illuminate/container": "^12.0|^13.0",
         "illuminate/contracts": "^12.0|^13.0",

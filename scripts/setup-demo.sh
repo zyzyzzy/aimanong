@@ -125,6 +125,103 @@ $user->password = \Illuminate\Support\Facades\Hash::make("admin123");
 $user->save();
 ' 2>&1 | tail -2
 
+# ── 树形资源（e2e 要断言「框架自己能渲染层级」）──
+#
+# ⚠️ 这段是**因为 CI 红了才补的**：本地 demo 里的 DepartmentResource 是早先
+# 手工建的，而 CI 的 demo 由本脚本从零重建 —— 于是 e2e 断言树形时 404。
+# 又一次「本地有、CI 没有」：凡 e2e 依赖的东西，必须在建库脚本里。
+echo "  → 建树形资源（departments）"
+mkdir -p app/Aimanong
+php -r '
+$db = "database/database.sqlite";
+$pdo = new PDO("sqlite:".$db);
+$pdo->exec("DROP TABLE IF EXISTS departments");
+$pdo->exec("CREATE TABLE departments (id INTEGER PRIMARY KEY, name TEXT, parent_id INTEGER, sort INTEGER)");
+$pdo->exec("INSERT INTO departments VALUES (1,\"总部\",NULL,1),(2,\"研发部\",1,2),(3,\"前端组\",2,3),(4,\"市场部\",1,4)");
+echo "     departments 表就绪\n";
+'
+cat > app/Models/Department.php <<'PHPEOF'
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Department extends Model
+{
+    protected $table = 'departments';
+    public $timestamps = false;
+    protected $guarded = [];
+}
+PHPEOF
+cat > app/Aimanong/DepartmentResource.php <<'PHPEOF'
+<?php
+
+namespace App\Aimanong;
+
+use Aimanong\Resource;
+use Aimanong\Tree\Tree;
+use App\Models\Department;
+
+/**
+ * 树形资源 —— 只声明 tree()，不做任何手工缩进。
+ *
+ * e2e 用它断言「层级由框架渲染」（曾经是半成品：
+ * flattenTree 算了 _depth、CSS 也写好了，就是模板没用）。
+ */
+class DepartmentResource extends Resource
+{
+    public static function model(): string { return Department::class; }
+    public static function label(): string { return '部门'; }
+    public static function uri(): string { return 'departments'; }
+
+    public static function tree(Tree $tree): void
+    {
+        $tree->parentColumn('parent_id')->titleColumn('name')->orderColumn('sort');
+    }
+
+    public static function grid(\Aimanong\Grid\Grid $grid): void
+    {
+        $grid->column('id', 'ID');
+        $grid->column('name', '部门名称');
+        $grid->column('sort', '排序');
+    }
+
+    public static function form(\Aimanong\Form\Form $form): void
+    {
+        $form->text('name', '部门名称')->required();
+    }
+}
+PHPEOF
+# ⚠️ 注册必须写进 AppServiceProvider —— 用 `php -r` 调一次 registry() 是
+#    **一次性进程**，请求进来时根本不存在（第一版就是这么写错的）。
+php -r '
+$f = "app/Providers/AppServiceProvider.php";
+$s = file_get_contents($f);
+
+if (str_contains($s, "DepartmentResource")) {
+    echo "     DepartmentResource 已在 Provider 里\n";
+    exit(0);
+}
+
+// 补 use
+if (! str_contains($s, "use Aimanong\\Aimanong;")) {
+    $s = preg_replace("/^use /m", "use Aimanong\\Aimanong;\nuse App\\Aimanong\\DepartmentResource;\nuse ", $s, 1);
+}
+
+// 把注册写进 register()
+$body = "\n        Aimanong::registry()->register(DepartmentResource::class);";
+if (preg_match("/(public function register\\(\\): void\\s*\\{)/", $s)) {
+    $s = preg_replace("/(public function register\\(\\): void\\s*\\{)/", "$1".$body, $s, 1);
+} else {
+    fwrite(STDERR, "     ⚠️ 没找到 register()，需人工处理\n");
+    exit(1);
+}
+
+file_put_contents($f, $s);
+echo "     DepartmentResource 已写入 AppServiceProvider\n";
+' 2>&1 | tail -1
+
 # ── 权限节点（内置 Resource 的节点要写库）──
 echo "  → 同步权限节点"
 php artisan aimanong:permission sync >/dev/null 2>&1 || true

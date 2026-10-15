@@ -198,5 +198,23 @@
       ],
       "resource_uri": "departments"
     }
+  },
+  "enum_paths": {
+    "_note": "枚举的标签必须在三条路径上都到得了前端 —— 同一个 bug 出现过三次",
+    "_why": [
+      "① 列表列 using(Enum) —— 只写 enum: 类名，前端解析不了 PHP 类名 → 显示原始值",
+      "② 表单 options(Enum::cases()) —— 写死 label => value → 显示英文",
+      "③ 表单 using(Enum) —— 从不填 options → 下拉是空的",
+      "三次都是「声明合法 ✅ ai:verify 通过 ✅ 页面就是不对 ❌」。",
+      "取标签的规则已收敛到 Aimanong\\Support\\EnumLabel 一处。"
+    ],
+    "rules_string": {
+      "_note": "rules('a|b') 必须拆开；不拆的话整串会被当成一个规则名 → 提交 500",
+      "_why": [
+        "实测：Method Illuminate\\Validation\\Validator::validateNullable|in does not exist",
+        "而 ai:verify 当时照样报 valid=true"
+      ]
+    },
+    "_covered_by": "EnumLabelTest（12 条单测，覆盖三条路径 + rules 拆分）"
   }
 }

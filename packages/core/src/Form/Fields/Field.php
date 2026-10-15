@@ -142,8 +142,28 @@ abstract class Field
      */
     public function rules(string|array $rules): static
     {
-        foreach ((array) $rules as $rule) {
-            if (! in_array($rule, $this->rules, true)) {
+        /*
+         * ⚠️ 字符串要按 `|` 拆开 —— 这是 Laravel 的语义差异，踩过。
+         *
+         * Laravel 里这两种写法**不等价**：
+         *
+         *     'nullable|in:active,disabled'   字符串 → 按 `|` 拆成两条规则 ✅
+         *     ['nullable|in:active,disabled'] 数组   → **整串当成一个规则名** ❌
+         *
+         * 而本方法以前是 `foreach ((array) $rules as $rule)` ——
+         * 传字符串时会被包成只有一个元素的数组，正好落进第二种：
+         *
+         *     Method Illuminate\Validation\Validator::validateNullable|in does not exist.
+         *     → 提交时 500
+         *
+         * 实测（L1/L2 复测）一个 agent 撞上并报上来，它特别指出：
+         * **`ai:verify` 对这个写法照样报 valid=true**，只有真发请求才暴露。
+         * —— 与「声明合法、运行期炸」是同一族问题。
+         */
+        foreach (is_string($rules) ? explode('|', $rules) : $rules as $rule) {
+            $rule = trim((string) $rule);
+
+            if ($rule !== '' && ! in_array($rule, $this->rules, true)) {
                 $this->rules[] = $rule;
             }
         }

@@ -446,19 +446,15 @@ class Column
         return $this->props;
     }
 
-    /** 取一个枚举 case 的显示标签 */
+    /**
+     * 取一个枚举 case 的显示标签 —— 委托给共享实现。
+     *
+     * 抽出去的理由见 `Aimanong\Support\EnumLabel` 的注释：
+     * 同一个「label() 没被调用」的 bug 出现过两次（列表列、表单下拉），
+     * 规则只留一处才不会下次修一个漏一个。
+     */
     protected static function labelOf(\UnitEnum $case): string
     {
-        foreach (['label', 'getLabel'] as $method) {
-            if (method_exists($case, $method)) {
-                $value = $case->{$method}();
-
-                if (is_string($value) && $value !== '') {
-                    return $value;
-                }
-            }
-        }
-
-        return $case->name;
+        return \Aimanong\Support\EnumLabel::of($case);
     }
 }

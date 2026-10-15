@@ -22,6 +22,26 @@ class Verifier
      * @param  string  $class  Resource 类全限定名
      * @return array<string, mixed>
      */
+    /**
+     * 框架已知的 Laravel 规则名。
+     *
+     * 不是白名单（自定义 Rule 类名也合法）—— 只是用来给出
+     * 「你是不是想写 X」的提示，所以是**提示级**而非拒绝级。
+     *
+     * @var array<int, string>
+     */
+    protected const KNOWN_RULES = [
+        'required', 'nullable', 'sometimes', 'string', 'integer', 'numeric',
+        'boolean', 'email', 'url', 'date', 'array', 'json', 'uuid', 'ip',
+        'confirmed', 'active_url', 'alpha', 'alpha_dash', 'alpha_num',
+        'digits', 'digits_between', 'min', 'max', 'between', 'size',
+        'in', 'not_in', 'unique', 'exists', 'regex', 'same', 'different',
+        'after', 'before', 'date_format', 'image', 'mimes', 'file',
+    ];
+
+    /**
+     * @return array<string, mixed>
+     */
     public function verify(string $class): array
     {
         $issues = [];
@@ -85,6 +105,8 @@ class Verifier
                     'example' => "public static function grid(Grid \$grid): void { \$grid->column('id', 'ID'); }",
                 ];
             }
+
+            $issues = array_merge($issues, $this->checkRules($node));
         } catch (\Throwable $e) {
             $issue = [
                 'code' => 'COMPILE_FAILED',
@@ -141,6 +163,91 @@ class Verifier
         }
 
         return $this->result($class, $issues === [], $issues);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $issues
+     * @return array<string, mixed>
+     */
+    /**
+     * 校验声明的验证规则能不能被 Laravel 认出来。
+     *
+     * ## 为什么必须在这里拦
+     *
+     * 实测（L1/L2 复测）：一个 agent 写
+     *
+     *     ->rules('nullable|in:active,disabled')
+     *
+     * 提交时 **500**：`Method Illuminate\Validation\Validator::validateNullable|in does not exist.`
+     *
+     * Laravel 对**数组**里的规则不做管道拆分 —— 整串会被当成一个规则**名**。
+     * 而 `ai:verify` 当时照样报 `valid: true`：**声明层面完全看不出问题**，
+     * 只有真发请求才炸。
+     *
+     * 这和「枚举标签到不了前端」是同一族：`ai:verify` 只能证明
+     * 「声明合法」，证明不了「声明真的能跑」。
+     * 能提前发现的那部分，就该提前发现。
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function checkRules(\Aimanong\Schema\Ast\ResourceNode $node): array
+    {
+        $issues = [];
+
+        foreach ($node->fields as $field) {
+            foreach ($field->rules as $rule) {
+                $rule = (string) $rule;
+
+                // 情形一：数组元素里还带 `|` —— 必然 500
+                if (str_contains($rule, '|')) {
+                    $issues[] = [
+                        'code' => 'RULE_NOT_SPLIT',
+                        'message' => "字段 [{$field->name}] 的规则 '{$rule}' 没有被拆开，提交时会 500"
+                            .'（Laravel 对数组里的规则不做管道拆分）',
+                        'hint' => '用 ->rules([...]) 逐个写，或直接写字符串 ->rules(\'a|b\')（框架会拆）',
+                        'example' => "\$form->text('x')->rules(['nullable', 'in:a,b']);",
+                    ];
+
+                    continue;
+                }
+
+                // 情形二：规则名不认识 —— 十有八九是拼错或写法不对
+                $base = explode(':', $rule, 2)[0];
+
+                if ($base === '' || in_array($base, self::KNOWN_RULES, true)) {
+                    continue;
+                }
+
+                $issues[] = [
+                    'code' => 'UNKNOWN_RULE',
+                    'message' => "字段 [{$field->name}] 用了框架不认识的规则 '{$rule}'",
+                    'did_you_mean' => $this->suggestRule($base),
+                    'known_rules' => self::KNOWN_RULES,
+                    'hint' => '若这是自定义规则类名（如 App\\Rules\\Xxx），忽略本条即可',
+                ];
+            }
+        }
+
+        return $issues;
+    }
+
+    /** 拼错的规则名给个最近匹配 */
+    protected function suggestRule(string $base): ?string
+    {
+        $best = null;
+        $score = 0.0;
+
+        foreach (self::KNOWN_RULES as $candidate) {
+            $percent = 0.0;
+            similar_text($base, $candidate, $percent);
+
+            if ($percent > $score) {
+                $score = $percent;
+                $best = $candidate;
+            }
+        }
+
+        return $score >= 65.0 ? $best : null;
     }
 
     /**

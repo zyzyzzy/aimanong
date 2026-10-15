@@ -90,7 +90,8 @@ $grid->column('status', '状态')->dict('order_status');
 
 // 关联列用**点号**（不是 ->relation()）：后者在表单里只服务多对多
 $grid->column('author.name', '作者');
-$form->select('author_id', '作者')->options(Author::pluck('name','id'))->rules('exists:authors,id');
+$form->select('author_id', '作者')->options(Author::pluck('name','id')->all())->rules('exists:authors,id');
+//                                            ^^^^^^^ 必须 ->all()：options() 只收 array，直接传 Collection 会编译失败
 ```
 
 `/__ai/capabilities.json` 是**全量**能力清单（字段类型、每个声明方法的参数、可用规则）。

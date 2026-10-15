@@ -101,6 +101,30 @@ class SchemaCommand extends Command
      */
     protected function checkDrift(string $outDir, array $files): int
     {
+        /*
+         * ⚠️ 区分「从未生成过」与「生成过但漂移了」。
+         *
+         * 原先两者都报 ✗ 并返回 FAILURE。但一个新项目本来就没有
+         * resources/aimanong/ 目录 —— 那不是漂移，是「还没生成过」。
+         *
+         * 实测（L1/L2 复测）多个 agent 报告「基线就红」，
+         * 因为 setup 脚本不默认生成产物，而 CI 又跑 --check。
+         * 这组合让每个新项目第一次跑 CI 必红，是个容易踩的坑。
+         *
+         * 现在：
+         *   · 输出目录不存在 → 视为首次，提示生成，返回 SUCCESS
+         *   · 目录存在但某文件缺失 → 真漂移，FAILURE
+         *   · 文件存在但内容不一致 → 真漂移，FAILURE
+         */
+        if (! is_dir($outDir)) {
+            $this->warn('⚠ Schema 产物目录尚不存在（首次使用）。');
+            $this->line('  请执行: php artisan aimanong:schema');
+            $this->newLine();
+            $this->info('ℹ 这不是错误 —— 只是还没有生成过产物。');
+
+            return self::SUCCESS;
+        }
+
         $drift = false;
 
         foreach ($files as $name => $content) {

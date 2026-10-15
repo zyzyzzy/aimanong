@@ -150,6 +150,21 @@ class ThinkDataSource implements DataSource
      *
      * @param  array<string, mixed>  $params
      */
+    /**
+     * 转义 LIKE 通配符（与 Laravel 侧同一套逻辑）。
+     */
+    protected static function escapeLike(string $value): string
+    {
+        return str_replace(
+            ['\\', '%', '_'],
+            ['\\\\', '\\%', '\\_'],
+            $value
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
     protected function applySearch(BaseQuery $query, array $params): void
     {
         $keyword = $params['keyword'] ?? $params['search'] ?? null;
@@ -180,13 +195,13 @@ class ThinkDataSource implements DataSource
 
                     // Eloquent: orWhereHas ｜ TP: hasWhere(..., 'OR')
                     $q->hasWhere($relation, function (BaseQuery $sub) use ($field, $keyword): void {
-                        $sub->where($field, 'like', "%{$keyword}%");
+                        $sub->where($field, 'like', '%'.static::escapeLike($keyword).'%');
                     }, 'OR');
 
                     continue;
                 }
 
-                $q->whereOr($column, 'like', "%{$keyword}%");
+                $q->whereOr($column, 'like', '%'.static::escapeLike($keyword).'%');
             }
         });
     }

@@ -307,6 +307,46 @@ if ($firstLogId === null) {
 }
 
 /*
+ * ═══ 搜索 LIKE 转义 + email 字段自动规则 ═══
+ */
+echo "\n═══ 搜索与字段修复 ═══\n";
+
+$sf = json_decode((string) @file_get_contents(__DIR__.'/fixtures/multi-app-expectations.json'), true)['search_and_field_fixes'] ?? null;
+
+if ($sf === null) {
+    t('读得到搜索修复共享期望', false, 'fixtures 里缺 search_and_field_fixes');
+} else {
+    $le = $sf['like_escape'];
+
+    // % 不应匹配全部
+    $pct = http("$base/admin/api/users?keyword=%25", 'GET', [], ['Accept: application/json']);
+    $pctJson = json_decode((string) $pct['body'], true) ?: [];
+    t(
+        'keyword=% 不匹配全部（LIKE 转义生效）',
+        ($pctJson['meta']['total'] ?? -1) === $le['keyword_percent']['expect_total'],
+        'total='.($pctJson['meta']['total'] ?? '?')
+    );
+
+    // _ 不应匹配任意字符
+    $usc = http("$base/admin/api/users?keyword=_", 'GET', [], ['Accept: application/json']);
+    $uscJson = json_decode((string) $usc['body'], true) ?: [];
+    t(
+        'keyword=_ 不匹配任意字符',
+        ($uscJson['meta']['total'] ?? -1) === $le['keyword_underscore']['expect_total'],
+        'total='.($uscJson['meta']['total'] ?? '?')
+    );
+
+    // 正常搜索不受影响
+    $norm = http("$base/admin/api/users?keyword=".rawurlencode('演示用户1'), 'GET', [], ['Accept: application/json']);
+    $normJson = json_decode((string) $norm['body'], true) ?: [];
+    t(
+        '正常搜索仍工作',
+        ($normJson['meta']['total'] ?? 0) >= $le['keyword_normal']['expect_min'],
+        'total='.($normJson['meta']['total'] ?? '?')
+    );
+}
+
+/*
  * ═══ 枚举标签 ═══
  *
  * ⚠️ 这里**故意不加断言**。

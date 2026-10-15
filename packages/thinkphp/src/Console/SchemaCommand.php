@@ -110,6 +110,16 @@ final class SchemaCommand extends Command
      */
     protected function checkDrift(Output $output, string $outDir, array $files): int
     {
+        // 与 Laravel 侧同一套逻辑：目录不存在 = 首次，不是漂移
+        if (! is_dir($outDir)) {
+            $output->writeln('<comment>⚠ Schema 产物目录尚不存在（首次使用）。</comment>');
+            $output->writeln('  请执行: php think aimanong:schema');
+            $output->writeln('');
+            $output->writeln('<info>ℹ 这不是错误 —— 只是还没有生成过产物。</info>');
+
+            return 0;
+        }
+
         $drift = false;
 
         foreach ($files as $name => $content) {

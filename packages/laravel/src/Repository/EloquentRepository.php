@@ -179,6 +179,27 @@ class EloquentRepository implements RepositoryContract
      * @param  Builder<Model>  $query
      * @param  array<string, mixed>  $params
      */
+    /**
+     * 转义 LIKE 通配符。
+     *
+     * ## 为什么必须转义
+     *
+     * `keyword=%` 或 `keyword=_` 会被 SQL 当成通配符，匹配全部 / 任意单字符 ——
+     * 不是注入（参数化查询防住了），但**语义泄漏**：用户搜 `%` 期望找到字面量 `%`，
+     * 结果拿到全表。实测（L1/L2 复测）agent 明确报上来。
+     *
+     * Laravel 没有内置 LIKE 转义，PDO 的参数绑定也不处理通配符。
+     */
+    protected static function escapeLike(string $value): string
+    {
+        // 反斜杠必须先转义，否则后面加的 \% 会被二次解释
+        return str_replace(
+            ['\\', '%', '_'],
+            ['\\\\', '\\%', '\\_'],
+            $value
+        );
+    }
+
     protected function applySearch(Builder $query, array $params): void
     {
         $keyword = $params['keyword'] ?? $params['search'] ?? null;
@@ -215,13 +236,13 @@ class EloquentRepository implements RepositoryContract
                     [$relation, $field] = explode('.', $column, 2);
 
                     $q->orWhereHas($relation, function (Builder $sub) use ($field, $keyword): void {
-                        $sub->where($field, 'like', "%{$keyword}%");
+                        $sub->where($field, 'like', '%'.static::escapeLike($keyword).'%');
                     });
 
                     continue;
                 }
 
-                $q->orWhere($column, 'like', "%{$keyword}%");
+                $q->orWhere($column, 'like', '%'.static::escapeLike($keyword).'%');
             }
         });
     }

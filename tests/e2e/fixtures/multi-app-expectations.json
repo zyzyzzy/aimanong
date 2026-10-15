@@ -230,5 +230,25 @@
       ]
     },
     "_covered_by": "EnumLabelTest（12 条单测，覆盖三条路径 + rules 拆分）"
+  },
+  "search_and_field_fixes": {
+    "_note": "搜索 LIKE 转义 + email 字段自动规则",
+    "like_escape": {
+      "keyword_percent": {
+        "expect_total": 0,
+        "_why": "% 是字面量，不应匹配全部"
+      },
+      "keyword_underscore": {
+        "expect_total": 0,
+        "_why": "_ 是字面量，不应匹配任意字符"
+      },
+      "keyword_normal": {
+        "expect_min": 1,
+        "_why": "正常搜索不受影响"
+      }
+    },
+    "email_auto_rule": {
+      "_why": "$form->email() 应自动带 email 校验规则"
+    }
   }
 }

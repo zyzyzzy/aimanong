@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Aimanong\Tests\Unit;
 
+use Aimanong\Form\Fields\Email;
 use Aimanong\Form\Fields\Select;
 use Aimanong\Form\Fields\Text;
 use Aimanong\Grid\Column;
+use Aimanong\Repository\EloquentRepository;
 use Aimanong\Support\EnumLabel;
 use PHPUnit\Framework\TestCase;
 
@@ -165,5 +167,46 @@ class EnumLabelTest extends TestCase
         $rules = (new Text('x', 'X'))->rules(' nullable | in:a,b | ')->toNode()->rules;
 
         $this->assertSame(['nullable', 'in:a,b'], $rules);
+    }
+
+    // ── Email 字段自动带规则 ──
+
+    public function test_email_field_auto_adds_email_rule(): void
+    {
+        /*
+         * $form->email() 应该**自动**带上 email 校验规则。
+         *
+         * 实测（L1/L2 复测）：一个 agent 漏写了 ->rules('email')，
+         * 提交非法邮箱能过。字段名叫 email 却不校验邮箱格式，
+         * 才是真正的「隐式」。
+         */
+        $rules = (new Email('email', '邮箱'))->toNode()->rules;
+
+        $this->assertContains('email', $rules);
+    }
+
+    public function test_email_field_does_not_duplicate_rule(): void
+    {
+        $rules = (new Email('email', '邮箱'))
+            ->rules(['email'])
+            ->toNode()->rules;
+
+        $this->assertCount(1, array_filter($rules, fn ($r) => $r === 'email'));
+    }
+
+    // ── LIKE 转义 ──
+
+    public function test_escape_like_handles_percent_and_underscore(): void
+    {
+        $ref = new \ReflectionMethod(
+            EloquentRepository::class,
+            'escapeLike'
+        );
+        $ref->setAccessible(true);
+
+        $this->assertSame('\\%', $ref->invoke(null, '%'));
+        $this->assertSame('\\_', $ref->invoke(null, '_'));
+        $this->assertSame('hello\\%world', $ref->invoke(null, 'hello%world'));
+        $this->assertSame('a\\\\b', $ref->invoke(null, 'a\\b'));
     }
 }

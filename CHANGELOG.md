@@ -164,6 +164,21 @@ PUT  /admin/api/departments/4/move → 200  ❌ parent_id 真的被改了
 
 | 包 | 版本 | 内容 |
 |---|---|---|
+### 1.6.3 / 1.3.3 / 1.4.3
+
+- **`$form->email()` 自动带 email 校验规则**。字段名叫 email 却不校验邮箱格式
+  才是真正的「隐式」。可覆盖（后续调 `->rules([])` 清空）。
+- **keyword 搜索做了 LIKE 转义**。`%`、`_`、`\` 不再被当通配符。
+  两端都改（Laravel EloquentRepository + TP ThinkDataSource）。
+- **`aimanong:schema --check` 首次不再报错**。目录不存在视为「还没生成过」，
+  返回 SUCCESS + 提示。只有生成过但内容不一致才算漂移。
+
+| 包 | 版本 |
+|---|---|
+| `aimanong/core` | **1.6.3** |
+| `aimanong/laravel` | **1.3.3** |
+| `aimanong/thinkphp` | **1.4.3** |
+
 ### 1.6.2 / 1.3.2 / 1.4.2
 
 L1/L2 **复测**（同条件第二遍）中暴露的问题 —— 都是「声明合法、运行期不对」：

@@ -860,6 +860,121 @@ t('install 真的建了管理员', str_contains($out, '已创建管理员') || s
  * 而实际出现过：路由配了但资产全 404，页面**完全没有样式**，
  * 请求却是 200，不报任何错。
  */
+/*
+ * ═══ ⑬ 树形资源 ═══
+ *
+ * 盯两件事，都来自实测踩到的坑：
+ *   ① 「半成品」：后端/JS/CSS 全都写好了，唯独模板没用 `_depth`
+ *      → 声明了 tree() 却看不出层级，且不报任何错。
+ *   ② 「越权」：Laravel 侧 tree()/move() 漏了权限校验，零权限账号能读全表、能改数据。
+ */
+echo "\n=== ⑬ 树形资源 ===\n";
+
+$treeExp = json_decode((string) file_get_contents(__DIR__.'/fixtures/multi-app-expectations.json'), true);
+t('读得到树形共享期望', isset($treeExp['tree']), 'fixtures 里有 tree 段');
+
+$treeJar = sys_get_temp_dir().'/amn-tp-tree-'.getmypid().'.jar';
+@unlink($treeJar);
+
+$treeReq = function (string $path, ?string $method = null, ?string $body = null) use ($treeJar): array {
+    $ch = curl_init("http://127.0.0.1:{$GLOBALS['port']}{$path}");
+    $opts = [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_COOKIEJAR => $treeJar,
+        CURLOPT_COOKIEFILE => $treeJar,
+        CURLOPT_FOLLOWLOCATION => false,
+    ];
+    if ($method !== null) {
+        $opts[CURLOPT_CUSTOMREQUEST] = $method;
+    }
+    if ($body !== null) {
+        $opts[CURLOPT_POSTFIELDS] = $body;
+        $opts[CURLOPT_HTTPHEADER] = ['Content-Type: application/json', 'Accept: application/json'];
+    }
+    curl_setopt_array($ch, $opts);
+    $out = (string) curl_exec($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    unset($ch);
+
+    return [$code, $out];
+};
+
+// 登录
+[$_, $loginHtml] = $treeReq('/admin/auth/login');
+preg_match('/name="_token" value="([^"]+)"/', $loginHtml, $tm);
+$ch = curl_init("http://127.0.0.1:{$GLOBALS['port']}/admin/auth/login");
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST => true,
+    CURLOPT_POSTFIELDS => http_build_query(['_token' => $tm[1] ?? '', 'username' => 'admin', 'password' => 'admin123']),
+    CURLOPT_COOKIEJAR => $treeJar,
+    CURLOPT_COOKIEFILE => $treeJar,
+    CURLOPT_TIMEOUT => 15,
+]);
+curl_exec($ch);
+unset($ch);
+
+$treeUri = (string) ($treeExp['tree']['sample_resource'] ?? 'departments');
+
+// ① 接口返回嵌套 children
+[$tc, $tbody] = $treeReq("/admin/api/{$treeUri}/tree");
+$tree = json_decode($tbody, true);
+$roots = $tree['data'] ?? [];
+t("树形接口 /api/{$treeUri}/tree → 200", $tc === 200, "HTTP {$tc}");
+
+$expRootCount = (int) ($treeExp['tree']['api']['root_count'] ?? 1);
+t('树形接口根节点数一致', count($roots) === $expRootCount, count($roots)." 个（期望 {$expRootCount}）");
+t('树形接口返回嵌套 children', isset($roots[0]['children']) && is_array($roots[0]['children']));
+
+$expRoot = (string) ($treeExp['tree']['root']['name'] ?? '');
+if ($expRoot !== '') {
+    t('根节点名称与期望一致', ($roots[0]['name'] ?? '') === $expRoot, (string) ($roots[0]['name'] ?? '(空)'));
+}
+
+// ② 页面真的渲染了层级（模板用了 _depth + 折叠开关）
+[$pc, $pbody] = $treeReq("/admin/{$treeUri}");
+t('树形页面可访问', $pc === 200, "HTTP {$pc}");
+
+/*
+ * ⚠️ 这里**不能**断言算好的 `padding-left: 32px`。
+ *
+ * 缩进是 Vue 的 `:style` 绑定（`paddingLeft: _depth * 16 + 'px'`），
+ * curl 拿到的服务端 HTML 里它是**未求值的 JS 表达式** —— 断言像素值
+ * 在无 JS 的 e2e 里永远是空的（第一版就是这么写错的）。
+ *
+ * 所以这里断言「模板接上了」：占位元素 + 依赖 `_depth` 的绑定。
+ * 真实渲染出来的层级由浏览器实测覆盖（见 AI实测记录 第七轮）。
+ */
+t(
+    '模板接了树形单元格（此前是断的）',
+    str_contains($pbody, 'am-tree-cell'),
+    str_contains($pbody, 'am-tree-cell') ? '有' : '没有'
+);
+t(
+    '缩进绑定了 _depth（层级真会体现）',
+    str_contains($pbody, 'am-tree-cell') && str_contains($pbody, '_depth'),
+    '需同时出现 am-tree-cell 与 _depth'
+);
+t(
+    '折叠行过滤（displayRows）已接线',
+    str_contains($pbody, 'displayRows'),
+    str_contains($pbody, 'displayRows') ? '有' : '没有'
+);
+t(
+    '父节点有展开/折叠开关',
+    str_contains($pbody, 'am-tree-toggle'),
+    str_contains($pbody, 'am-tree-toggle') ? '有' : '没有'
+);
+
+// ③ 非树形资源应明确报错，而不是返回空
+[$nc, $nbody] = $treeReq('/admin/api/customers/tree');
+t(
+    '非树形资源调 tree → 403 NOT_A_TREE',
+    $nc === 403 && str_contains($nbody, 'NOT_A_TREE'),
+    "HTTP {$nc}"
+);
+
 echo "\n=== ⑫ 资源页面与静态资源 ===\n";
 
 $pageJar = sys_get_temp_dir().'/amn-tp-page-'.getmypid().'.jar';

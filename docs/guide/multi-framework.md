@@ -78,7 +78,7 @@ composer require aimanong/thinkphp
 
 | 能力 | ThinkPHP 侧的情况 |
 |---|---|
-| ❌ `batch` / `export` / `tree` / `move` | **返回 501**，不是静默失败 |
+| ❌ `batch` / `export` / `move` | **返回 501**，不是静默失败 |
 | ❌ 内置 Resource | 管理员账号 / 操作日志 / 登录日志 / 字典管理 / 个人中心 |
 | ❌ MCP 工具 | 8 个 MCP 工具（AI Agent 直接调用） |
 | ❌ 扩展机制 | `aimanong:make-extension` / `extensions` |

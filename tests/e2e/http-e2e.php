@@ -306,6 +306,51 @@ if ($firstLogId === null) {
     t("只读资源拒绝 DELETE", $roDel['code'] === 403, "id={$firstLogId} → HTTP {$roDel['code']}");
 }
 
+/*
+ * ═══ 树形资源 ═══
+ *
+ * 两个实测事故：
+ *   ① 半成品：tree() 声明、/tree 接口、_depth、`.am-tree-toggle` 样式全都写好了，
+ *      唯独模板从没用它们 → 声明了树形却看不出层级，且不报任何错。
+ *   ② 越权：tree()/move() 漏了 authorize_()，零权限账号能读整张表、能改 parent_id。
+ */
+echo "\n═══ 树形资源 ═══\n";
+
+$treeExp = json_decode((string) @file_get_contents(__DIR__.'/fixtures/multi-app-expectations.json'), true);
+$treeUri = (string) ($treeExp['tree']['sample_resource'] ?? 'departments');
+$treePage = http("$base/admin/{$treeUri}");
+
+t('树形页面可访问', $treePage['code'] === 200, "HTTP {$treePage['code']}");
+t(
+    '模板接了树形单元格（此前是断的）',
+    str_contains((string) $treePage['body'], 'am-tree-cell'),
+    '需页面里出现 am-tree-cell'
+);
+t(
+    '折叠过滤（displayRows）已接线',
+    str_contains((string) $treePage['body'], 'displayRows'),
+    '需页面里出现 displayRows'
+);
+
+$treeApi = http("$base/admin/api/{$treeUri}/tree");
+$treeJson = json_decode((string) $treeApi['body'], true);
+$treeRoots = $treeJson['data'] ?? [];
+
+t('树形接口 → 200', $treeApi['code'] === 200, "HTTP {$treeApi['code']}");
+t(
+    '树形接口返回嵌套 children',
+    isset($treeRoots[0]['children']) && is_array($treeRoots[0]['children']),
+    '需 data[0].children 是数组'
+);
+
+// 非树形资源要明确报错，不能静默返回空
+$notTree = http("$base/admin/api/admin-users/tree");
+t(
+    '非树形资源调 tree → 403 NOT_A_TREE',
+    $notTree['code'] === 403 && str_contains((string) $notTree['body'], 'NOT_A_TREE'),
+    "HTTP {$notTree['code']}"
+);
+
 echo "\n═══ 可写资源对照（防止只读判断修过头）═══\n";
 $rwList = http("$base/admin/api/admin-dict-types");
 t("可写资源可读", $rwList['code'] === 200);

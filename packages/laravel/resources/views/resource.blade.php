@@ -105,7 +105,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in rows" :key="row.id" :class="{'is-selected': isSelected(row.id)}">
+          <tr v-for="row in displayRows" :key="row.id" :class="{'is-selected': isSelected(row.id)}">
             <td v-if="hasBatch" class="am-table__select" data-l="选择">
               <input type="checkbox" :checked="isSelected(row.id)" @change="toggleSelect(row.id)"
                      :aria-label="'选择 ' + rowLabel(row)">
@@ -141,6 +141,30 @@
               </template>
               <template v-else-if="col.formatter === 'progress'">
                 <span class="am-progress"><i :style="{width: Math.min(100, Number(cellValue(col,row)) || 0) + '%'}"></i></span>
+              </template>
+              {{--
+                树形列：按 _depth 缩进 + 展开/折叠。
+                用到的 .am-tree-indent / .am-tree-toggle 样式**早就写在 design-system 里了**
+                （连 aria-expanded=false 的旋转动画都有），此前只是模板没用它们。
+              --}}
+              <template v-else-if="isTree && col.name === treeTitleColumn">
+                <span class="am-tree-cell" :style="{ paddingLeft: (row._depth || 0) * 16 + 'px' }">
+                  <button v-if="row._hasChildren" type="button" class="am-tree-toggle"
+                          :aria-expanded="isCollapsed(row.id) ? 'false' : 'true'"
+                          :aria-label="(isCollapsed(row.id) ? '展开 ' : '折叠 ') + cellValue(col, row)"
+                          @click="toggleCollapse(row.id)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2.5"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="m6 9 6 6 6-6"/>
+                    </svg>
+                  </button>
+                  {{-- 叶子节点占同样的宽度，保证同层文字左对齐 --}}
+                  <span v-else class="am-tree-indent" style="width:18px" aria-hidden="true"></span>
+                  <span :class="{'am-text-muted': cellValue(col, row) === '' || cellValue(col, row) === null}">
+                    @{{ cellValue(col, row) === '' || cellValue(col, row) === null ? '—' : cellValue(col, row) }}
+                  </span>
+                </span>
               </template>
               <template v-else>
                 <span :class="{'am-text-muted': cellValue(col, row) === '' || cellValue(col, row) === null}">
@@ -474,6 +498,50 @@ const app = createApp({
         const exportable = computed(() => schema.grid?.exportable === true);
         const treeTitleColumn = computed(() => treeConfig?.titleColumn || 'name');
 
+        /*
+         * 树形的折叠状态与「实际渲染的行」。
+         *
+         * ⚠️ 这里曾经是本功能**唯一的缺口**：
+         *   后端 `tree()` 声明 ✅   `/tree` 接口返回嵌套 children ✅
+         *   `flattenTree()` 算了 `_depth` ✅   design-system 里 `.am-tree-toggle`
+         *   连旋转动画都写好了 ✅ —— 但**模板从头到尾没用过它们**，
+         *   于是列表看起来仍是一条条平铺的名字。
+         *
+         * 后果：生产者（框架）与消费者（模板）之间断了，而且**不报任何错**
+         *  —— 声明了 tree() 的页面 200、接口正常，只是看不出层级。
+         * 实测确认：只声明 tree() 达不到「能看出层级」这条验收标准。
+         */
+        const collapsedIds = ref(new Set());
+
+        function toggleCollapse(id) {
+            const next = new Set(collapsedIds.value);
+            if (next.has(id)) { next.delete(id); } else { next.add(id); }
+            collapsedIds.value = next;
+        }
+
+        function isCollapsed(id) {
+            return collapsedIds.value.has(id);
+        }
+
+        /** 该行是否被某个已折叠的祖先藏起来了（沿 _parentId 往上找） */
+        function hiddenByCollapse(row) {
+            let pid = row._parentId;
+            let guard = 0;
+
+            while (pid != null && guard++ < 64) {   // guard 防御环形数据
+                if (collapsedIds.value.has(pid)) { return true; }
+                const parent = rows.value.find(r => r.id === pid);
+                pid = parent ? parent._parentId : null;
+            }
+
+            return false;
+        }
+
+        /** 表格真正渲染的行：树形按折叠过滤，普通列表原样返回 */
+        const displayRows = computed(() => (
+            isTree ? rows.value.filter(r => !hiddenByCollapse(r)) : rows.value
+        ));
+
         // 分步表单
         const isStepped = computed(() => schema.form?.stepped === true);
         const steps = computed(() => schema.form?.steps ?? []);
@@ -561,13 +629,19 @@ const app = createApp({
             }
         }
 
-        /** 把嵌套树拍平成带缩进层级的行 */
-        function flattenTree(nodes, depth = 0) {
+        /**
+         * 把嵌套树拍平成带缩进层级的行。
+         *
+         * `_parentId` 与 `_hasChildren` 供折叠用 —— 只有 `_depth` 的话
+         * 能画缩进但没法收起子树。
+         */
+        function flattenTree(nodes, depth = 0, parentId = null) {
             const out = [];
             for (const n of nodes) {
-                out.push({ ...n, _depth: depth });
-                if (n.children && n.children.length) {
-                    out.push(...flattenTree(n.children, depth + 1));
+                const hasChildren = !!(n.children && n.children.length);
+                out.push({ ...n, _depth: depth, _parentId: parentId, _hasChildren: hasChildren });
+                if (hasChildren) {
+                    out.push(...flattenTree(n.children, depth + 1, n.id));
                 }
             }
             return out;
@@ -1140,6 +1214,7 @@ const app = createApp({
             columns, formFields, hasSearch,
             load, toggleSort, formatDate, edit, save, remove,
             exportable, doExport, isTree, treeTitleColumn, loadTree,
+            displayRows, toggleCollapse, isCollapsed,
             isStepped, steps, currentStep, visibleFields,
             inputType, mapLabel, tagClass, formatMoney, cellValue, cellClass, normalizeCell,
             toasts, toast, dismissToast, confirmState, doDelete,

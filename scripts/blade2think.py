@@ -367,9 +367,24 @@ def conv(src: str, name: str, hoisted: dict) -> tuple[str, list[str]]:
 
 
 def main():
+    # ⚠️ 先确认「确实有东西可生成」**再**动产物目录。
+    #
+    # 这里踩过一次：脚本用 `sys.argv[1]` 当 VIEWS 且没有参数校验，
+    # 传一个不认识的参数（比如 `--check`）时 glob 找不到任何文件，
+    # 但 `rmtree(OUT)` 已经把**全部产物删掉了** —— 而且不报错，
+    # 只是打印「合计 0 个模板」。等于一个手滑参数就能清空生成物。
+    files = sorted(glob.glob(VIEWS + '/**/*.blade.php', recursive=True))
+
+    if not files:
+        sys.stderr.write(
+            f"❌ 在 {VIEWS!r} 下没找到任何 *.blade.php —— 拒绝执行。\n"
+            f"   产物目录未被改动（防止参数写错把生成物删空）。\n"
+            f"   用法：python3 scripts/blade2think.py [Blade目录] [产物目录]\n"
+        )
+        raise SystemExit(2)
+
     shutil.rmtree(OUT, ignore_errors=True)
     os.makedirs(OUT, exist_ok=True)
-    files = sorted(glob.glob(VIEWS + '/**/*.blade.php', recursive=True))
     all_todo = []
     hoisted: dict = {}
     print(f"{'模板':<34} {'行数':>5} {'待人工项':>8}")

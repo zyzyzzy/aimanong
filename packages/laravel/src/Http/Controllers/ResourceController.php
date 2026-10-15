@@ -296,6 +296,19 @@ class ResourceController extends Controller
      */
     public function batch(Request $request, string $uri): JsonResponse
     {
+        /*
+         * ⚠️ 入口先过一次授权，原因有二：
+         *
+         * ① 原来「校验声明的动作」排在权限之前 —— 未授权用户能靠
+         *    BATCH_ACTION_NOT_DECLARED(403) 与 NOT_IMPLEMENTED(501) 的差别
+         *    **探测出这个资源声明了哪些批量动作**。
+         * ② 未实现的分支直接返回 501，**整条路径没有任何授权检查**。
+         *
+         * 这里用 index（能不能看这个资源）；具体动作各自再查各的权限
+         * （批量删除在 batchDelete 里查 destroy），形成两层。
+         */
+        $this->authorize_($uri, 'index');
+
         $node = $this->resolve($uri);
 
         /** @var array{action: string, ids: array<int, mixed>} $data */
@@ -530,6 +543,15 @@ class ResourceController extends Controller
      */
     public function tree(Request $request, string $uri): JsonResponse
     {
+        /*
+         * ⚠️ 这里以前**没有** authorize_()，是一个真实越权漏洞（已实测）：
+         * 一个对 departments 零权限的账号
+         *     /admin/api/departments       → 403 ✅
+         *     /admin/api/departments/tree  → 200 ❌ 返回整张表
+         * 树形是**读全部数据**的接口，必须与其他列表接口同权限。
+         */
+        $this->authorize_($uri, 'index');
+
         $node = $this->resolve($uri);
         $config = $node->meta['tree'] ?? null;
 
@@ -581,6 +603,14 @@ class ResourceController extends Controller
      */
     public function move(Request $request, string $uri, int|string $id): JsonResponse
     {
+        /*
+         * ⚠️ 这里以前也**没有** authorize_() —— 比 tree 更严重，因为它是**写**操作。
+         * 实测：零权限账号调 move 得到 200「移动成功」，数据库里 parent_id 真的被改了。
+         *
+         * 移动层级属于「改这条记录」，用 update 权限。
+         */
+        $this->authorize_($uri, 'update');
+
         $node = $this->resolve($uri);
         $config = $node->meta['tree'] ?? null;
 

@@ -4,6 +4,44 @@
 
 ## [Unreleased]
 
+### 🔴 安全：树形接口的越权（请尽快升级）
+
+`tree()` 与 `move()` 此前**没有做权限校验**，而控制器的其余动作都有。
+实测（一个对 `departments` 零权限的账号）：
+
+```
+GET  /admin/api/departments        → 403  ✅ 正确拦截
+GET  /admin/api/departments/tree   → 200  ❌ 返回整张表
+PUT  /admin/api/departments/4/move → 200  ❌ parent_id 真的被改了
+```
+
+`authorize_()` 一次调用同时负责三件事：跨后台归属（404）、只读资源、RBAC ——
+漏掉它这三样全丢。`batch` 也存在同类问题（声明检查排在授权之前，
+未实现的分支整条路径无授权），一并修好。
+
+新增**结构性守卫**：`ControllerPermissionCoverageTest` 枚举控制器的全部公开动作，
+任何一个没调 `authorize_()` 就红（白名单里每项都必须写明理由）。
+这样「新增动作忘了鉴权」不会再靠人工 review 兜住。
+
+### 新增：树形资源真正能用了（两端）
+
+之前是**半成品**：后端 `tree()` 声明 ✅、`/tree` 接口 ✅、前端 `flattenTree()`
+算了 `_depth` ✅、design-system 里 `.am-tree-toggle` 连旋转动画都写好了 ✅
+—— **但模板从头到尾没用它们**。于是声明了 `tree()` 的列表看起来仍是一条条
+平铺的名字，而且**不报任何错**。实测确认：只声明 `tree()` 达不到
+「能看出层级」这条验收标准。
+
+现在：按 `_depth` 缩进 + 父节点展开/折叠（`displayRows` 过滤被折叠的子孙）。
+
+- **core**：`TreeBuilder` 从 laravel 包移到 core（零依赖的纯数据结构，两端共用同一套建树/环检测）
+- **thinkphp**：补 `/api/{uri}/tree` 接口（此前明确返回 501）
+
+两端渲染结果逐项一致（缩进档位、折叠开关位置都相同）。
+
+> ⚠️ 从源码或 path 仓库安装的，升级后需要跑一次 `composer dump-autoload`
+> （`TreeBuilder` 换了包，composer 的 classmap 要重生成）。正常
+> `composer update` 会自动重建。
+
 ### 包的版本
 
 | 包 | 版本 | 内容 |
@@ -34,7 +72,7 @@
 composer require aimanong/thinkphp:^1.1.0
 ```
 
-**仍未移植**：个人中心页（`/admin/profile` 404）、`batch` / `export` / `tree` / `move`
+**仍未移植**：个人中心页（`/admin/profile` 404）、`batch` / `export` / `move`
 （返回 501）、内置 Resource（管理员/角色/日志/字典页面）。
 
 ### aimanong/laravel 1.1.0（多应用落地）

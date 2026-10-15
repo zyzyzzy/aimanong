@@ -51,5 +51,41 @@
       "path": "assets/css/design-system.css",
       "expect_prefix": "/"
     }
+  },
+  "tree": {
+    "_note": "树形：两端必须产出同一套嵌套结构，且必须有权限校验",
+    "_why": [
+      "事故一（半成品）：后端 tree() 声明、/tree 接口、flattenTree() 的 _depth、",
+      "design-system 里的 .am-tree-toggle 全都写好了 —— 但模板从头到尾没用它们，",
+      "列表仍是一条条平铺的名字。声明了 tree() 却看不出层级，且不报任何错。",
+      "事故二（越权）：Laravel 的 tree()/move() 漏了 authorize_()。实测一个对",
+      "departments 零权限的账号能 GET /tree 拿到整张表（200），并能 PUT /move",
+      "真的改掉 parent_id —— 而 /api/departments 正确返回 403。"
+    ],
+    "sample_resource": "departments",
+    "root": {
+      "name": "总部",
+      "parent_id": null,
+      "depth": 0
+    },
+    "child": {
+      "name": "研发部",
+      "parent_id": 1,
+      "depth": 1
+    },
+    "grandchild": {
+      "name": "前端组",
+      "parent_id": 2,
+      "depth": 2
+    },
+    "api": {
+      "shape": "data[].children[]",
+      "root_count": 1
+    },
+    "permission": {
+      "requires": "index",
+      "move_requires": "update",
+      "unauthorized_status": 403
+    }
   }
 }

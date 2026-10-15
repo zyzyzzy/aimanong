@@ -90,6 +90,7 @@ class AimanongDemoService extends Service
     {
         Aimanong::registry()->register(CustomerResource::class);
         Aimanong::registry()->register(ReadonlyCustomerResource::class);
+        Aimanong::registry()->register(DepartmentResource::class);
     }
 }
 PHPEOF
@@ -194,6 +195,66 @@ class Agent extends \think\Model implements Permissible
     public function isEnabled(): bool
     {
         return (bool) $this->getAttr('enabled');
+    }
+}
+PHPEOF
+
+# 树形资源 —— 只声明 tree()，不做手工缩进。
+# e2e 用它断言「框架自己能渲染层级」（曾经是半成品：_depth 算了但模板没用）。
+cat > "$TARGET/app/Department.php" <<'PHPEOF'
+<?php
+
+namespace app;
+
+use think\Model;
+
+class Department extends Model
+{
+    protected $name = 'departments';
+    protected $pk = 'id';
+}
+PHPEOF
+
+cat > "$TARGET/app/DepartmentResource.php" <<'PHPEOF'
+<?php
+
+namespace app;
+
+use Aimanong\Resource;
+use Aimanong\Tree\Tree;
+
+class DepartmentResource extends Resource
+{
+    public static function model(): string
+    {
+        return Department::class;
+    }
+
+    public static function label(): string
+    {
+        return '部门';
+    }
+
+    public static function uri(): string
+    {
+        return 'departments';
+    }
+
+    public static function tree(Tree $tree): void
+    {
+        $tree->parentColumn('parent_id')->titleColumn('name')->orderColumn('sort');
+    }
+
+    public static function grid(\Aimanong\Grid\Grid $grid): void
+    {
+        $grid->column('id', 'ID');
+        $grid->column('name', '部门名称');
+        $grid->column('sort', '排序');
+    }
+
+    public static function form(\Aimanong\Form\Form $form): void
+    {
+        $form->text('name', '部门名称')->required();
     }
 }
 PHPEOF
@@ -325,6 +386,9 @@ $pdo = new PDO("sqlite:".$db);
 $pdo->exec("CREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT, industry TEXT, level TEXT, credit_days INTEGER, create_time TEXT)");
 $pdo->exec("INSERT INTO customers VALUES (1,\"深圳宏远精密\",\"制造业\",\"A\",30,\"2026-10-12 10:00:00\"),(2,\"杭州云图数据\",\"服务业\",\"B\",15,\"2026-10-12 11:00:00\")");
 // 代理商后台的登录用户（多应用验证用）
+// 树形资源的数据（e2e 要断言层级渲染）
+$pdo->exec("CREATE TABLE departments (id INTEGER PRIMARY KEY, name TEXT, parent_id INTEGER, sort INTEGER)");
+$pdo->exec("INSERT INTO departments VALUES (1,\"总部\",NULL,1),(2,\"研发部\",1,2),(3,\"前端组\",2,3),(4,\"市场部\",1,4)");
 $pdo->exec("CREATE TABLE agents (id INTEGER PRIMARY KEY, username TEXT UNIQUE, name TEXT, password TEXT, company TEXT, enabled INTEGER DEFAULT 1)");
 $pdo->exec("INSERT INTO agents VALUES (1,\"agent1\",\"代理A\",\"".password_hash("agent123", PASSWORD_BCRYPT)."\",\"华北代理\",1)");
 ' "$TARGET/runtime/aimanong-e2e.sqlite"

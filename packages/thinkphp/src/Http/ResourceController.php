@@ -7,6 +7,7 @@ namespace Aimanong\ThinkPHP\Http;
 use Aimanong\Aimanong;
 use Aimanong\Schema\Ast\ResourceNode;
 use Aimanong\Schema\Compiler;
+use Aimanong\Services\TreeBuilder;
 use Aimanong\Support\Drivers;
 use Aimanong\ThinkPHP\ThinkDataSource;
 use think\db\exception\DbException;
@@ -38,7 +39,7 @@ final class ResourceController
      *
      * @var array<int, string>
      */
-    public const IMPLEMENTED = ['index', 'show', 'store', 'update', 'destroy'];
+    public const IMPLEMENTED = ['index', 'show', 'store', 'update', 'destroy', 'tree'];
 
     protected ?ResourceNode $node = null;
 
@@ -215,6 +216,74 @@ final class ResourceController
     // ─────────────────────────────────────────────
     // 未移植的动作 —— 明确 501，不假装成功
     // ─────────────────────────────────────────────
+
+    /**
+     * 树形数据。
+     *
+     * 与 Laravel 侧同一份语义 —— `TreeBuilder` 在 core，两端共用同一套
+     * 建树/环检测逻辑（否则「同一份声明两端行为一致」就是空话）。
+     *
+     * ⚠️ 权限：树形是**读全部数据**的接口，与 index 同权限。
+     * Laravel 侧这里曾经漏掉权限校验，被实测出「零权限账号能读全表」。
+     */
+    public function tree(Request $request, string $uri): Response
+    {
+        if (($deny = $this->deny($uri, 'index')) !== null) {
+            return $deny;
+        }
+
+        $node = $this->resolve($uri);
+        $config = $node->meta['tree'] ?? null;
+
+        if ($config === null) {
+            return Response::create([
+                'error' => 'NOT_A_TREE',
+                'message' => "Resource [{$uri}] 不是树形结构",
+                'hint' => "在该 Resource 中实现 tree() 方法，例如 \$tree->parentColumn('parent_id');",
+            ], 'json', 403);
+        }
+
+        $model = $node->model;
+
+        if (! class_exists($model)) {
+            return Response::create([
+                'error' => 'MODEL_NOT_FOUND',
+                'message' => "Resource [{$uri}] 的模型 {$model} 不存在",
+            ], 'json', 500);
+        }
+
+        // 主键：Eloquent 用 getKeyName()，TP 用 getPk()（复合主键时是数组）
+        $probe = new $model;
+        $pk = method_exists($probe, 'getPk') ? $probe->getPk() : null;
+        $idColumn = is_string($pk) && $pk !== '' ? $pk : 'id';
+
+        $rows = $model::order($config['orderColumn'])->select()->toArray();
+
+        $builder = new TreeBuilder;
+
+        // 循环引用会导致无限递归，必须先检测（与 Laravel 侧同一实现）
+        $cycles = $builder->detectCycles($rows, [
+            'parentColumn' => $config['parentColumn'],
+            'idColumn' => $idColumn,
+        ]);
+
+        if ($cycles !== []) {
+            return Response::create([
+                'error' => 'CIRCULAR_REFERENCE',
+                'message' => '数据存在循环引用，无法构建树',
+                'cycles' => $cycles,
+                'hint' => '请修正这些节点的 parent 关系',
+            ], 'json', 422);
+        }
+
+        return Response::create([
+            'data' => $builder->build($rows, [
+                'parentColumn' => $config['parentColumn'],
+                'orderColumn' => $config['orderColumn'],
+                'idColumn' => $idColumn,
+            ]),
+        ], 'json', 200);
+    }
 
     public function unimplemented(Request $request, string $uri, string $action): Response
     {

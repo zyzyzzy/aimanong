@@ -1175,9 +1175,10 @@ hr {
 }
 
 /* 树形缩进 */
-.am-tree-indent { display: inline-block; }
+.am-tree-cell { display: inline-flex; align-items: center; gap: 6px; }
+.am-tree-indent { display: inline-block; flex: none; }
 .am-tree-toggle {
-  width: 18px; height: 18px;
+  width: 18px; height: 18px; flex: none;
   display: inline-grid; place-items: center;
   border-radius: var(--r-sm);
   color: var(--text-tertiary);

@@ -64,7 +64,25 @@ final class Aimanong
      */
     public static function url(string $path = ''): string
     {
-        $prefix = rtrim(self::runtime()->urlPrefix(), '/');
+        /*
+         * ⚠️ 前缀在这里**强制归一化成带前导斜杠**。
+         *
+         * 不能假设驱动返回的已经是 `/admin`：Laravel 侧曾经返回 `admin`
+         * （配置里的原样值），于是这里拼出 `admin/assets/x.css` ——
+         * 一个**相对路径**。浏览器按当前页面的 baseURI 解析它：
+         *
+         *     页 /admin           → /admin/assets/...          ✅（base 是 /，碰巧对）
+         *     页 /admin/articles  → /admin/admin/assets/...    ❌ 全部 404
+         *
+         * 也就是「控制台页正常、所有资源页面全坏」。它躲过了 223 个单测 +
+         * 147 条 e2e 断言 + 一次全面验收，因为 e2e 只测了深度 1 的控制台页；
+         * 最后是 5 个独立 AI agent 在真实浏览器里各自撞到才暴露。
+         *
+         * 归一化放在**这里**而不是各驱动里：这是唯一构建 URL 的地方，
+         * 放这里等于从结构上消灭了这一类 bug（新驱动不可能再犯）。
+         */
+        $prefix = '/'.trim(self::runtime()->urlPrefix(), '/');
+        $prefix = rtrim($prefix, '/');
 
         /*
          * ⚠️ 空路径返回 `/admin`（**不带尾斜杠**）。

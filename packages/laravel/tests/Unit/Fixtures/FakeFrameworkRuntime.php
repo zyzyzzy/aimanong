@@ -23,9 +23,16 @@ class FakeFrameworkRuntime implements FrameworkRuntime
 {
     public function __construct(private readonly Registry $registry = new Registry) {}
 
+    /**
+     * 故意返回**未归一化**的形式（配置里的原样值 ）。
+     *
+     * 真实的 LaravelRuntime 曾经就是这样 —— 于是 Aimanong::url() 拼出
+     * （相对路径），在深度≥2 的页面里全 404。
+     * 让假件保持这个形态，才能测出归一化是否真的生效。
+     */
     public function urlPrefix(): string
     {
-        return '/admin';
+        return 'admin';
     }
 
     public function config(string $key, mixed $default = null): mixed

@@ -19,25 +19,37 @@
     "改这里等于同时改两端的验收标准 —— 这是刻意的：",
     "只改一侧的期望值，另一侧会立刻失败。"
   ],
-
   "slug": {
     "single_app": "{uri}.{action}",
     "multi_app": "{app}.{uri}.{action}",
     "_note": "只有开启多应用时才带应用前缀；单应用必须与改动前逐字相同"
   },
-
   "belongs_to": {
     "undeclared_means_all_apps": true,
     "declared_limits_to_listed": true
   },
-
   "http": {
     "cross_app_status": 404,
     "_cross_app_note": "跨后台访问不属于本后台的 Resource：必须 404（403 会泄露「资源存在」）",
-
     "unauthenticated_redirect_template": "/{app}/auth/login",
     "_redirect_note": "未登录访问某后台，跳转目标必须是该后台自己的登录页",
-
     "login_page_status": 200
+  },
+  "url": {
+    "_note": "两端产出的 URL 形状必须一致。差异会让『同一份声明产出同样的页面』这个主张失效",
+    "must_start_with_slash": true,
+    "_why": [
+      "实测事故：Laravel 的 urlPrefix() 没归一化 → Aimanong::url() 产出 admin/assets/x.css（无前导斜杠）。",
+      "这是相对路径，浏览器按当前页面的 baseURI 解析：",
+      "  页 /admin          → /admin/assets/...        ✅（base 是 /，碰巧对）",
+      "  页 /admin/articles → /admin/admin/assets/...  ❌ 全部 404",
+      "即：控制台页正常、资源页面全坏。躲过了 223 单测 + 147 条 e2e 断言 + 全面验收，",
+      "因为 e2e 只测了深度 1 的控制台页。最后是 5 个独立 AI agent 在浏览器里撞到的。",
+      "ThinkPHP 侧一直是归一化的，所以只有 Laravel 中招 —— 两端不一致本身也是问题。"
+    ],
+    "sample": {
+      "path": "assets/css/design-system.css",
+      "expect_prefix": "/"
+    }
   }
 }

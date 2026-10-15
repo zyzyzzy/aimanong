@@ -439,6 +439,48 @@ foreach (['权限节点', '数据字典', '操作日志', '登录日志'] as $ne
 }
 
 /*
+ * ③-2 🔴 **深度 ≥2 的页面** —— 本轮补的关键断言。
+ *
+ * 此前 e2e 只测了控制台页（`/admin`，深度 1）。而一个真实存在的严重 bug
+ * 只在更深的页面暴露：Laravel 的 urlPrefix() 没归一化 → 页面里是
+ * `admin/assets/x.css`（相对路径）。浏览器按 baseURI 解析：
+ *
+ *   页 /admin           → /admin/assets/...        ✅（base 是 /，碰巧对）
+ *   页 /admin/articles  → /admin/admin/assets/...  ❌ 全部 404
+ *
+ * 即「控制台正常、所有资源页全坏」—— 而全部测试都是绿的。
+ * 最后是 5 个独立 AI agent 在真实浏览器里各自撞到才暴露。
+ * 这条断言把测试覆盖从深度 1 扩到深度 2。
+ */
+$deepPage = http("$base/admin/admin-users");
+$deepBody = (string) $deepPage['body'];
+
+t('资源页面（深度 2）能打开', $deepPage['code'] === 200, "HTTP {$deepPage['code']}");
+
+preg_match_all('~\b(?:href|src)="([^"]*assets/[^"]*)"~', $deepBody, $deepAssets);
+$relative = [];
+foreach (array_unique($deepAssets[1] ?? []) as $u) {
+    if (! str_starts_with($u, '/') && ! str_starts_with($u, 'http')) {
+        $relative[] = $u;
+    }
+}
+t(
+    '深度 2 页面的资源 URL 带前导斜杠',
+    $relative === [],
+    $relative === [] ? '全部以 / 开头' : '相对路径: '.implode(' ', array_slice($relative, 0, 2))
+);
+
+// 登录表单 action 同理 —— 相对路径会打到 /admin/auth/admin/auth/login
+$loginForm = http("$base/admin/auth/login");
+preg_match('~<form[^>]*action="([^"]*)"~', (string) $loginForm['body'], $fm);
+$action = $fm[1] ?? '';
+t(
+    '登录表单 action 带前导斜杠',
+    $action === '' || str_starts_with($action, '/') || str_starts_with($action, 'http'),
+    "action=\"{$action}\""
+);
+
+/*
  * ③ 对照：同一台机器上 admin 后台**应该**有系统管理菜单
  *    （证明不是「所有人都被过滤光了」）。
  *

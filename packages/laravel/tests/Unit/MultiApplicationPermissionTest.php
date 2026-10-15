@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Tests\Unit;
 
+use Aimanong\Aimanong;
 use Aimanong\Auth\PermissionGate;
 use Aimanong\Auth\PermissionGateChecker;
 use Aimanong\Drivers\Eloquent\EloquentIntrospector;
@@ -12,6 +13,7 @@ use Aimanong\Foundation\Upload\Uploader;
 use Aimanong\Support\Drivers;
 use Aimanong\Support\SingleApplication;
 use Aimanong\Tests\Unit\Fixtures\FakeApplicationResolver;
+use Aimanong\Tests\Unit\Fixtures\FakeFrameworkRuntime;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -32,6 +34,9 @@ class MultiApplicationPermissionTest extends TestCase
     {
         parent::setUp();
         Drivers::reset();
+
+        // Aimanong::url() 走公开入口，需要绑定运行时（单测起不了容器）
+        Aimanong::bindRuntime(new FakeFrameworkRuntime);
     }
 
     protected function tearDown(): void
@@ -164,6 +169,48 @@ class MultiApplicationPermissionTest extends TestCase
      * 影响面：`slug()`（不传应用）仍然按 enabled() 决定 ——
      * 单应用项目走 `slug()` 拿到的还是不带前缀的，兼容性不受影响。
      */
+    /**
+     * URL 形状对拍（与 TP 的 e2e 读同一份期望文件）。
+     *
+     * 实测事故：`urlPrefix()` 没归一化时 `Aimanong::url()` 产出
+     * `admin/assets/x.css`（**无前导斜杠**）。那是相对路径，
+     * 在深度≥2 的页面（`/admin/articles`）里被浏览器解析成
+     * `/admin/admin/assets/...` → 全部 404 ——
+     * 而控制台页（深度 1）因 base 是 `/` 碰巧正常，
+     * 所以 e2e 只测控制台时**永远是绿的**。
+     *
+     * 最后是 5 个独立 AI agent 在真实浏览器里各自撞到才暴露。
+     */
+    public function test_url_shape_matches_shared_expectation(): void
+    {
+        $exp = self::sharedExpectations();
+
+        $this->assertTrue(
+            (bool) ($exp['url']['must_start_with_slash'] ?? false),
+            '共享期望文件里应声明 url.must_start_with_slash = true'
+        );
+
+        $sample = (string) ($exp['url']['sample']['path'] ?? 'assets/css/x.css');
+        $expectPrefix = (string) ($exp['url']['sample']['expect_prefix'] ?? '/');
+
+        if ($expectPrefix === '') {
+            $expectPrefix = '/';
+        }
+
+        $url = Aimanong::url($sample);
+
+        $this->assertStringStartsWith(
+            $expectPrefix,
+            $url,
+            "Aimanong::url('{$sample}') 必须带前导斜杠（得到 '{$url}'）"
+        );
+
+        // 空参（侧边栏品牌行用的就是它）
+        $home = Aimanong::url();
+        $this->assertStringStartsWith('/', $home, "Aimanong::url() 必须带前导斜杠（得到 '{$home}'）");
+        $this->assertStringEndsNotWith('/', $home, '空参不应带尾斜杠（TP 的显式路由不做归一化）');
+    }
+
     public function test_app_slug_forces_prefix_when_app_given(): void
     {
         $this->assertSame('admin.orders.index', PermissionGate::appSlug('admin', 'orders'));

@@ -34,9 +34,34 @@ final class LaravelRuntime implements FrameworkRuntime
         return $c;
     }
 
+    /**
+     * 后台 URL 前缀。
+     *
+     * ⚠️ **必须归一化成带前导斜杠**（`/admin` 而不是 `admin`）。
+     *
+     * `Aimanong::url()` 拿它去拼 URL，而生成的 URL 会被放进 `href` / `src`：
+     *
+     *     href="admin/assets/css/design-system.css"     ← 没有前导斜杠
+     *
+     * 这是**相对路径**，浏览器按当前页面的 baseURI 解析：
+     *
+     *     页 /admin           → /admin/assets/...          ✅（base 是 /，碰巧对）
+     *     页 /admin/articles  → /admin/admin/assets/...    ❌ 全 404
+     *
+     * 也就是说**控制台页正常、资源页面全坏** —— 无样式、Vue 加载不到、
+     * 菜单点不动。而这个 bug 躲过了 223 个单测 + 全部 e2e，
+     * 因为e2e 只测了控制台页（深度 1）。
+     *
+     * 最后是 5 个互不相识的 AI agent 在真实浏览器里各自撞到并报上来的。
+     *
+     * ThinkPHP 侧的 `prefixOf()` 一直是归一化的，所以只有 Laravel 中招 ——
+     * 两端行为不一致本身也是问题（同一份声明应当产出同样的 URL）。
+     */
     public function urlPrefix(): string
     {
-        return $this->context()->prefix();
+        $prefix = trim($this->context()->prefix(), '/');
+
+        return $prefix === '' ? '' : '/'.$prefix;
     }
 
     /**

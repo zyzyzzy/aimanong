@@ -64,9 +64,22 @@ final class Aimanong
      */
     public static function url(string $path = ''): string
     {
-        $prefix = self::runtime()->urlPrefix();
+        $prefix = rtrim(self::runtime()->urlPrefix(), '/');
 
-        return rtrim($prefix, '/').'/'.ltrim($path, '/');
+        /*
+         * ⚠️ 空路径返回 `/admin`（**不带尾斜杠**）。
+         *
+         * 原实现返回 `/admin/`。Laravel 两种都能路由，但 ThinkPHP 的显式规则
+         * 不做尾斜杠归一化 —— 侧边栏品牌行的 link（`Aimanong::url()` 空参）
+         * 恰好就是 `/admin/`，于是**点 LOGO 回首页得到 404**。
+         *
+         * 统一成不带尾斜杠的形态：`/admin` 在两端都稳定命中。
+         */
+        if ($path === '') {
+            return $prefix;
+        }
+
+        return $prefix.'/'.ltrim($path, '/');
     }
 
     /**

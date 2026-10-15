@@ -114,7 +114,7 @@
   if (!panel) return;
   var root = document.documentElement;
   var KEY = 'aimanong.ui';
-  var saveUrl = <?php echo json_encode(url(\Aimanong\Aimanong::url('api/ui/preferences'))); ?>;
+  var saveUrl = <?php echo json_encode(\Aimanong\Aimanong::url('api/ui/preferences')); ?>;
   var csrf = document.querySelector('meta[name=csrf-token]')?.content || '';
 
   function read() { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { return {}; } }

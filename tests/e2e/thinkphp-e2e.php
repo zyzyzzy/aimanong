@@ -176,7 +176,19 @@ $port = 8897;
 // 登录态用的 cookie jar —— 认证已启用，后续所有请求都要带上
 $jar = sys_get_temp_dir().'/amn-tp-jar-'.getmypid();
 @unlink($jar);
-$serve = sprintf('%s -S 127.0.0.1:%d -t %s/public', PHP_BINARY, $port, escapeshellarg($tp));
+/*
+ * ⚠️ 必须带 `public/router.php`。
+ *
+ * PHP 内置服务器对**带扩展名**的路径（`/admin/assets/x.css`）不会回退到
+ * index.php —— 直接返回它自己的 404，请求根本到不了框架。
+ * 于是「资产路由配了却全 404」，而 `/admin/customers`（无扩展名）正常，
+ * 极易误判成框架 bug。
+ *
+ * 官方 TP 骨架自带 router.php（`php think run` 就靠它）；demo 由
+ * setup-thinkphp-demo.sh 生成。
+ */
+$router = is_file($tp.'/public/router.php') ? ' '.escapeshellarg($tp.'/public/router.php') : '';
+$serve = sprintf('%s -S 127.0.0.1:%d -t %s/public%s', PHP_BINARY, $port, escapeshellarg($tp), $router);
 $log = sys_get_temp_dir().'/amn-tp-serve.log';
 
 exec(sprintf('pkill -f "127.0.0.1:%d" 2>/dev/null; true', $port));
@@ -257,7 +269,19 @@ $port = 8897;
 // 登录态用的 cookie jar —— 认证已启用，后续所有请求都要带上
 $jar = sys_get_temp_dir().'/amn-tp-jar-'.getmypid();
 @unlink($jar);
-$serve = sprintf('%s -S 127.0.0.1:%d -t %s/public', PHP_BINARY, $port, escapeshellarg($tp));
+/*
+ * ⚠️ 必须带 `public/router.php`。
+ *
+ * PHP 内置服务器对**带扩展名**的路径（`/admin/assets/x.css`）不会回退到
+ * index.php —— 直接返回它自己的 404，请求根本到不了框架。
+ * 于是「资产路由配了却全 404」，而 `/admin/customers`（无扩展名）正常，
+ * 极易误判成框架 bug。
+ *
+ * 官方 TP 骨架自带 router.php（`php think run` 就靠它）；demo 由
+ * setup-thinkphp-demo.sh 生成。
+ */
+$router = is_file($tp.'/public/router.php') ? ' '.escapeshellarg($tp.'/public/router.php') : '';
+$serve = sprintf('%s -S 127.0.0.1:%d -t %s/public%s', PHP_BINARY, $port, escapeshellarg($tp), $router);
 $log = sys_get_temp_dir().'/amn-tp-serve.log';
 
 exec(sprintf('pkill -f "127.0.0.1:%d" 2>/dev/null; true', $port));
@@ -829,6 +853,121 @@ t('install 真的建了管理员', str_contains($out, '已创建管理员') || s
  *
  * 所以断言必须落在「用户/接口实际看到什么」，而不是「配置里有没有写」。
  */
+/*
+ * ═══ ⑫ 资源页面与静态资源 ═══
+ *
+ * 这一段盯的是「页面能不能真的用」—— 前几节只验了「返回 200」，
+ * 而实际出现过：路由配了但资产全 404，页面**完全没有样式**，
+ * 请求却是 200，不报任何错。
+ */
+echo "\n=== ⑫ 资源页面与静态资源 ===\n";
+
+$pageJar = sys_get_temp_dir().'/amn-tp-page-'.getmypid().'.jar';
+@unlink($pageJar);
+
+$pageGet = function (string $path) use ($pageJar): array {
+    $ch = curl_init("http://127.0.0.1:{$GLOBALS['port']}{$path}");
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_COOKIEJAR => $pageJar,
+        CURLOPT_COOKIEFILE => $pageJar,
+    ]);
+    $body = (string) curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $type = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+    unset($ch);
+
+    return [$status, $body, $type];
+};
+
+// 登录（资源页面在鉴权组内）
+[$lc, $lbody] = $pageGet('/admin/auth/login');
+preg_match('/name="_token" value="([^"]+)"/', $lbody, $lm);
+
+$ch = curl_init("http://127.0.0.1:{$GLOBALS['port']}/admin/auth/login");
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST => true,
+    CURLOPT_POSTFIELDS => http_build_query(['_token' => $lm[1] ?? '', 'username' => 'admin', 'password' => 'admin123']),
+    CURLOPT_COOKIEJAR => $pageJar,
+    CURLOPT_COOKIEFILE => $pageJar,
+    CURLOPT_FOLLOWLOCATION => false,
+    CURLOPT_TIMEOUT => 15,
+]);
+curl_exec($ch);
+unset($ch);
+
+// ① 资源页面（HTML）——此前 TP 完全没有这类路由，链接点进去是 404
+[$code, $html] = $pageGet('/admin/customers');
+t('资源页面 /admin/customers → 200', $code === 200, "HTTP {$code}");
+t('资源页面渲染了 schema（不是空壳）', str_contains($html, '"columns"'));
+t('资源页面无未替换的模板占位符', ! str_contains($html, '{block') && ! str_contains($html, '{{--'));
+
+/*
+ * ② Vue 插值必须原样到达浏览器。
+ *
+ * `@{{ total }}` 是 Blade 对 Vue 插值的**转义**；转换器若把它当普通
+ * `{{ }}` 处理，会产出 `<?php echo total; ?>`（不存在的 PHP 变量）→ 页面 500。
+ * 实测踩到，且因为布局 bug 一直没暴露。
+ */
+t('Vue 插值原样保留（供浏览器端 Vue 使用）', str_contains($html, '{{ total }}'));
+
+// ③ 静态资源 —— 没样式比 404 更隐蔽
+foreach ([
+    '/admin/assets/css/design-system.css' => 'text/css',
+    '/admin/assets/css/themes.css' => 'text/css',
+    '/admin/assets/js/vue.global.prod.js' => 'javascript',
+] as $asset => $expectType) {
+    [$ac, , $atype] = $pageGet($asset);
+    t(
+        '资源可访问: '.basename($asset),
+        $ac === 200 && str_contains($atype, $expectType),
+        "HTTP {$ac} {$atype}"
+    );
+}
+
+// ④ 资源不需要登录（登录页本身要用 LOGO 与 CSS）
+[$anonCode] = (function () use ($port): array {
+    $ch = curl_init("http://127.0.0.1:{$port}/admin/assets/css/design-system.css");
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15]);
+    curl_exec($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    unset($ch);
+
+    return [$code];
+})();
+t('资源免登录可访问（登录页需要）', $anonCode === 200, "HTTP {$anonCode}");
+
+// ⑤ 目录穿越
+[$travCode] = $pageGet('/admin/assets/../../../.env');
+t('资源路由防目录穿越', $travCode === 404, "HTTP {$travCode}");
+
+/*
+ * ⑥ 页面里的链接必须都能点。
+ *
+ * 曾经全部带 `.html` 后缀（TP 的 `url()` 默认加 `url_html_suffix`），
+ * 于是每个菜单项都 404 —— 而页面本身 200，看不出问题。
+ */
+preg_match_all('~\b(?:href|src)="(/admin/[^"]*)"~', $html, $links);
+$broken = [];
+foreach (array_unique($links[1]) as $link) {
+    // 跳过已知未实现的功能页（不是路由问题）
+    if (str_contains($link, '/admin/profile')) {
+        continue;
+    }
+    [$lc2] = $pageGet($link);
+    if ($lc2 !== 200) {
+        $broken[] = "{$link}({$lc2})";
+    }
+}
+t(
+    '页面内链全部可用（无 .html 后缀等）',
+    $broken === [],
+    $broken === [] ? '全部 200' : implode(' ', array_slice($broken, 0, 3))
+);
+
 echo "\n=== ⑪ 多应用隔离（/admin + /agent）===\n";
 
 /*

@@ -8,6 +8,7 @@ use Aimanong\Http\Controllers\AuthController;
 use Aimanong\Http\Controllers\HomeController;
 use Aimanong\Http\Controllers\ResourceController;
 use Aimanong\Http\Controllers\UiController;
+use Aimanong\Support\Asset;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -34,8 +35,8 @@ Route::get('/', [HomeController::class, 'index'])->name('index');
 | 框架内置资源（LOGO 等）—— 免 publish 直接可用
 */
 Route::get('assets/{path}', function (string $path) {
-    $full = realpath(__DIR__.'/../resources/assets/'.$path);
-    $base = realpath(__DIR__.'/../resources/assets');
+    $base = realpath(Asset::path());
+    $full = realpath(Asset::path($path));
 
     // 防目录穿越
     if ($full === false || $base === false || ! str_starts_with($full, $base)) {

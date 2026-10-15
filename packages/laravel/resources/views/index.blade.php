@@ -71,7 +71,7 @@
     @else
       <div class="am-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:var(--sp-3)">
         @foreach($quickLinks as $link)
-          <a class="am-tile" href="{{ url(\Aimanong\Aimanong::url($link['uri'])) }}">
+          <a class="am-tile" href="{{ \Aimanong\Aimanong::url($link['uri']) }}">
             <div class="am-tile__icon">
               @include('aimanong::partials.icon', ['name' => $link['icon'] ?: 'file', 'size' => 17])
             </div>

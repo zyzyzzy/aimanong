@@ -7,12 +7,16 @@ namespace Aimanong\ThinkPHP\Http;
 use Aimanong\Aimanong;
 use Aimanong\Contracts\Permissible;
 use Aimanong\Menu\MenuRegistry;
+use Aimanong\Schema\Compiler;
+use Aimanong\Schema\Emitters\JsonSchemaEmitter;
 use Aimanong\Support\Drivers;
+use Aimanong\Support\FieldType;
 use Aimanong\ThinkPHP\Models\Administrator;
 use Aimanong\ThinkPHP\Models\Permission;
 use Aimanong\ThinkPHP\ThinkPermissionChecker;
 use Aimanong\ThinkPHP\View\NullErrors;
 use Aimanong\ThinkPHP\View\ThinkView;
+use think\exception\HttpException;
 use think\Response;
 
 /**
@@ -110,6 +114,81 @@ final class HomeController
     }
 
     /**
+     * 资源页面（HTML）。
+     *
+     * 与 Laravel 侧 `HomeController::resource()` 提供同一组数据 ——
+     * 模板是从同一份 Blade 真源转出来的，数据形状必须一致。
+     *
+     * ## 路由位置
+     *
+     * 这是**兜底路由**，必须放在所有具体路由（`/`、`/api/*`、`/auth/*`、
+     * `/profile`）**之后**。否则它会吞掉 `/api/customers` 这类请求。
+     *
+     * ## 与 Laravel 侧的差异
+     *
+     * | 数据 | Laravel | ThinkPHP |
+     * |---|---|---|
+     * | pluginFieldViews | Extension 注册的渲染片段 | **空数组**（TP 暂无扩展机制） |
+     * | pluginScripts | FieldType::fieldScripts() | 同上（core 共享，但无插件注册） |
+     * | ui | 用户偏好 | 默认值 |
+     */
+    public function resource(string $uri): Response
+    {
+        $class = Aimanong::registry()->find($uri);
+
+        if ($class === null) {
+            throw new HttpException(404, "Resource [{$uri}] 未注册");
+        }
+
+        /*
+         * ⚠️ 归属校验必须在权限校验之前（返回 404 而不是 403）。
+         *
+         * 403 等于告诉对方「这个资源存在，只是你没权限」——
+         * 那是把后台结构泄露出去。这条规则写在 core 契约里，
+         * 两端都必须遵守（Laravel 侧 authorize_() 第一行也是这个检查）。
+         */
+        $apps = Drivers::application();
+
+        if ($apps->enabled() && ! Aimanong::registry()->belongsTo($uri, $apps->current())) {
+            throw new HttpException(404, "Resource [{$uri}] 未注册");
+        }
+
+        // 权限判定：未授权的用户应看到明确的提示，而不是空表格
+        $checker = new ThinkPermissionChecker;
+
+        if ($checker->rbacEnabled()) {
+            $slug = $checker->slug($uri, 'index');
+
+            if (! $checker->check($slug)) {
+                throw new HttpException(
+                    403,
+                    '没有权限访问「'.$class::label().'」。请让管理员分配「查看列表」权限。'
+                );
+            }
+        }
+
+        $node = (new Compiler)->compile($class);
+        $schema = (new JsonSchemaEmitter)->emit($node);
+
+        $html = (new ThinkView)->render('resource', [
+            'uri' => $uri,
+            'label' => $node->label,
+            'user' => Aimanong::user(),
+            'schema' => $schema,
+            'menu' => (new MenuRegistry)->tree(),
+            'ui' => $this->defaultUi(),
+            'errors' => new NullErrors,
+            // TP 暂无扩展机制，这两个传空数组
+            // （core 的 FieldType 是共享的，但没有插件注册过 fieldView/fieldScript）
+            'pluginFieldViews' => [],
+            'pluginScripts' => [],
+        ]);
+
+        return Response::create($html, 'html', 200);
+    }
+
+    /**
+     * 默认主题偏好。
      * 默认主题偏好。
      *
      * Laravel 侧从用户的 preferences 取；TP 侧认证还没做，

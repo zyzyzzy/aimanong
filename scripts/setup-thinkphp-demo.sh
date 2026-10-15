@@ -198,6 +198,26 @@ class Agent extends \think\Model implements Permissible
 }
 PHPEOF
 
+# ThinkPHP 内置服务器的 router。
+#
+# ⚠️ 没有它时，**带扩展名的路径不会回退到 index.php** ——
+# PHP 内置服务器对 `/admin/assets/x.css` 这类请求直接返回它自己的 404，
+# 请求根本到不了框架。表现为「资产路由配了但全 404」，
+# 而 `/admin/customers`（无扩展名）却正常，极易误判成框架 bug。
+#
+# 官方骨架自带这个文件（`php think run` 就靠它）；我们的 demo 要自己生成。
+cat > "$TARGET/public/router.php" <<'PHPEOF'
+<?php
+// 已存在的静态文件交给内置服务器直接返回
+if (is_file($_SERVER['DOCUMENT_ROOT'].$_SERVER['SCRIPT_NAME'])) {
+    return false;
+}
+
+$_SERVER['SCRIPT_FILENAME'] = __DIR__.'/index.php';
+
+require __DIR__.'/index.php';
+PHPEOF
+
 cat > "$TARGET/config/app.php" <<'PHPEOF'
 <?php
 return ['app_debug' => true, 'default_app' => 'index'];

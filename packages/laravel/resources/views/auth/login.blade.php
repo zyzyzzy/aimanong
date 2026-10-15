@@ -275,7 +275,7 @@
         </div>
       @endif
 
-      <form method="POST" action="{{ url(\Aimanong\Aimanong::url('auth/login')) }}">
+      <form method="POST" action="{{ \Aimanong\Aimanong::url('auth/login') }}">
         @csrf
 
         <div class="lg__field">

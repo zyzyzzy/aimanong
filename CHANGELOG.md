@@ -8,9 +8,34 @@
 
 | 包 | 版本 | 内容 |
 |---|---|---|
-| `aimanong/core` | **1.2.0** | 多应用（多后台）内核：`ApplicationResolver` / `Permissible` 契约、菜单与 Resource 归属、权限按应用隔离、`@primary` 占位符 |
-| `aimanong/laravel` | **1.1.0** | 多应用（多后台）完整落地：应用解析注册、权限按后台加前缀、`user_type` 角色隔离迁移、`migrate-permissions` 命令、内置 Resource 归属声明 |
-| `aimanong/thinkphp` | **1.0.2** | 🔴 **控制台正文整块丢失**的修复 |
+| `aimanong/core` | **1.3.0** | 前端资源统一收归 core（`Asset::path()`）；修 `Asset::url()` 的平台依赖与 `Aimanong::url('')` 的尾斜杠 |
+| `aimanong/laravel` | **1.1.1** | 资源路由改用 core 的 `Asset::path()`（包内不再重复存一份资产） |
+| `aimanong/thinkphp` | **1.1.0** | **资源页面（HTML）与静态资源上线**；修 Vue 插值被转换器吃掉导致的 500 |
+
+> ⚠️ `aimanong/laravel` 与 `aimanong/thinkphp` 本版都要求 `aimanong/core: ^1.3`
+> （需要 core 里的前端资源与 `Asset::path()`）。只升驱动不升 core 会解不出依赖。
+
+### aimanong/thinkphp 1.1.0（资源页面可用）
+
+1.0.2 的 ThinkPHP 后台**只有控制台一个页面** —— 侧边栏每个菜单项点进去都是 404。
+
+本版补上：
+
+- **资源页面（HTML）路由** —— `/admin/customers` 等现在渲染列表/表单
+- **静态资源路由** —— 设计系统 CSS / 主题 / Vue 运行时 / LOGO
+  （此前全部 404，后台**完全没有样式**而页面返回 200，不报任何错）
+- 修 **Vue 插值**被模板转换器误转成 `<?php echo total; ?>` 导致的页面 500
+- 补 `favicon-32.png`（布局一直引用它，而文件从未存在 → 每次加载一次 404）
+- `Aimanong::url()` 空参不再带尾斜杠（点 LOGO 回首页曾 404）
+
+升级：
+
+```bash
+composer require aimanong/thinkphp:^1.1.0
+```
+
+**仍未移植**：个人中心页（`/admin/profile` 404）、`batch` / `export` / `tree` / `move`
+（返回 501）、内置 Resource（管理员/角色/日志/字典页面）。
 
 ### aimanong/laravel 1.1.0（多应用落地）
 

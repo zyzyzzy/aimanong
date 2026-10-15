@@ -280,18 +280,17 @@ TP 侧用 `assignRole()`（**不能**裸 attach —— `wherePivot` 只作用于
 $agent->assignRole([$role->id]);
 ```
 
-### 3. ⚠️ ThinkPHP 侧目前**没有资源页面的 HTML 路由**
-
-只有控制台页（`/admin`）与 JSON 数据 API（`/admin/api/{uri}`）。
+### 3. 个人中心页尚未移植
 
 ```
-/admin                 200 ✅
-/admin/api/customers   200 ✅
-/admin/customers       404 ❌
+/admin                 200 ✅   控制台
+/admin/customers       200 ✅   资源页面（HTML）
+/admin/api/customers   200 ✅   数据 API（JSON）
+/admin/profile         404 ❌   个人中心（页面与接口未移植）
 ```
 
-控制台菜单里的链接目前指向这些不存在的页面。完整差异见
-[多框架支持](./multi-framework)。
+顶栏的「个人中心」链接在 ThinkPHP 侧点进去是 404 —— 其余页面都正常。
+完整差异见 [多框架支持](./multi-framework)。
 
 ---
 

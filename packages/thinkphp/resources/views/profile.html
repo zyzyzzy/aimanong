@@ -6,9 +6,9 @@
     <div>
       <h1 class="am-page-head__title">个人中心</h1>
       <div class="am-page-head__desc">
-        <span><?php echo user.name || user.username; ?></span>
+        <span>{{ user.name || user.username }}</span>
         <span class="am-text-muted"> · </span>
-        <span class="am-text-muted"><?php echo user.username; ?></span>
+        <span class="am-text-muted">{{ user.username }}</span>
       </div>
     </div>
   </div>
@@ -16,8 +16,8 @@
   <div class="am-tabs">
     <button v-for="t in tabs" :key="t.key" type="button"
             class="am-tabs__item" :class="{'is-active': tab === t.key}"
-            @click="tab = t.key"><?php echo t.label; ?>
-      <span v-if="t.key === 'ops' && operations.length" class="am-tabs__count"><?php echo operations.length; ?></span>
+            @click="tab = t.key">{{ t.label }}
+      <span v-if="t.key === 'ops' && operations.length" class="am-tabs__count">{{ operations.length }}</span>
     </button>
   </div>
 
@@ -52,9 +52,9 @@
 
       <div class="am-flex am-gap-2" style="margin-top:var(--sp-4)">
         <button class="am-btn am-btn--primary" :disabled="saving" @click="saveProfile">
-          <?php echo saving ? '保存中…' : '保存资料'; ?>
+          {{ saving ? '保存中…' : '保存资料' }}
         </button>
-        <span class="am-text-sm am-text-muted" v-if="basicError" style="color:var(--danger-text)"><?php echo basicError; ?></span>
+        <span class="am-text-sm am-text-muted" v-if="basicError" style="color:var(--danger-text)">{{ basicError }}</span>
       </div>
     </div>
   </div>
@@ -81,9 +81,9 @@
 
       <div class="am-flex am-gap-2" style="margin-top:var(--sp-4)">
         <button class="am-btn am-btn--primary" :disabled="savingPwd" @click="savePassword">
-          <?php echo savingPwd ? '提交中…' : '修改密码'; ?>
+          {{ savingPwd ? '提交中…' : '修改密码' }}
         </button>
-        <span class="am-text-sm" v-if="pwdError" style="color:var(--danger-text)"><?php echo pwdError; ?></span>
+        <span class="am-text-sm" v-if="pwdError" style="color:var(--danger-text)">{{ pwdError }}</span>
       </div>
     </div>
   </div>
@@ -93,7 +93,7 @@
     <div class="am-card__body">
       <h3 class="am-card__title">我的角色</h3>
       <div class="am-flex am-gap-2" style="flex-wrap:wrap;margin-bottom:var(--sp-4)">
-        <span v-for="r in roles" :key="r" class="am-badge am-badge--brand"><?php echo r; ?></span>
+        <span v-for="r in roles" :key="r" class="am-badge am-badge--brand">{{ r }}</span>
         <span v-if="!roles.length" class="am-text-muted">未分配角色</span>
       </div>
 
@@ -104,7 +104,7 @@
       <template v-else>
         <p class="am-text-sm am-text-muted" v-if="!permissions.length">暂无权限节点。</p>
         <div class="am-perm-list">
-          <code v-for="p in permissions" :key="p"><?php echo p; ?></code>
+          <code v-for="p in permissions" :key="p">{{ p }}</code>
         </div>
       </template>
     </div>
@@ -121,11 +121,11 @@
         </thead>
         <tbody>
           <tr v-for="(o, i) in operations" :key="i">
-            <td data-l="时间"><?php echo o.at; ?></td>
-            <td data-l="动作"><span class="am-badge am-badge--brand"><?php echo o.action; ?></span></td>
-            <td data-l="资源"><?php echo o.resource || '—'; ?></td>
-            <td data-l="记录 ID"><?php echo o.target || '—'; ?></td>
-            <td data-l="IP"><?php echo o.ip || '—'; ?></td>
+            <td data-l="时间">{{ o.at }}</td>
+            <td data-l="动作"><span class="am-badge am-badge--brand">{{ o.action }}</span></td>
+            <td data-l="资源">{{ o.resource || '—' }}</td>
+            <td data-l="记录 ID">{{ o.target || '—' }}</td>
+            <td data-l="IP">{{ o.ip || '—' }}</td>
           </tr>
         </tbody>
       </table>
@@ -141,8 +141,8 @@
     <div class="am-toasts" v-if="toasts.length">
       <div v-for="t in toasts" :key="t.id" class="am-toast" :class="'am-toast--' + t.type" @click="dismiss(t.id)">
         <div class="am-toast__body">
-          <div class="am-toast__title"><?php echo t.title; ?></div>
-          <div class="am-toast__desc" v-if="t.desc"><?php echo t.desc; ?></div>
+          <div class="am-toast__title">{{ t.title }}</div>
+          <div class="am-toast__desc" v-if="t.desc">{{ t.desc }}</div>
         </div>
       </div>
     </div>
@@ -155,8 +155,8 @@
 {include file="partials/upload" /}
 
 {php}
-  $profileUrl = url(\Aimanong\Aimanong::url('api/profile'));
-  $passwordUrl = url(\Aimanong\Aimanong::url('api/profile/password'));
+  $profileUrl = \Aimanong\Aimanong::url('api/profile');
+  $passwordUrl = \Aimanong\Aimanong::url('api/profile/password');
 {/php}
 
 <style>

@@ -275,7 +275,7 @@
         </div>
       {/if}
 
-      <form method="POST" action="<?php echo url(\Aimanong\Aimanong::url('auth/login')); ?>">
+      <form method="POST" action="<?php echo \Aimanong\Aimanong::url('auth/login'); ?>">
         {:csrf_token()}
 
         <div class="lg__field">

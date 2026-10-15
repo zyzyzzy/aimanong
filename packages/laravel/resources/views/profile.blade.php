@@ -155,8 +155,8 @@
 @include('aimanong::partials.upload', ['uploadConfig' => $upload])
 
 @php
-  $profileUrl = url(\Aimanong\Aimanong::url('api/profile'));
-  $passwordUrl = url(\Aimanong\Aimanong::url('api/profile/password'));
+  $profileUrl = \Aimanong\Aimanong::url('api/profile');
+  $passwordUrl = \Aimanong\Aimanong::url('api/profile/password');
 @endphp
 
 <style>

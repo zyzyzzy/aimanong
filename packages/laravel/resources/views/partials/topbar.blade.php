@@ -20,7 +20,7 @@
     </button>
 
     <div class="am-crumb">
-      <a href="{{ url(\Aimanong\Aimanong::url()) }}">控制台</a>
+      <a href="{{ \Aimanong\Aimanong::url() }}">控制台</a>
       @if($label)
         <span class="am-crumb__sep">/</span>
         <span class="am-crumb__current">{{ $label }}</span>
@@ -35,7 +35,7 @@
 
     @if($user)
       @if(config('aimanong.foundation.profile.enable', true))
-        <a class="am-topbar__user" href="{{ url(\Aimanong\Aimanong::url('profile')) }}" title="个人中心">
+        <a class="am-topbar__user" href="{{ \Aimanong\Aimanong::url('profile') }}" title="个人中心">
           @if(!empty($user->avatar))
             <img class="am-avatar am-avatar--sm" src="{{ (new \Aimanong\Foundation\Upload\Uploader)->urlFromValue($user->avatar) }}" alt="">
           @else
@@ -46,7 +46,7 @@
       @else
         <span class="am-text-sm am-text-secondary">{{ $user->name ?? $user->username ?? '' }}</span>
       @endif
-      <form method="POST" action="{{ url(\Aimanong\Aimanong::url('auth/logout')) }}" style="display:inline">
+      <form method="POST" action="{{ \Aimanong\Aimanong::url('auth/logout') }}" style="display:inline">
         @csrf
         <button type="submit" class="am-btn am-btn--ghost am-btn--sm">
           @include('aimanong::partials.icon', ['name' => 'logout', 'size' => 15])

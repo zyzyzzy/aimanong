@@ -796,7 +796,7 @@ t("divider 前端有渲染分支",
 
 t("divider 有可见样式",
     str_contains(
-        (string) file_get_contents($fw.'/resources/assets/css/design-system.css'),
+        (string) file_get_contents(\Aimanong\Support\Asset::path('css/design-system.css')),
         '.am-field__divider'
     ),
     '有结构没样式 = 还是看不见');

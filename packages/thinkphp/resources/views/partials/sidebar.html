@@ -30,7 +30,7 @@
 {/php}
 <aside class="am-sidebar" id="am-sidebar">
   <div class="am-sidebar__brand">
-    <a class="am-sidebar__brandlink" href="<?php echo url(\Aimanong\Aimanong::url()); ?>">
+    <a class="am-sidebar__brandlink" href="<?php echo \Aimanong\Aimanong::url(); ?>">
       <img class="am-sidebar__mark" alt="<?php echo \Aimanong\Aimanong::brand(); ?>"
            src="<?php echo \Aimanong\Aimanong::asset()->url('logo.png'); ?>">
       {/* 显示中文名「AI码农」—— LOGO 图片本身是拉丁文 "Ai manong"，
@@ -81,7 +81,7 @@
             <div class="am-nav__inner">
               {foreach $item['children'] as $child}
                 <a class="am-nav__item <?php echo ($child['uri'] ?? '') === $current ? 'is-active' : ''; ?>"
-                   href="<?php echo url(\Aimanong\Aimanong::url($child['uri'] ?? '')); ?>"
+                   href="<?php echo \Aimanong\Aimanong::url($child['uri'] ?? ''); ?>"
                    title="<?php echo $child['label']; ?>">
                   {include file="partials/icon" /}
                   <span class="am-truncate am-nav__label"><?php echo $child['label']; ?></span>
@@ -92,7 +92,7 @@
         </div>
       {else /}
         <a class="am-nav__item <?php echo ($item['uri'] ?? '') === $current ? 'is-active' : ''; ?>"
-           href="<?php echo url(\Aimanong\Aimanong::url($item['uri'] ?? '')); ?>"
+           href="<?php echo \Aimanong\Aimanong::url($item['uri'] ?? ''); ?>"
            title="<?php echo $item['label']; ?>">
           {include file="partials/icon" /}
           <span class="am-truncate am-nav__label"><?php echo $item['label']; ?></span>

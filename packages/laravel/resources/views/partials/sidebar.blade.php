@@ -30,7 +30,7 @@
 @endphp
 <aside class="am-sidebar" id="am-sidebar">
   <div class="am-sidebar__brand">
-    <a class="am-sidebar__brandlink" href="{{ url(\Aimanong\Aimanong::url()) }}">
+    <a class="am-sidebar__brandlink" href="{{ \Aimanong\Aimanong::url() }}">
       <img class="am-sidebar__mark" alt="{{ \Aimanong\Aimanong::brand() }}"
            src="{{ \Aimanong\Aimanong::asset()->url('logo.png') }}">
       {{-- 显示中文名「AI码农」—— LOGO 图片本身是拉丁文 "Ai manong"，
@@ -81,7 +81,7 @@
             <div class="am-nav__inner">
               @foreach($item['children'] as $child)
                 <a class="am-nav__item {{ ($child['uri'] ?? '') === $current ? 'is-active' : '' }}"
-                   href="{{ url(\Aimanong\Aimanong::url($child['uri'] ?? '')) }}"
+                   href="{{ \Aimanong\Aimanong::url($child['uri'] ?? '') }}"
                    title="{{ $child['label'] }}">
                   @include('aimanong::partials.icon', ['name' => $child['icon'] ?? 'file', 'size' => 16])
                   <span class="am-truncate am-nav__label">{{ $child['label'] }}</span>
@@ -92,7 +92,7 @@
         </div>
       @else
         <a class="am-nav__item {{ ($item['uri'] ?? '') === $current ? 'is-active' : '' }}"
-           href="{{ url(\Aimanong\Aimanong::url($item['uri'] ?? '')) }}"
+           href="{{ \Aimanong\Aimanong::url($item['uri'] ?? '') }}"
            title="{{ $item['label'] }}">
           @include('aimanong::partials.icon', ['name' => $item['icon'] ?? 'file', 'size' => 16])
           <span class="am-truncate am-nav__label">{{ $item['label'] }}</span>

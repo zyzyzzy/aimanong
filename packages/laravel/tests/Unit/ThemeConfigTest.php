@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Tests\Unit;
 
+use Aimanong\Support\Asset;
 use Aimanong\Ui\ThemeConfig;
 use PHPUnit\Framework\TestCase;
 
@@ -67,7 +68,7 @@ class ThemeConfigTest extends TestCase
      */
     public function test_themes_css_has_both_modes(): void
     {
-        $css = (string) file_get_contents(dirname(__DIR__, 2).'/resources/assets/css/themes.css');
+        $css = (string) file_get_contents(Asset::path('css/themes.css'));
 
         $this->assertStringContainsString('[data-mode="light"]', $css);
         $this->assertStringContainsString('[data-mode="dark"]', $css);

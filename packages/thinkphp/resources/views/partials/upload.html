@@ -231,16 +231,16 @@
           <template v-else>
             <ul v-if="items.length" class="am-upload__files">
               <li v-for="(item, i) in items" :key="item + i">
-                <a :href="uploadUrl(item)" target="_blank" rel="noopener"><?php echo uploadName(item); ?></a>
+                <a :href="uploadUrl(item)" target="_blank" rel="noopener">{{ uploadName(item) }}</a>
                 <button type="button" class="am-btn am-btn--sm am-btn--ghost" @click="removeAt(i)">移除</button>
               </li>
             </ul>
             <button v-if="multiple || items.length === 0" type="button" class="am-btn am-btn--sm"
-                    :disabled="uploading" @click="pick"><?php echo uploading ? '上传中…' : '选择文件'; ?></button>
+                    :disabled="uploading" @click="pick">{{ uploading ? '上传中…' : '选择文件' }}</button>
           </template>
 
-          <div v-if="error" class="am-upload__err"><?php echo error; ?></div>
-          <div v-else-if="limit && kind === 'image'" class="am-field__help">单个文件不超过 <?php echo limit; ?> KB</div>
+          <div v-if="error" class="am-upload__err">{{ error }}</div>
+          <div v-else-if="limit && kind === 'image'" class="am-field__help">单个文件不超过 {{ limit }} KB</div>
           <input ref="input" type="file" :accept="acceptAttr" :multiple="multiple" hidden @change="onPick">
         </div>
       `,

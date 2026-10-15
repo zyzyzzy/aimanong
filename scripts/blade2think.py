@@ -98,15 +98,33 @@ def conv(src: str, name: str, hoisted: dict) -> tuple[str, list[str]]:
     def _stash(m):
         stash.append(m.group(1))
         return '\x00CMT%d\x00' % (len(stash) - 1)
+
+    # Vue 插值的独立暂存区。
+    #
+    # ⚠️ 为什么必须独立暂存：`@{{ total }}` 要转成 `{{ total }}`（给 Vue 用），
+    #    而**规则⑤还会把 `{{ expr }}` 转成 `<?php echo`** —— 规则①的产物
+    #    会被规则⑤吃掉，产出 `<?php echo total; ?>`（引用不存在的 PHP 变量）。
+    #
+    #    所以规则①的结果先存起来，等所有规则跑完再原样还原。
+    vue_stash = []
+    def _vue_stash(m):
+        vue_stash.append(m.group(1))
+        return '\x00VUE%d\x00' % (len(vue_stash) - 1)
     n_cmt = len(re.findall(r'\{\{--', s))
     s = re.sub(r'\{\{--(.*?)--\}\}', _stash, s, flags=re.S)
     # 用占位符保护三块「不许碰」的区域：{{-- --}} 之外的 JS/CSS 天然安全（已实测），
     # 但 @ 指令和 {{ }} 必须先处理。
 
     # ① @{{ }} Vue mustache → {{ }}（think-template 不需要转义）
+    #
+    #    实测：think-template 对 `{{ total }}` 原样放行（正是 Vue 需要的），
+    #    而 `@{{ total }}` 会连 `@` 一起输出到浏览器 —— 所以要去掉 `@`。
+    #
+    #    ⚠️ 产物**必须暂存**：否则规则⑤会把 `{{ total }}` 再转成
+    #    `<?php echo total; ?>`（不存在的 PHP 变量）→ 页面 500。
     n = len(re.findall(r'@\{\{', s))
-    if n: todo.append(f'Vue mustache 去转义 {n} 处')
-    s = re.sub(r'@\{\{(.*?)\}\}', lambda m: '{{' + m.group(1) + '}}', s, flags=re.S)
+    if n: todo.append(f'Vue mustache 去转义 {n} 处（已暂存，避免被规则⑤二次转换）')
+    s = re.sub(r'@\{\{(.*?)\}\}', _vue_stash, s, flags=re.S)
 
 
     # ③ @json($x) → {:json_encode($x)}
@@ -329,6 +347,12 @@ def conv(src: str, name: str, hoisted: dict) -> tuple[str, list[str]]:
             )
 
         s = re.sub(r'[ \t]*use\s+[A-Za-z_\\][\w\\]*\s*;[ \t]*\n', '', s)
+
+    # ⓪-1 还原 Vue 插值（原样输出 `{{ expr }}`，交给浏览器里的 Vue）
+    if vue_stash:
+        todo.append(f'Vue 插值 {len(vue_stash)} 处已还原为 {{{{ expr }}}}')
+    for i, body in enumerate(vue_stash):
+        s = s.replace('\x00VUE%d\x00' % i, '{{' + body + '}}')
 
     # ⓪ 还原注释（并且把注释里的 @include 用法示例也写成 TP 形式）
     if n_cmt:

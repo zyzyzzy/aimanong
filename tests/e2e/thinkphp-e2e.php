@@ -644,8 +644,21 @@ t('列表返回 data 数组', is_array($r) && count($r['data'] ?? []) === 2);
 [$st, $r] = $api('GET', 'customers?keyword='.rawurlencode('杭州'));
 t('搜索生效（searchable 声明驱动）', $st === 200 && ($r['meta']['total'] ?? null) === 1);
 
-[$st, $r] = $api('GET', 'customers?sort=name&direction=desc');
-t('排序生效', $st === 200 && is_array($r));
+/*
+ * ⚠️ 这条原先排的是 `name`，而 customers **没声明** name 可排序。
+ * 新门禁（只接受声明过 ->sortable() 的列）上线后它立刻红了 —— **红得对**：
+ * 那正是这次要改的行为。改用已声明 sortable 的 id。
+ */
+[$st, $r] = $api('GET', 'customers?sort=id&direction=desc');
+t('排序生效（已声明的列）', $st === 200 && is_array($r));
+
+// 存在但没声明 ->sortable() 的列要拦（并说清怎么加）
+[$st, $r] = $api('GET', 'customers?sort=name');
+t(
+    '存在但未声明 sortable 的列 → 422',
+    $st === 422 && ($r['error'] ?? '') === 'SORT_COLUMN_NOT_DECLARED',
+    "HTTP {$st}"
+);
 
 // AI 常把 direction 猜成 order —— 静默忽略会返回未排序结果而 AI 以为生效了
 [$st, $r] = $api('GET', 'customers?order=name');
@@ -1206,8 +1219,21 @@ if ($cc === null) {
         (string) ($badJson['did_you_mean'] ?? '(无)')
     );
 
-    [$okCode] = $treeReq('/admin/api/'.($bad['resource_uri'] ?? 'departments').'?sort=id');
-    t('合法排序列仍返回 200', $okCode === 200, "HTTP {$okCode}");
+    // 已声明的可排序列仍要放行（别修过头）
+    $gate = $cc['sort_gate'] ?? [];
+    $gateUri = $bad['sortable_uri'] ?? 'departments';
+    [$okCode] = $treeReq('/admin/api/'.$gateUri.'?sort='.($gate['declared_ok'] ?? 'id'));
+    t('已声明的排序列仍返回 200', $okCode === 200, "HTTP {$okCode}");
+
+    // 存在但没声明 ->sortable() 的列也要拦
+    [$unCode, $unBody] = $treeReq('/admin/api/'.$gateUri.'?sort='.($gate['exists_but_not_declared'] ?? 'name'));
+    $unJson = json_decode($unBody, true) ?: [];
+
+    t(
+        '存在但未声明 sortable 的列 → 422',
+        $unCode === 422 && ($unJson['error'] ?? '') === 'SORT_COLUMN_NOT_DECLARED',
+        "HTTP {$unCode}"
+    );
 
     // ③ 猜错的 create 路径必须给出方向正确的提示
     foreach ($cc['no_create_page']['paths'] as $tpl) {

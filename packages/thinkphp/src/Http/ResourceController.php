@@ -887,7 +887,8 @@ final class ResourceController
             }
         }
 
-        if (in_array($sort, $known, true)) {
+        // 列存在还不够 —— 必须**声明过** ->sortable()（宪法 ②「声明唯一」）
+        if (in_array($sort, $sortable, true)) {
             return null;
         }
 

@@ -62,6 +62,16 @@ class Capabilities
             /*
              * ⚠️ 这两条是实测中 agent 花时间最多的摩擦点，写进自省资料。
              */
+            /*
+             * ⚠️ 字段类型与校验规则是**两件独立的事** —— 实测坑。
+             *
+             * 本轮一个 agent 实测：`$form->email('email')` 看起来就"是邮箱"，
+             * 但把 `->rules('email')` 去掉后，schema 里规则只剩 `["required"]`
+             * —— 字段类型**不会**自动带上同名校验规则。
+             */
+            'field_type_vs_rule' => '字段类型（$form->email()）只决定**渲染**用哪个控件；'
+                .'校验规则要另外写（->rules(\'email\') / ->required() / ->max(10)）。'
+                .'两者同名但互不蕴含 —— 实测：只写 $form->email() 时提交非法邮箱**能过**。',
             'http_conventions' => [
                 '数据接口' => '数据接口统一在 {prefix}/api/{uri}（如 /admin/api/users）。'
                     .'不带 /api 的 /admin/{uri} 是 SPA 的 HTML 页面，curl 它会拿回 HTML 而不是 JSON。'

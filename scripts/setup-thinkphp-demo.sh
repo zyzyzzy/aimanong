@@ -335,7 +335,7 @@ class DepartmentResource extends Resource
 
     public static function grid(\Aimanong\Grid\Grid $grid): void
     {
-        $grid->column('id', 'ID');
+        $grid->column('id', 'ID')->sortable();   // 树形页也能按 id 排（e2e 用它验证「已声明的列放行」）
         $grid->column('name', '部门名称');
         // 关联列 —— 树形页也要能取到值（框架会预加载 /tree 的关联）
         $grid->column('parent.name', '上级部门');

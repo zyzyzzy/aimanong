@@ -389,9 +389,43 @@ if ($cc === null) {
         (string) ($badJson['did_you_mean'] ?? '(无)')
     );
 
-    // 对照：合法排序列仍然工作（别修过头）
-    $okSort = http("$base/admin/api/{$badUri}?sort=id&per_page=2", 'GET', [], ['Accept: application/json']);
-    t('合法排序列仍返回 200', $okSort['code'] === 200, "HTTP {$okSort['code']}");
+    /*
+     * 对照：**声明过** ->sortable() 的列仍然工作（别修过头）。
+     *
+     * ⚠️ 这条以前用 `sort=id`，而当时 demo 的 departments **没声明**任何可排序列
+     * —— 新门禁上线后这条立刻红了。**它红得对**：那正是这次要改的行为。
+     * 现在 demo 给 id 加了 ->sortable()，这条测的才是「合法列不被误拦」。
+     */
+    $gate = $disc['sort_gate'] ?? [];
+    $gateUri = (string) ($bad['sortable_uri'] ?? 'departments');
+
+    $okSort = http(
+        "$base/admin/api/{$gateUri}?sort=".($gate['declared_ok'] ?? 'id').'&per_page=2',
+        'GET',
+        [],
+        ['Accept: application/json']
+    );
+    t('已声明的排序列仍返回 200', $okSort['code'] === 200, "HTTP {$okSort['code']}");
+
+    // 存在但没声明 ->sortable() 的列也要拦（提示怎么加）
+    $undeclared = http(
+        "$base/admin/api/{$gateUri}?sort=".($gate['exists_but_not_declared'] ?? 'name'),
+        'GET',
+        [],
+        ['Accept: application/json']
+    );
+    $undeclaredJson = json_decode((string) $undeclared['body'], true) ?: [];
+
+    t(
+        '存在但未声明 sortable 的列 → 422',
+        $undeclared['code'] === 422 && ($undeclaredJson['error'] ?? '') === 'SORT_COLUMN_NOT_DECLARED',
+        "HTTP {$undeclared['code']}"
+    );
+    t(
+        '提示里给了「怎么加 sortable」',
+        str_contains((string) ($undeclaredJson['hint'] ?? ''), 'sortable'),
+        (string) ($undeclaredJson['hint'] ?? '(无)')
+    );
 
     /*
      * ③ 猜错的 create 路径必须给出方向正确的提示。

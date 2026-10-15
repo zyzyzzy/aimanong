@@ -149,25 +149,19 @@ class ResourceController extends Controller
         }
 
         $known = [];
-
-        foreach ($node->columns as $column) {
-            $known[] = $column->name;
-        }
-
-        if (in_array($sort, $known, true)) {
-            return null;
-        }
-
-        /*
-         * 返回响应而不是抛异常：本类的异常在运行期会被 Laravel 渲染成 500，
-         * 而这应当是**4xx 的调用方错误**（与同文件里 NOT_A_TREE 的 403 同一模式）。
-         */
         $sortable = [];
 
         foreach ($node->columns as $column) {
+            $known[] = $column->name;
+
             if ($column->sortable) {
                 $sortable[] = $column->name;
             }
+        }
+
+        // 列存在还不够 —— 必须**声明过** ->sortable()（宪法 ②「声明唯一」）
+        if (in_array($sort, $sortable, true)) {
+            return null;
         }
 
         return response()->json((new SortColumnNotDeclaredException(

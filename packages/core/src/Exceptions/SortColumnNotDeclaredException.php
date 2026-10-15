@@ -24,10 +24,21 @@ namespace Aimanong\Exceptions;
  * 这违反宪法 ③「零隐式」（优先级高于 ② 和 ①）：
  * 请求做不到就**说做不到**，不要给一个别的顺序冒充。
  *
- * ## 范围
+ * ## 范围（第二轮修正）
  *
- * 只拦「列根本不存在」。声明过的列即使没标 `sortable` 也照旧放行 ——
- * 那种情况下 `orderBy` **确实生效了**，不算欺骗。
+ * 第一版只拦「列根本不存在」—— 理由是「声明过但没标 sortable 的列，
+ * `orderBy` 确实生效了，不算欺骗」。
+ *
+ * **但两轮的 agent 都独立指出了问题**：`?sort=name` 返回 200 并真的按
+ * name 排，而同一份 `openapi.json` 里 `sort` 的 enum **只列了声明过
+ * `sortable` 的列**。于是文档与行为仍然不一致 —— 只是换了个方向。
+ *
+ * 更根本的是宪法 ②「声明唯一」：如果 `->sortable()` 拦不住未声明的列，
+ * 那这个声明就没有约束力，`sort` 的 enum 也就是个摆设。
+ *
+ * 所以现在**两种都拦**：
+ *   · 列不存在        → 422
+ *   · 列存在但没声明  → 422（提示加上 ->sortable()）
  */
 class SortColumnNotDeclaredException extends AiReadableException
 {
@@ -44,13 +55,18 @@ class SortColumnNotDeclaredException extends AiReadableException
         parent::__construct($this->buildMessage());
     }
 
+    /** 列存在但没声明 ->sortable()（与「列根本不存在」要分开说） */
+    protected function existsButNotSortable(): bool
+    {
+        return in_array($this->sort, $this->known, true)
+            && ! in_array($this->sort, $this->sortable, true);
+    }
+
     protected function buildMessage(): string
     {
-        return sprintf(
-            'Resource [%s] 没有可排序的列 [%s]。',
-            $this->uri,
-            $this->sort
-        );
+        return $this->existsButNotSortable()
+            ? sprintf('列 [%s] 存在但未声明可排序。', $this->sort)
+            : sprintf('Resource [%s] 没有列 [%s]。', $this->uri, $this->sort);
     }
 
     /**
@@ -64,10 +80,13 @@ class SortColumnNotDeclaredException extends AiReadableException
             'did_you_mean' => $this->suggest(),
             'sortable_columns' => $this->sortable,
             'known_columns' => $this->known,
-            'hint' => $this->sortable === []
-                ? '该 Resource 还没有任何列标记为可排序 —— '
-                    .'在 grid() 里给列加 ->sortable() 即可。'
-                : '可排序的列: '.implode(', ', $this->sortable),
+            'hint' => $this->existsButNotSortable()
+                ? "在 grid() 里给这一列加 ->sortable()："
+                    ."\$grid->column('{$this->sort}')->sortable();"
+                : ($this->sortable === []
+                    ? '该 Resource 还没有任何列标记为可排序 —— '
+                        .'在 grid() 里给列加 ->sortable() 即可。'
+                    : '可排序的列: '.implode(', ', $this->sortable)),
         ];
     }
 

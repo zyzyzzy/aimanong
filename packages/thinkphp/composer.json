@@ -1,6 +1,6 @@
 {
     "name": "aimanong/thinkphp",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "description": "Aimanong 的 ThinkPHP 8 驱动 —— ThinkORM 数据源 / 模板 / 路由 / 认证",
     "type": "library",
     "keywords": [
@@ -19,7 +19,7 @@
         }
     ],
     "require": {
-        "aimanong/core": "^1.5",
+        "aimanong/core": "^1.6",
         "ext-json": "*",
         "ext-mbstring": "*",
         "php": "^8.2",

@@ -164,6 +164,31 @@ PUT  /admin/api/departments/4/move → 200  ❌ parent_id 真的被改了
 
 | 包 | 版本 | 内容 |
 |---|---|---|
+### 1.6.1 / 1.3.1 / 1.4.1
+
+修 L1/L2 十五题实测暴露的三条「文档/一致性」问题 —— 都不缺能力，
+但每个 agent 都多绕了几步：
+
+- **openapi 的路径与真实路由不一致**：写的是 `GET /admin/users`，
+  真实是 `GET /admin/api/users`（前者是 SPA 的 HTML 页面）。
+  多个 agent 照文档 curl 拿回 HTML。根因是 emitter 硬编码漏了 `/api`；
+  **而且 5 条测试断言也写的旧路径** —— 「断言全绿、真实路由全错」。
+  现改走 `Aimanong::url()`（唯一构建 URL 的地方），测试改从产出取路径。
+- **非法 `?sort=` 被静默忽略**：SQLite 会接受 `ORDER BY bogus` 并返回未排序数据（200），
+  MySQL 会 500 —— 行为取决于数据库。前者让调用方以为排序生效了。
+  现返回 422 `SORT_COLUMN_NOT_DECLARED` + `did_you_mean` + 可排序列清单。
+- **`/admin/{uri}/create` 报错指向错误方向**：`/admin/api/users/create` 会报
+  「记录不存在: App\Models\User#create」（把 create 当 id），
+  把思路引向「数据没建对」。现明确返回 `NO_CREATE_PAGE` + 正确的提交端点。
+
+| 包 | 版本 | 本次 |
+|---|---|---|
+| `aimanong/core` | **1.6.1** | openapi 路径同源 · `SortColumnNotDeclaredException` |
+| `aimanong/laravel` | **1.3.1** | 排序列校验 · `NO_CREATE_PAGE` 提示路由 |
+| `aimanong/thinkphp` | **1.4.1** | 同上（两端对称） |
+
+### 1.6.0 / 1.3.0 / 1.4.0
+
 | `aimanong/core` | **1.6.0** | 外键下拉 `belongsTo()` · 声明式自定义批量动作 · `RelationResolver` 契约 |
 | `aimanong/laravel` | **1.3.0** | 批量动作分发 · 外键下拉驱动 |
 | `aimanong/thinkphp` | **1.4.0** | 补 **batch 端点**（此前完全未移植）· 外键下拉驱动 |

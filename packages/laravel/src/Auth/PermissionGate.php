@@ -12,6 +12,7 @@ use Aimanong\Models\Role;
 use Aimanong\Schema\Ast\ResourceNode;
 use Aimanong\Schema\Compiler;
 use Aimanong\Support\Drivers;
+use Aimanong\Support\PermissionNodes;
 use Illuminate\Support\Collection;
 
 /**
@@ -40,10 +41,11 @@ class PermissionGate
      *
      * @var array<int, string>
      */
-    public const ACTIONS = ['index', 'show', 'create', 'update', 'destroy', 'export'];
+    /** @see PermissionNodes::ACTIONS */
+    public const ACTIONS = PermissionNodes::ACTIONS;
 
-    /** 只读 Resource 拥有的动作（没有 create/update/destroy） */
-    public const READONLY_ACTIONS = ['index', 'show', 'export'];
+    /** @see PermissionNodes::READONLY_ACTIONS */
+    public const READONLY_ACTIONS = PermissionNodes::READONLY_ACTIONS;
 
     /**
      * 是否启用 RBAC。未启用时一律放行。
@@ -168,9 +170,8 @@ class PermissionGate
      */
     public static function actionsFor(ResourceNode $node): array
     {
-        return ($node->meta['readonly'] ?? false)
-            ? self::READONLY_ACTIONS
-            : self::ACTIONS;
+        // 实现在 core —— 两端共用同一套动作定义（TP 侧也要生成同样的节点）
+        return PermissionNodes::actionsFor($node);
     }
 
     /**
@@ -310,14 +311,7 @@ class PermissionGate
      */
     public static function actionLabel(string $action): string
     {
-        return [
-            'index' => '查看列表',
-            'show' => '查看详情',
-            'create' => '新增',
-            'update' => '编辑',
-            'destroy' => '删除',
-            'export' => '导出',
-        ][$action] ?? $action;
+        return PermissionNodes::label($action);
     }
 
     /**

@@ -49,10 +49,16 @@
       <button class="am-btn" v-if="exportable" @click="doExport()">
         @include('aimanong::partials.icon', ['name' => 'download', 'size' => 15]) 导出
       </button>
-      {{-- 只读资源（如审计日志）不显示新增：按钮点了必然 403 --}}
+      {{--
+        只读资源（如审计日志）不显示新增：按钮点了必然 403。
+        另外**没有 create 权限也不渲染** —— 服务端直接不输出这个按钮
+        （不是 CSS/JS 藏起来，按钮根本不进 HTML）。
+      --}}
+      @if ($abilities['create'])
       <button class="am-btn am-btn--primary" v-if="!readonly" @click="openCreate">
         @include('aimanong::partials.icon', ['name' => 'plus', 'size' => 15]) 新增
       </button>
+      @endif
     </div>
   </div>
 
@@ -68,11 +74,13 @@
       <div class="am-empty__icon">@include('aimanong::partials.icon', ['name' => 'inbox', 'size' => 22])</div>
       <div class="am-empty__title">暂无数据</div>
       <div class="am-empty__desc">还没有任何{{ $label }}记录，点击下方按钮创建第一条</div>
+      @if ($abilities['create'])
       <div class="am-empty__actions" v-if="!readonly">
         <button class="am-btn am-btn--primary" @click="openCreate">
           @include('aimanong::partials.icon', ['name' => 'plus', 'size' => 15]) 新增{{ $label }}
         </button>
       </div>
+      @endif
     </div>
 
     <div v-else class="am-table-wrap am-table-wrap--stack">
@@ -101,7 +109,9 @@
                 </svg>
               </span>
             </th>
+            @if ($abilities['update'] || $abilities['destroy'])
             <th class="am-table__actions" v-if="!readonly">操作</th>
+            @endif
           </tr>
         </thead>
         <tbody>
@@ -172,12 +182,18 @@
                 </span>
               </template>
             </td>
+            @if ($abilities['update'] || $abilities['destroy'])
             <td class="am-table__actions" data-l="" v-if="!readonly">
               <div class="am-flex am-gap-1 am-nowrap">
+                @if ($abilities['update'])
                 <button class="am-btn am-btn--sm am-btn--ghost" @click="edit(row)">编辑</button>
+                @endif
+                @if ($abilities['destroy'])
                 <button class="am-btn am-btn--sm am-btn--ghost" @click="remove(row)">删除</button>
+                @endif
               </div>
             </td>
+            @endif
           </tr>
         </tbody>
       </table>
@@ -547,12 +563,49 @@ const app = createApp({
         const steps = computed(() => schema.form?.steps ?? []);
         const currentStep = ref(0);
 
-        /** 当前步骤应显示的字段（非分步时显示全部） */
+        /**
+         * 条件显示：字段声明了 `visibleWhen` 时，按当前表单值判断是否显示。
+         *
+         * 声明方式（后端）：`$form->select('priority')->visibleWhen('type', 'bug')`
+         * 或 `->visibleWhen('type', ['bug', 'feature'])`（是其一即可）。
+         *
+         * `form` 是 ref，读取 form.value[...] 会让这个 computed 依赖它 ——
+         * 所以切换类型时字段会自动出现/消失，不需要额外的 watch。
+         */
+        function conditionMet(f) {
+            const cond = f?.props?.visibleWhen;
+
+            if (!cond || !cond.field) return true;
+
+            const actual = form.value?.[cond.field];
+
+            if (Array.isArray(cond.value)) {
+                return cond.value.map(v => String(v)).includes(String(actual ?? ''));
+            }
+
+            return String(actual ?? '') === String(cond.value ?? '');
+        }
+
+        /** 当前步骤应显示的字段（非分步时显示全部），并按条件过滤 */
         const visibleFields = computed(() => {
-            if (!isStepped.value || steps.value.length === 0) return formFields.value;
-            const st = steps.value[currentStep.value];
-            return st ? st.fields.filter(f => !f.hidden) : formFields.value;
+            const staged = (!isStepped.value || steps.value.length === 0)
+                ? formFields.value
+                : (steps.value[currentStep.value]?.fields.filter(f => !f.hidden) ?? formFields.value);
+
+            return staged.filter(conditionMet);
         });
+
+        /**
+         * 被条件藏起来的字段名。
+         *
+         * 提交时要**清空**它们 —— 否则会把一个用户在界面上根本没看到的值写进库
+         * （比如把 type 从 bug 改回 feature，priority 仍带着上次填的 high）。
+         */
+        const conditionHiddenFields = computed(() =>
+            (schema.form?.fields ?? [])
+                .filter(f => !conditionMet(f))
+                .map(f => f.name)
+        );
 
         /**
          * 只读资源：后端已声明 Resource::readonly() 返回 true。
@@ -1100,6 +1153,13 @@ const app = createApp({
             const isEdit = editing.value;
             const url = isEdit ? `${base}/${form.value.id}` : base;
             const method = isEdit ? 'PUT' : 'POST';
+
+            // 不提交被条件藏起来的值（见 conditionHiddenFields 的说明）
+            const payload = { ...form.value };
+            for (const name of conditionHiddenFields.value) {
+                delete payload[name];
+            }
+
             try {
                 const res = await fetch(url, {
                     method,
@@ -1108,7 +1168,7 @@ const app = createApp({
                         'Accept': 'application/json',
                         'X-CSRF-TOKEN': csrf,
                     },
-                    body: JSON.stringify(form.value),
+                    body: JSON.stringify(payload),
                 });
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));

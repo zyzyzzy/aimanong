@@ -7,8 +7,11 @@ namespace Aimanong\ThinkPHP;
 use Aimanong\Aimanong;
 use Aimanong\Contracts\Permissible;
 use Aimanong\Contracts\PermissionChecker;
+use Aimanong\Schema\Compiler;
+use Aimanong\Support\PermissionNodes;
 use Aimanong\ThinkPHP\Application\ThinkApplication;
 use Aimanong\ThinkPHP\Models\Administrator;
+use Aimanong\ThinkPHP\Models\Permission;
 use think\facade\Config;
 
 /**
@@ -138,5 +141,90 @@ final class ThinkPermissionChecker implements PermissionChecker
         $apps = app(ThinkApplication::class);
 
         return $apps->enabled() ? $apps->current().'.'.$base : $base;
+    }
+
+    /**
+     * 把当前所有 Resource 的权限节点写进库 —— 与 Laravel 侧同一套语义。
+     *
+     * ## 为什么必须有这个
+     *
+     * ThinkPHP 驱动原先**没有**同步权限节点的入口（没有 sync、也没有
+     * `aimanong:permission` 命令）。后果不是「少个命令」，而是
+     * **RBAC 在 TP 上实际不可用**：节点永远建不出来，于是除超管以外
+     * 所有人访问任何页面都是 403 —— 「权限系统生效了」与「谁都进不去」
+     * 在测试里长得一模一样（e2e 只断言了普通角色 403，所以一直是绿的）。
+     *
+     * ## 与 Laravel 一致的两点
+     *
+     * ① 多应用时按「应用 × 属于它的 Resource」展开（否则 `/agent`
+     *    后台没有任何节点可分配，而 slug() 查的是 `agent.orders.index`）。
+     * ② 孤儿节点**保留不删** —— 那是用户已配给角色的授权，误删比留着更糟。
+     *    只回报数量，让人自己决定。
+     *
+     * @param  string|null  $forApp  只为某应用建节点；null = 按当前上下文
+     * @return array{created: int, existing: int, orphaned: int}
+     */
+    public function sync(?string $forApp = null): array
+    {
+        $created = 0;
+        $existing = 0;
+        $expected = [];
+
+        $compiler = new Compiler;
+        $apps = app(ThinkApplication::class);
+
+        if ($forApp !== null) {
+            $appList = [$forApp];
+        } else {
+            $appList = $apps->enabled() ? $apps->names() : [null];
+        }
+
+        foreach (Aimanong::registry()->all() as $class) {
+            if (! class_exists($class)) {
+                continue;
+            }
+
+            try {
+                $node = $compiler->compile($class);
+            } catch (\Throwable) {
+                // 声明有误的 Resource 跳过，不让整个同步崩掉
+                continue;
+            }
+
+            $uri = $node->uri;
+            $label = $node->label;
+
+            foreach ($appList as $app) {
+                if ($app !== null && ! Aimanong::registry()->belongsTo($uri, $app)) {
+                    continue;
+                }
+
+                foreach (PermissionNodes::actionsFor($node) as $action) {
+                    $slug = $this->appSlug($app, $uri, $action);
+
+                    $expected[$slug] = true;
+
+                    if (Permission::where('slug', $slug)->find() !== null) {
+                        $existing++;
+
+                        continue;
+                    }
+
+                    $perm = new Permission;
+                    $perm->save([
+                        'slug' => $slug,
+                        'name' => $label.' · '.PermissionNodes::label($action)
+                            .($app !== null ? '（'.$apps->title($app).'）' : ''),
+                        'group' => $app !== null ? $apps->title($app).' / '.$label : $label,
+                    ]);
+
+                    $created++;
+                }
+            }
+        }
+
+        $orphaned = Permission::whereNotIn('slug', array_keys($expected))->count();
+
+        return ['created' => $created, 'existing' => $existing, 'orphaned' => $orphaned];
     }
 }

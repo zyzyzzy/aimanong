@@ -95,6 +95,44 @@ abstract class Field
     }
 
     /**
+     * 条件显示：只有当另一个字段等于某个值时，本字段才出现。
+     *
+     * ```php
+     * // 选了「缺陷」类型才让人填优先级
+     * $form->select('priority', '优先级')->visibleWhen('type', 'bug');
+     *
+     * // 或者「是这几个之一就显示」
+     * $form->select('priority', '优先级')->visibleWhen('type', ['bug', 'feature']);
+     * ```
+     *
+     * ## 为什么要有这个
+     *
+     * 在此之前框架**没有**条件显示的声明方式（`hidden()` 只能静态隐藏）。
+     * 实测代价：一个 LLM 为了做「选 A 显示 B」，翻遍 `llms.txt`、自省接口、
+     * 反射了 142 个框架类，最后**自己写了一个扩展**：注册字段类型、
+     * 手写 `visibleWhen()`、注入一段 JS 去改 `hidden`。
+     *
+     * 也就是说：声明一句就该解决的事，变成了每个项目各自实现一遍 ——
+     * 而且各自实现的东西框架不认识，不会进 schema、不会被校验。
+     *
+     * ## 实现方式
+     *
+     * 条件写进 `props.visibleWhen`，随 schema 送到前端；前端按当前表单值
+     * 实时判断（见 resource 模板里的 `conditionMet()`）。
+     * 被条件藏起来的字段在提交时会**被清空** —— 否则会存进一个
+     * 用户在界面上根本没看到的值。
+     */
+    public function visibleWhen(string $field, mixed $value): static
+    {
+        $this->props['visibleWhen'] = [
+            'field' => $field,
+            'value' => $value,
+        ];
+
+        return $this;
+    }
+
+    /**
      * 追加 Laravel 验证规则。
      *
      * @param  string|array<int, mixed>  $rules

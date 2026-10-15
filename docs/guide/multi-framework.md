@@ -68,7 +68,9 @@ composer require aimanong/thinkphp
 | ✅ 只读资源 | `Resource::readonly()` —— 拒绝一切写操作 |
 | ✅ 认证 | 登录 / 登出 / 会话 / 记住我 |
 | ✅ 登录限流 | 每 IP + 每 IP×账号 两个维度 |
-| ✅ RBAC | 角色 / 权限 / 超管绕过；由 `auth.rbac` 开关控制 |
+| ✅ RBAC | 角色 / 权限 / 超管绕过；由 `auth.rbac` 开关控制。节点同步：`php artisan aimanong:permission sync`（两端同名） |
+| ✅ 按钮级权限 | 无权限的动作按钮**服务端不渲染**（不是 CSS/JS 藏起来），无需声明 |
+| ✅ 条件显示 | `$form->select('x')->visibleWhen('type', 'bug')`（等于 / 其中之一） |
 | ✅ 多租户数据作用域 | `ScopeHooks`（查询 + 写入），搜索/排序/筛选都绕不过 |
 | ✅ 四份产物 | `aimanong:schema` → JSON Schema / TypeScript / OpenAPI / AI 上下文 |
 | ✅ 声明自检 | `ai:verify`（含 `--json`） |

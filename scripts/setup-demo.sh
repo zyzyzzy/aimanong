@@ -269,6 +269,48 @@ php "$ROOT/scripts/setup-demo-multiapp.php" 2>&1 | sed 's/^/  /' || {
     echo "  ⚠️  多应用配置失败（e2e 会跳过相关断言）"
 }
 
+# ── 按钮级权限验证账号 ──
+#
+# 只给 departments.index（**不给** create/update/destroy），
+# 用来断言「没有权限的动作按钮服务端根本不渲染」。
+# 放在权限同步**之后** —— 节点要先存在才能绑定。
+echo "  → 建按钮级权限验证账号（viewer01）"
+php artisan aimanong:permission sync >/dev/null 2>&1 || true
+php -r '
+require "vendor/autoload.php";
+$app = require "bootstrap/app.php";
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+use Aimanong\Models\Administrator as Admin;
+use Aimanong\Models\Permission;
+use Aimanong\Models\Role;
+use Illuminate\Support\Facades\Hash;
+
+$role = Role::firstOrNew(["slug" => "dept-viewer"]);
+$role->name = "部门查看员";
+$role->save();
+
+/*
+ * ⚠️ 多应用下权限节点带**应用前缀**（`admin.departments.index`），
+ * 不是裸的 `departments.index`。这里按框架自己的 slug() 解析，
+ * 不要手写字符串 —— 手写过一次，绑到了裸 slug 上，断言全红。
+ */
+$slug = \Aimanong\Auth\PermissionGate::appSlug("admin", "departments", "index");
+$perm = Permission::where("slug", $slug)->first();
+if (! $perm) {
+    fwrite(STDERR, "  ⚠️  没有 {$slug} 权限节点，按钮级权限断言会跳过\n");
+} else {
+    $role->permissions()->sync([$perm->id]);
+}
+
+$u = Admin::firstOrNew(["username" => "viewer01"]);
+$u->password = Hash::make("viewer123");
+$u->name = "只读查看";
+$u->enabled = true;
+$u->save();
+$u->roles()->sync([$role->id]);
+echo "     viewer01/viewer123（只有 departments.index）\n";
+' 2>&1 | tail -2
+
 echo
 echo "✅ demo 项目就绪: $DEMO"
 echo "   启动服务: cd $DEMO && php artisan serve --port=8899"

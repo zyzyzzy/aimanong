@@ -58,6 +58,8 @@ class UserResource extends Resource
         $form->text('name')->label('姓名')->required()->max(255);
         $form->select('status')->label('状态')->options(Status::cases());
         $form->switch('enabled')->label('启用');
+        // 条件显示：只有状态选了「待审」才让人填驳回理由
+        $form->textarea('reject_reason')->label('驳回理由')->visibleWhen('status', 'pending');
     }
 
     public static function show(Show $show): void
@@ -68,6 +70,31 @@ class UserResource extends Resource
 ```
 
 保存后执行：`php artisan ai:verify`（校验）+ `php artisan serve`（访问 `/admin/users`）
+
+## 常用声明速查
+
+```php
+// 树形（层级数据）—— 声明后列表按层级缩进 + 可展开折叠
+public static function tree(Tree $tree): void
+{
+    $tree->parentColumn('parent_id')->titleColumn('name')->orderColumn('sort');
+}
+
+// 条件显示
+$form->select('priority')->label('优先级')->visibleWhen('type', 'bug');          // 等于
+$form->select('priority')->label('优先级')->visibleWhen('type', ['bug','feature']); // 其中之一
+
+// 数据字典（把枚举变成一等公民）
+$form->select('status')->dict('order_status');
+$grid->column('status', '状态')->dict('order_status');
+
+// 关联列用**点号**（不是 ->relation()）：后者在表单里只服务多对多
+$grid->column('author.name', '作者');
+$form->select('author_id', '作者')->options(Author::pluck('name','id'))->rules('exists:authors,id');
+```
+
+`/__ai/capabilities.json` 是**全量**能力清单（字段类型、每个声明方法的参数、可用规则）。
+不确定某个方法叫什么时先查它，不要猜 —— 猜错只会得到 `Call to undefined method`。
 
 ## 铁律（违反会导致生成失败）
 

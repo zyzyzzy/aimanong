@@ -307,6 +307,91 @@ if ($firstLogId === null) {
 }
 
 /*
+ * ═══ 按钮级权限 ═══
+ *
+ * 「没有删除权限的人**看不到**删除按钮」—— 而且必须是**服务端不渲染**
+ * （不是 CSS/JS 藏起来，那样 DOM 里还在、Vue 重渲染还会回来）。
+ *
+ * 实测背景：框架原先没有按钮级权限（自省接口里就写着「需自行实现」），
+ * 一个 LLM 为此写了中间件去正则匹配 `@click="remove(row)"` 再从 HTML 里抠按钮。
+ * 权限节点 {uri}.{action} 框架本来就有，现在按钮直接按它渲染。
+ */
+echo "\n═══ 按钮级权限 ═══\n";
+
+$btnJar = '/tmp/e2e-viewer-cookie.txt';
+@unlink($btnJar);
+
+$viewerGet = function (string $path) use ($base, $btnJar): array {
+    $ch = curl_init($base.$path);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_COOKIEJAR => $btnJar,
+        CURLOPT_COOKIEFILE => $btnJar,
+    ]);
+    $body = (string) curl_exec($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    unset($ch);
+
+    return [$code, $body];
+};
+
+// 以 viewer01（只有 departments.index）登录
+[$_, $vLogin] = $viewerGet('/admin/auth/login');
+preg_match('/name="_token" value="([^"]+)"/', $vLogin, $vm);
+
+$ch = curl_init($base.'/admin/auth/login');
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST => true,
+    CURLOPT_POSTFIELDS => http_build_query([
+        '_token' => $vm[1] ?? '',
+        'username' => 'viewer01',
+        'password' => 'viewer123',
+    ]),
+    CURLOPT_COOKIEJAR => $btnJar,
+    CURLOPT_COOKIEFILE => $btnJar,
+    CURLOPT_FOLLOWLOCATION => false,
+    CURLOPT_TIMEOUT => 15,
+]);
+curl_exec($ch);
+unset($ch);
+
+[$vc, $vBody] = $viewerGet('/admin/departments');
+t('受限账号能打开有 index 权限的页面', $vc === 200, "HTTP {$vc}");
+
+preg_match_all('~<button[^>]*@click="([^"]*)"~', $vBody, $vClicks);
+$vActions = array_values(array_filter(
+    $vClicks[1] ?? [],
+    static fn ($c) => str_contains($c, 'openCreate') || str_contains($c, 'edit(') || str_contains($c, 'remove(')
+));
+t(
+    '没有 create/update/destroy 权限 → 三个按钮都不渲染',
+    $vActions === [],
+    $vActions === [] ? '服务端未输出任何动作按钮' : '仍渲染了: '.implode(',', $vActions)
+);
+t(
+    '操作列头也不渲染',
+    ! str_contains($vBody, '操作</th>'),
+    str_contains($vBody, '操作</th>') ? '仍输出了操作列' : '未输出'
+);
+
+// 对照：超管必须三个都有 —— 否则「按钮都不显示」可能只是模板坏了，
+// 而不是权限在起作用（这条对照是防「假绿」的）
+$adBtn = http("$base/admin/departments");
+preg_match_all('~<button[^>]*@click="([^"]*)"~', (string) $adBtn['body'], $aClicks);
+$aActions = array_values(array_filter(
+    $aClicks[1] ?? [],
+    static fn ($c) => str_contains($c, 'openCreate') || str_contains($c, 'edit(') || str_contains($c, 'remove(')
+));
+t(
+    '对照：超管三个按钮都在',
+    count($aActions) >= 3,
+    '找到 '.count($aActions).' 个动作按钮'
+);
+
+/*
  * ═══ 树形资源 ═══
  *
  * 两个实测事故：

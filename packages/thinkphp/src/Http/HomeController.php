@@ -182,9 +182,40 @@ final class HomeController
             // （core 的 FieldType 是共享的，但没有插件注册过 fieldView/fieldScript）
             'pluginFieldViews' => [],
             'pluginScripts' => [],
+            /*
+             * 按钮级权限 —— 与 Laravel 侧同一套语义。
+             *
+             * 没有权限的按钮**服务端就不渲染**（不是 CSS/JS 藏起来）。
+             * 两端必须一致：同一份声明、同一组权限节点，页面就该长得一样。
+             */
+            'abilities' => $this->abilities($uri),
         ]);
 
         return Response::create($html, 'html', 200);
+    }
+
+    /**
+     * 当前用户对这个 Resource 能做哪些动作。
+     *
+     * RBAC 关闭时全为 true —— 「没启用权限系统」不该让按钮全消失。
+     *
+     * @return array{create: bool, update: bool, destroy: bool}
+     */
+    protected function abilities(string $uri): array
+    {
+        $checker = new ThinkPermissionChecker;
+
+        if (! $checker->rbacEnabled()) {
+            return ['create' => true, 'update' => true, 'destroy' => true];
+        }
+
+        $can = static fn (string $action): bool => $checker->check($checker->slug($uri, $action));
+
+        return [
+            'create' => $can('create'),
+            'update' => $can('update'),
+            'destroy' => $can('destroy'),
+        ];
     }
 
     /**

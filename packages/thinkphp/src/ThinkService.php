@@ -8,6 +8,7 @@ use Aimanong\Aimanong;
 use Aimanong\Support\Drivers;
 use Aimanong\ThinkPHP\Application\ThinkApplication;
 use Aimanong\ThinkPHP\Console\InstallCommand;
+use Aimanong\ThinkPHP\Console\PermissionCommand;
 use Aimanong\ThinkPHP\Console\SchemaCommand;
 use Aimanong\ThinkPHP\Console\VerifyCommand;
 use think\facade\Route;
@@ -96,6 +97,7 @@ class ThinkService extends Service
             InstallCommand::class,
             VerifyCommand::class,
             SchemaCommand::class,
+            PermissionCommand::class,
         ]);
     }
 

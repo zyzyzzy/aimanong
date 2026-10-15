@@ -409,7 +409,43 @@ if (! $role) { $role = new $rm; $role->save(["slug"=>"viewer","name"=>"只读角
 $user = $um::where("username","viewer")->find();
 if (! $user) { $user = new $um; $user->save(["username"=>"viewer","name"=>"只读用户","password"=>$um::hashPassword("viewer123"),"enabled"=>1]); }
 Db::name("admin_role_user")->where("user_id",$user->getKey())->delete();
-Db::name("admin_role_user")->insert(["role_id"=>$role->getKey(),"user_id"=>$user->getKey()]);
+// ⚠️ **必须写 user_type**。
+//
+// `admin_role_user` 是「按用户模型隔离」的（同一个 user_id 在不同后台可以
+// 是不同的人）。模型的 roles() 用 wherePivot("user_type", static::class) 读，
+// 这里漏写就会插进一行 user_type="" —— 角色看起来绑上了，实际读不出来。
+//
+// 实测代价：e2e 那条「普通角色被拒」**一直是假绿** —— 它被拒不是因为权限
+// 生效，而是因为角色压根没绑上。直到要给这个账号**开**权限（验按钮级权限）
+// 时才发现「怎么开都没用」。
+Db::name("admin_role_user")->insert([
+    "role_id" => $role->getKey(),
+    "user_id" => $user->getKey(),
+    "user_type" => $um,
+]);
+' "$TARGET" >/dev/null 2>&1 || true
+
+# ── 同步权限节点 ──
+#
+# ⚠️ 必须在 Resource 都建好**之后**跑。ThinkPHP 驱动此前**根本没有**
+#    这个入口，于是 RBAC 实际不可用：节点永远建不出来，除超管外
+#    所有人访问任何页面都是 403 —— 而 e2e 断言的是「普通角色被拒」，
+#    「权限生效」与「谁都没权限」在测试里结果完全一样，所以一直没暴露。
+echo "  → 同步权限节点"
+php "$TARGET/think" aimanong:permission sync >/dev/null 2>&1 || true
+
+# 给普通角色开「只读」权限 —— 否则「按钮级权限」验不出来
+# （没有 index 权限时页面直接 403，连列表都看不到）
+php -r '
+require $argv[1]."/vendor/autoload.php";
+(new think\App())->initialize();
+use think\facade\Db;
+$role = Aimanong\ThinkPHP\Models\Role::where("slug","viewer")->find();
+$perm = Aimanong\ThinkPHP\Models\Permission::where("slug","admin.departments.index")->find();
+if ($role && $perm) {
+    Db::name("admin_permission_role")->where("role_id",$role->getKey())->delete();
+    Db::name("admin_permission_role")->insert(["role_id"=>$role->getKey(),"permission_id"=>$perm->getKey()]);
+}
 ' "$TARGET" >/dev/null 2>&1 || true
 
 # ⚠️ 关键断言：装了 ThinkPHP 驱动**不能**把 illuminate 拖进来。

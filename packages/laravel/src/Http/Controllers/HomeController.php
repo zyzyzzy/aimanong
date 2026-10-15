@@ -137,7 +137,41 @@ class HomeController extends Controller
              * 在 Vue setup() 作用域内渲染，可用 ref / computed / form。
              */
             'pluginScripts' => FieldType::fieldScripts(),
+            /*
+             * 按钮级权限。
+             *
+             * 实测：在此之前框架**没有**按钮级权限（自省接口里就写着
+             * 「按钮级/字段级权限需自行实现」）。后果是一个 LLM 为了做
+             * 「没有删除权限就看不到删除按钮」，自己写了一个中间件去
+             * 正则匹配 `@click="remove(row)"` 再从响应 HTML 里把按钮抠掉。
+             *
+             * 这里把它变成框架默认行为：权限节点 `{uri}.{action}` 框架本来
+             * 就会生成，按钮直接按它决定要不要渲染。
+             * **服务端不渲染**（而不是 CSS/JS 藏起来）—— 按钮根本不进 HTML。
+             */
+            'abilities' => $this->abilities($uri),
         ]);
+    }
+
+    /**
+     * 当前用户对这个 Resource 能做哪些动作。
+     *
+     * RBAC 关闭时全为 true（与 PermissionGate::check 的行为一致）——
+     * 「没启用权限系统」不该导致按钮全消失。
+     *
+     * @return array{create: bool, update: bool, destroy: bool}
+     */
+    protected function abilities(string $uri): array
+    {
+        $can = static fn (string $action): bool => PermissionGate::check(
+            PermissionGate::slug($uri, $action)
+        );
+
+        return [
+            'create' => $can('create'),
+            'update' => $can('update'),
+            'destroy' => $can('destroy'),
+        ];
     }
 
     /**

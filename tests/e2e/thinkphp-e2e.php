@@ -967,7 +967,61 @@ t(
     str_contains($pbody, 'am-tree-toggle') ? '有' : '没有'
 );
 
-// ③ 非树形资源应明确报错，而不是返回空
+// ③ 按钮级权限 —— 没有 create/update/destroy 权限时按钮**服务端不渲染**
+//
+// 实测背景：框架原先没有按钮级权限，一个 LLM 为此写了中间件去正则匹配
+// `@click="remove(row)"` 再从 HTML 里抠按钮。权限节点 {uri}.{action}
+// 框架本来就有，现在按钮直接按它渲染。
+$viewerJar = sys_get_temp_dir().'/amn-tp-btn-'.getmypid().'.jar';
+@unlink($viewerJar);
+
+$viewerGet = function (string $path) use ($viewerJar): array {
+    $ch = curl_init("http://127.0.0.1:{$GLOBALS['port']}{$path}");
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_COOKIEJAR => $viewerJar,
+        CURLOPT_COOKIEFILE => $viewerJar,
+    ]);
+    $body = (string) curl_exec($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    unset($ch);
+
+    return [$code, $body];
+};
+
+[$_, $vLogin] = $viewerGet('/admin/auth/login');
+preg_match('/name="_token" value="([^"]+)"/', $vLogin, $vm);
+
+$ch = curl_init("http://127.0.0.1:{$GLOBALS['port']}/admin/auth/login");
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST => true,
+    CURLOPT_POSTFIELDS => http_build_query(['_token' => $vm[1] ?? '', 'username' => 'viewer', 'password' => 'viewer123']),
+    CURLOPT_COOKIEJAR => $viewerJar,
+    CURLOPT_COOKIEFILE => $viewerJar,
+    CURLOPT_FOLLOWLOCATION => false,
+    CURLOPT_TIMEOUT => 15,
+]);
+curl_exec($ch);
+unset($ch);
+
+[$vpc, $vpb] = $viewerGet("/admin/{$treeUri}");
+t('受限账号能打开有 index 权限的页面', $vpc === 200, "HTTP {$vpc}");
+
+preg_match_all('~<button[^>]*@click="([^"]*)"~', $vpb, $vClicks);
+$vActions = array_values(array_filter(
+    $vClicks[1] ?? [],
+    static fn ($c) => str_contains($c, 'openCreate') || str_contains($c, 'edit(') || str_contains($c, 'remove(')
+));
+t(
+    '无 create/update/destroy → 三个按钮都不渲染',
+    $vActions === [],
+    $vActions === [] ? '服务端未输出任何动作按钮' : '仍渲染了: '.implode(',', $vActions)
+);
+
+// ④ 非树形资源应明确报错，而不是返回空
 [$nc, $nbody] = $treeReq('/admin/api/customers/tree');
 t(
     '非树形资源调 tree → 403 NOT_A_TREE',

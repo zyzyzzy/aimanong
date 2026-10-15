@@ -318,8 +318,14 @@ if ($sf === null) {
 } else {
     $le = $sf['like_escape'];
 
+    /*
+     * ⚠️ 用 admin-users（内置资源，两端都有且 name 列 searchable）。
+     * 不能用 users —— CI demo 没有这个资源。
+     */
+    $searchUri = 'admin-users';
+
     // % 不应匹配全部
-    $pct = http("$base/admin/api/users?keyword=%25", 'GET', [], ['Accept: application/json']);
+    $pct = http("$base/admin/api/{$searchUri}?keyword=%25", 'GET', [], ['Accept: application/json']);
     $pctJson = json_decode((string) $pct['body'], true) ?: [];
     t(
         'keyword=% 不匹配全部（LIKE 转义生效）',
@@ -328,7 +334,7 @@ if ($sf === null) {
     );
 
     // _ 不应匹配任意字符
-    $usc = http("$base/admin/api/users?keyword=_", 'GET', [], ['Accept: application/json']);
+    $usc = http("$base/admin/api/{$searchUri}?keyword=_", 'GET', [], ['Accept: application/json']);
     $uscJson = json_decode((string) $usc['body'], true) ?: [];
     t(
         'keyword=_ 不匹配任意字符',
@@ -337,7 +343,7 @@ if ($sf === null) {
     );
 
     // 正常搜索不受影响
-    $norm = http("$base/admin/api/users?keyword=".rawurlencode('演示用户1'), 'GET', [], ['Accept: application/json']);
+    $norm = http("$base/admin/api/{$searchUri}?keyword=".rawurlencode('admin'), 'GET', [], ['Accept: application/json']);
     $normJson = json_decode((string) $norm['body'], true) ?: [];
     t(
         '正常搜索仍工作',

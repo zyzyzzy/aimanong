@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Support;
 
+use Aimanong\Contracts\RelationResolver;
 use Aimanong\Contracts\ApplicationResolver;
 use Aimanong\Contracts\DictionarySource;
 use Aimanong\Contracts\PermissionChecker;
@@ -40,6 +41,8 @@ final class Drivers
     private static ?UploadSpec $upload = null;
 
     private static ?SchemaIntrospector $introspector = null;
+
+    private static ?RelationResolver $relationResolver = null;
 
     private static ?ApplicationResolver $application = null;
 
@@ -148,6 +151,27 @@ final class Drivers
         return self::$application ?? new SingleApplication;
     }
 
+    public static function registerRelationResolver(RelationResolver $driver): void
+    {
+        self::$relationResolver = $driver;
+    }
+
+    public static function hasRelationResolver(): bool
+    {
+        return self::$relationResolver !== null;
+    }
+
+    /**
+     * 关联解析器。
+     *
+     * 未注册时返回 null（不是抛异常）—— 外键下拉是**增强**能力，
+     * 没装驱动也不该让整个编译崩掉，降级成「没有候选」并让校验器提示。
+     */
+    public static function relationResolver(): ?RelationResolver
+    {
+        return self::$relationResolver;
+    }
+
     public static function registerIntrospector(SchemaIntrospector $driver): void
     {
         self::$introspector = $driver;
@@ -214,6 +238,7 @@ final class Drivers
         self::$permissions = null;
         self::$upload = null;
         self::$introspector = null;
+        self::$relationResolver = null;
         self::$application = null;
     }
 }

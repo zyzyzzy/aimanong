@@ -1021,6 +1021,70 @@ t(
     $vActions === [] ? '服务端未输出任何动作按钮' : '仍渲染了: '.implode(',', $vActions)
 );
 
+/*
+ * ③-2 外键下拉（belongsTo）—— 与 Laravel 侧读**同一份**共享期望。
+ *
+ * 候选与 exists 规则由框架从模型关联自动解析，声明方只写一行。
+ * 这里断言两端解析结果同形（类型/关联名/exists 前缀/候选形状）。
+ */
+$btExp = $treeExp['belongs_to_field'] ?? null;
+
+if ($btExp === null) {
+    t('读得到外键下拉共享期望', false, 'fixtures 里缺 belongs_to_field');
+} else {
+    [$btc, $btb] = $treeReq('/admin/'.$btExp['resource']);
+    t('外键样本页面可访问', $btc === 200, "HTTP {$btc}");
+
+    preg_match('~schema\s*=\s*(\{.*?\});~s', $btb, $btm);
+    $btSchema = json_decode($btm[1] ?? '{}', true) ?: [];
+    $btField = null;
+
+    foreach ($btSchema['form']['fields'] ?? [] as $bf) {
+        if (($bf['name'] ?? '') === $btExp['field']) {
+            $btField = $bf;
+            break;
+        }
+    }
+
+    t('外键字段存在', $btField !== null, $btField === null ? 'schema 里找不到' : '找到');
+
+    if ($btField !== null) {
+        $exp = $btExp['expect'];
+        $opts = $btField['props']['options'] ?? [];
+
+        t(
+            '控件类型与期望一致',
+            ($btField['type'] ?? '') === $exp['type'],
+            (string) ($btField['type'] ?? '')
+        );
+        t(
+            '关联名与期望一致',
+            ($btField['props']['relation'] ?? '') === $exp['relation'],
+            (string) ($btField['props']['relation'] ?? '(无)')
+        );
+        t(
+            '候选数达到期望',
+            count($opts) >= $exp['min_options'],
+            count($opts).' 个（期望 >= '.$exp['min_options'].'）'
+        );
+
+        $first = $opts[0] ?? [];
+        t(
+            '候选形状与期望一致',
+            isset($first[$exp['option_keys'][0]], $first[$exp['option_keys'][1]]),
+            json_encode($first, JSON_UNESCAPED_UNICODE)
+        );
+
+        $existsOk = false;
+        foreach ($btField['rules'] ?? [] as $r) {
+            if (str_starts_with((string) $r, $exp['exists_prefix'])) {
+                $existsOk = true;
+            }
+        }
+        t('exists 规则前缀与期望一致', $existsOk, $existsOk ? '一致' : '不一致或缺失');
+    }
+}
+
 // ④ 非树形资源应明确报错，而不是返回空
 [$nc, $nbody] = $treeReq('/admin/api/customers/tree');
 t(

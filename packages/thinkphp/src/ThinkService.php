@@ -11,6 +11,7 @@ use Aimanong\ThinkPHP\Console\InstallCommand;
 use Aimanong\ThinkPHP\Console\PermissionCommand;
 use Aimanong\ThinkPHP\Console\SchemaCommand;
 use Aimanong\ThinkPHP\Console\VerifyCommand;
+use Aimanong\ThinkPHP\Drivers\ThinkRelationResolver;
 use think\facade\Route;
 use think\middleware\SessionInit;
 use think\Service;
@@ -104,6 +105,7 @@ class ThinkService extends Service
     public function register(): void
     {
         Drivers::registerIntrospector(new ThinkIntrospector);
+        Drivers::registerRelationResolver(new ThinkRelationResolver);
         Drivers::registerDictionary(new ThinkDictionary);
         Drivers::registerPermissionChecker(new ThinkPermissionChecker);
         Drivers::registerUploadSpec(new ThinkUploadSpec);

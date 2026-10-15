@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Form;
 
+use Aimanong\Form\Fields\BelongsTo;
 use Aimanong\Support\MethodSuggester;
 use Aimanong\Form\Concerns\HasSteps;
 use Aimanong\Form\Fields\Checkbox;
@@ -76,6 +77,42 @@ class Form
     public function select(string $name, ?string $label = null): Select
     {
         return $this->add(new Select($name, $label));
+    }
+
+    /**
+     * 外键下拉 —— 候选自动来自关联模型，`exists` 规则自动带上。
+     *
+     * ```php
+     * $form->belongsTo('author_id', '作者');                  // 关联名从字段名推断
+     * $form->belongsTo('author_id', '作者')->labelColumn('name');
+     * ```
+     *
+     * 候选在**编译期**解析（见 Compiler::compile → resolveRelations）。
+     */
+    public function belongsTo(string $name, ?string $label = null): BelongsTo
+    {
+        /** @var BelongsTo $field */
+        $field = $this->add(new BelongsTo($name, $label));
+
+        return $field;
+    }
+
+    /**
+     * 全部外键字段（编译期按模型解析候选用）。
+     *
+     * @return array<string, BelongsTo>
+     */
+    public function belongsToFields(): array
+    {
+        $out = [];
+
+        foreach ($this->fields as $name => $field) {
+            if ($field instanceof BelongsTo) {
+                $out[$name] = $field;
+            }
+        }
+
+        return $out;
     }
 
     public function switch(string $name, ?string $label = null): SwitchField

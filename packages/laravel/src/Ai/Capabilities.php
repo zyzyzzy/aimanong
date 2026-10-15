@@ -492,6 +492,11 @@ class Capabilities
             'default' => '默认值，参数: mixed',
             'readonly' => '只读',
             'hidden' => '隐藏（静态，永远不显示）',
+            'belongsTo(外键下拉)' => '外键下拉，候选与 exists 规则**自动**从模型关联解析。'
+                .'参数: (字段名, 标签)。关联名默认从字段名推断（author_id → author），'
+                .'可用 ->relation() 显式指定、->labelColumn() 指定显示列。'
+                .'例: $form->belongsTo(\'author_id\', \'作者\');  '
+                .'**不要再手写 options(pluck) 与 exists 规则** —— 表名/主键框架自己知道',
             'visibleWhen' => '条件显示：另一个字段等于某值时才出现。'
                 ."参数: (字段名, 值|数组)。例: \$form->select('priority')->visibleWhen('type', 'bug'); "
                 ."或 ->visibleWhen('type', ['bug','feature'])。被条件藏起来的字段提交时会被清空",

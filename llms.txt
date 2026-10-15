@@ -90,7 +90,11 @@ $grid->column('status', '状态')->dict('order_status');
 
 // 关联列用**点号**（不是 ->relation()）：后者在表单里只服务多对多
 $grid->column('author.name', '作者');
-$form->select('author_id', '作者')->options(Author::pluck('name','id')->all())->rules('exists:authors,id');
+
+// 外键下拉：候选与 exists 规则**自动**，不要手写 pluck
+$form->belongsTo('author_id', '作者');
+// 需要时显式指定（关联名默认从字段名推断）
+$form->belongsTo('author_id', '作者')->relation('author')->labelColumn('name');
 //                                            ^^^^^^^ 必须 ->all()：options() 只收 array，直接传 Collection 会编译失败
 ```
 

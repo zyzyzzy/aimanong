@@ -307,6 +307,56 @@ if ($firstLogId === null) {
 }
 
 /*
+ * ═══ 外键下拉（belongsTo）═══
+ *
+ * 声明方只写一行：`$form->belongsTo('parent_id', '上级部门')`。
+ * 候选与 exists 规则从模型关联自动解析 —— 此前要手写
+ * `pluck(...)->all()` 与 `exists:{table},{id}`，两个都是易错点：
+ * 忘了 ->all() 编译失败，忘了 exists 就能提交任意 id，表名写错不报错。
+ */
+echo "\n═══ 外键下拉（belongsTo）═══\n";
+
+$btPage = http("$base/admin/departments");
+$btSchema = [];
+if (preg_match('~schema\s*=\s*(\{.*?\});~s', (string) $btPage['body'], $bm)) {
+    $btSchema = json_decode($bm[1], true) ?: [];
+}
+
+$btField = null;
+foreach ($btSchema['form']['fields'] ?? [] as $bf) {
+    if (($bf['name'] ?? '') === 'parent_id') {
+        $btField = $bf;
+        break;
+    }
+}
+
+t('外键字段存在', $btField !== null, $btField === null ? 'schema 里找不到 parent_id' : '找到');
+
+if ($btField !== null) {
+    $btOptions = $btField['props']['options'] ?? [];
+
+    // 控件类型必须是 select —— 若写成 belongsTo，前端会掉进 <input> 分支，
+    // 变成「人手填 id 的文本框」，与这个字段存在的意义正好相反
+    t('外键字段的控件类型是 select', ($btField['type'] ?? '') === 'select', (string) ($btField['type'] ?? ''));
+
+    t('候选自动解析出来了', count($btOptions) > 0, count($btOptions).' 个候选');
+    t('候选带 value 与 label', isset($btOptions[0]['value'], $btOptions[0]['label']), json_encode($btOptions[0] ?? null, JSON_UNESCAPED_UNICODE));
+    t(
+        '关联名写进了 props.relation',
+        ($btField['props']['relation'] ?? '') === 'parent',
+        (string) ($btField['props']['relation'] ?? '(无)')
+    );
+
+    $hasExists = false;
+    foreach ($btField['rules'] ?? [] as $br) {
+        if (str_starts_with((string) $br, 'exists:')) {
+            $hasExists = true;
+        }
+    }
+    t('exists 规则自动带上', $hasExists, $hasExists ? '有' : '没有 —— 前端能提交任意 id');
+}
+
+/*
  * ═══ 按钮级权限 ═══
  *
  * 「没有删除权限的人**看不到**删除按钮」—— 而且必须是**服务端不渲染**

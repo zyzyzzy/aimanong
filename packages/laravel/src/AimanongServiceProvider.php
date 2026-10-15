@@ -12,6 +12,7 @@ use Aimanong\Auth\PermissionGateChecker;
 use Aimanong\Console\InstallCommand;
 use Aimanong\Console\PermissionCommand;
 use Aimanong\Drivers\Eloquent\EloquentIntrospector;
+use Aimanong\Drivers\Eloquent\EloquentRelationResolver;
 use Aimanong\Extend\ExtensionManager;
 use Aimanong\Foundation\Dict\Dictionary;
 use Aimanong\Foundation\Upload\Uploader;
@@ -124,6 +125,7 @@ class AimanongServiceProvider extends ServiceProvider
     protected function registerDrivers(): void
     {
         Drivers::registerIntrospector(new EloquentIntrospector);
+        Drivers::registerRelationResolver(new EloquentRelationResolver);
         Drivers::registerDictionary(new Dictionary);
         Drivers::registerPermissionChecker(new PermissionGateChecker);
         Drivers::registerUploadSpec(new Uploader);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Schema;
 
+use Aimanong\Support\Drivers;
 use Aimanong\Contracts\Resource as ResourceContract;
 use Aimanong\Contracts\SchemaIntrospector;
 use Aimanong\Exceptions\GhostColumnException;
@@ -65,6 +66,12 @@ class Compiler
 
         if (method_exists($resource, 'form')) {
             $resource::form($form);
+
+            /*
+             * 外键下拉：在这里才知道 Resource 的模型是什么，所以候选解析
+             * 放在声明跑完之后（见 resolveRelations）。
+             */
+            $this->resolveRelations($form, $resource::model());
         }
 
         if (method_exists($resource, 'show')) {
@@ -134,6 +141,46 @@ class Compiler
                 'requiredOnCreate' => $form->requiredOnCreateFields(),
             ],
         );
+    }
+
+    /**
+     * 解析外键字段的候选（`$form->belongsTo(...)`）。
+     *
+     * ## 为什么放在编译期而不是声明期
+     *
+     * `$resource::form($form)` 是**静态**方法，拿不到模型类；
+     * 而候选必须从关联模型查。编译期是唯一同时握有
+     * 「字段声明」与「模型类」的地方。
+     *
+     * ## 解析不了就降级，不抛异常
+     *
+     * 「模型还没建」「表还没迁」「关联没定义」都是正常中间态 ——
+     * 让整个 Resource 编译失败，比「这个字段暂时没有候选」更难排查。
+     * 降级后由 ai:verify 给出可读的提示（见 Verifier）。
+     */
+    protected function resolveRelations(Form $form, string $model): void
+    {
+        $fields = $form->belongsToFields();
+
+        if ($fields === [] || ! Drivers::hasRelationResolver()) {
+            return;
+        }
+
+        $resolver = Drivers::relationResolver();
+
+        if ($resolver === null) {
+            return;
+        }
+
+        foreach ($fields as $field) {
+            $resolved = $resolver->resolve($model, $field->resolvedRelationName(), $field->getLabelColumn());
+
+            if ($resolved === null) {
+                continue;
+            }
+
+            $field->applyResolved($resolved['options'], $resolved['exists']);
+        }
     }
 
     /**

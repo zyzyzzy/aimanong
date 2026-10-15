@@ -152,6 +152,12 @@ class Department extends Model
     protected $table = 'departments';
     public $timestamps = false;
     protected $guarded = [];
+
+    /** 上级部门 —— 外键下拉的候选来源 */
+    public function parent()
+    {
+        return $this->belongsTo(Department::class, 'parent_id');
+    }
 }
 PHPEOF
 cat > app/Aimanong/DepartmentResource.php <<'PHPEOF'
@@ -190,6 +196,8 @@ class DepartmentResource extends Resource
     public static function form(\Aimanong\Form\Form $form): void
     {
         $form->text('name', '部门名称')->required();
+        // 外键下拉：候选自动来自 parent 关联（跨框架同一种写法）
+        $form->belongsTo('parent_id', '上级部门');
     }
 }
 PHPEOF

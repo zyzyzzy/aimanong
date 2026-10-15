@@ -87,5 +87,28 @@
       "move_requires": "update",
       "unauthorized_status": 403
     }
+  },
+  "belongs_to_field": {
+    "_note": "外键下拉：两端必须产出同一套解析结果（候选 / relation / exists 规则）",
+    "_why": [
+      "此前做一个外键下拉要手写三件事：options(pluck(...)->all())、",
+      "rules('exists:{table},{id}')、以及模型上的关联。",
+      "三件都是易错点：忘了 ->all() 编译失败（传的是 Collection）；",
+      "忘了 exists 就能提交任意 id；表名写错不报错，一路错到运行时",
+      "（实测 categorys vs categories）。",
+      "现在框架自己从关联里读目标模型/表/主键 —— 声明方只写一行。"
+    ],
+    "resource": "departments",
+    "field": "parent_id",
+    "expect": {
+      "type": "select",
+      "relation": "parent",
+      "exists_prefix": "exists:departments,",
+      "min_options": 1,
+      "option_keys": [
+        "value",
+        "label"
+      ]
+    }
   }
 }

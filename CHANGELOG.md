@@ -4,6 +4,27 @@
 
 ## [Unreleased]
 
+### 新增：外键下拉做成一等公民（`$form->belongsTo()`）
+
+```php
+$form->belongsTo('author_id', '作者');                      // 关联名从字段名推断
+$form->belongsTo('author_id', '作者')->labelColumn('name');  // 指定显示列
+```
+
+候选与 `exists` 规则**自动**从模型关联解析（新增 `RelationResolver` 契约，
+两端各一实现）。此前要手写三件事，而三件都是易错点：
+
+| 原先手写 | 写错的后果（实测） |
+|---|---|
+| `Author::pluck('name','id')->all()` | 忘了 `->all()` 编译失败（传的是 Collection） |
+| `->rules('exists:authors,id')` | 忘了 → 前端能提交任意 id |
+| 表名 | 写错不报错，一路错到运行时（`categorys` vs `categories`） |
+
+`belongsTo` 在 schema 里的 **type 是 `select`**（控件语义）—— 写成
+`belongsTo` 会让字段掉进 `<input>` 分支，变成人手填 id 的文本框，
+与这个字段存在的意义正好相反。它「是关联」这件事由 `props.relation` 表达。
+
+
 ### 新增：方法名猜错时给出可自愈报错（`did_you_mean`）
 
 PHP 原生只回一句 `Call to undefined method ...::showWhen()`，而现在：

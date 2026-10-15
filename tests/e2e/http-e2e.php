@@ -307,6 +307,60 @@ if ($firstLogId === null) {
 }
 
 /*
+ * ═══ 可发现性：自省资料必须给全签名与 namespace ═══
+ *
+ * 事故：`Tree` 类的命名空间在 llms.txt / capabilities.json /
+ * `/__ai/examples/tree`（当时 404）三处都拿不到，一个 LLM 最后靠
+ * `class_exists()` 反射才命中。**「有这条能力」与「能照着写出来」
+ * 是两件事** —— 自省文档少了签名与 namespace 就只完成前一半。
+ */
+echo "\n═══ 可发现性 ═══\n";
+
+$disc = json_decode((string) @file_get_contents(__DIR__.'/fixtures/multi-app-expectations.json'), true)['discoverability'] ?? null;
+
+if ($disc === null) {
+    t('读得到可发现性共享期望', false, 'fixtures 里缺 discoverability');
+} else {
+    // ① 示例片段必须存在，且带 namespace
+    foreach ($disc['examples_must_exist'] as $i => $pattern) {
+        $ex = http("$base/__ai/examples/{$pattern}");
+        $needle = $disc['examples_must_contain'][$i] ?? '';
+
+        /*
+         * ⚠️ 必须在**解码后**的 code 字段里找。
+         *
+         * JSON 会把 namespace 的反斜杠转义成 `\\`，直接在原始 body 上
+         * `str_contains('Aimanong\Tree\Tree')` 永远找不到 ——
+         * 第一版就是这么写错的（断言红，但代码其实是对的）。
+         */
+        $code = (string) (json_decode((string) $ex['body'], true)['code'] ?? '');
+
+        t(
+            "/__ai/examples/{$pattern} → 200",
+            $ex['code'] === 200,
+            "HTTP {$ex['code']}"
+        );
+        t(
+            "示例含完整 namespace（{$needle}）",
+            str_contains($code, $needle),
+            str_contains($code, $needle) ? '有' : '缺 —— agent 只能去反射'
+        );
+    }
+
+    // ② tree_options 必须给钩子签名与 use
+    $cap = http("$base/__ai/capabilities.json");
+    $treeOpts = json_decode((string) $cap['body'], true)['tree_options'] ?? [];
+
+    foreach ($disc['tree_options_must_have'] as $key) {
+        t(
+            "tree_options.{$key} 存在",
+            isset($treeOpts[$key]) && $treeOpts[$key] !== '',
+            isset($treeOpts[$key]) ? '有' : '缺'
+        );
+    }
+}
+
+/*
  * ═══ 声明式自定义批量动作 ═══
  *
  * 声明里只有数据（动作名/标签/处理器类名），行为在处理器里。
@@ -642,6 +696,26 @@ t(
     '树形接口返回嵌套 children',
     isset($treeRoots[0]['children']) && is_array($treeRoots[0]['children']),
     '需 data[0].children 是数组'
+);
+
+/*
+ * 树形接口要**预加载关联**。
+ *
+ * 树形页前端只请求本接口 —— 不预加载的话 `$grid->column('parent.name')`
+ * 整列显示「—」（实测：一个 LLM 撞上后只能改用模型访问器绕开，
+ * 而它没有任何办法知道「是接口没带关联」）。
+ */
+$childWithParent = null;
+foreach ($treeRoots[0]['children'] ?? [] as $child) {
+    if (isset($child['parent'])) {
+        $childWithParent = $child;
+        break;
+    }
+}
+t(
+    '树形接口预加载了关联列（子节点带 parent 对象）',
+    $childWithParent !== null,
+    $childWithParent === null ? '子节点没有 parent 字段 —— 关联列会显示「—」' : '有'
 );
 
 // 非树形资源要明确报错，不能静默返回空

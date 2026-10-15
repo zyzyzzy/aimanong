@@ -927,6 +927,22 @@ $expRootCount = (int) ($treeExp['tree']['api']['root_count'] ?? 1);
 t('树形接口根节点数一致', count($roots) === $expRootCount, count($roots)." 个（期望 {$expRootCount}）");
 t('树形接口返回嵌套 children', isset($roots[0]['children']) && is_array($roots[0]['children']));
 
+// 树形接口要预加载关联（否则关联列整列显示「—」）
+$childWithParent = null;
+
+foreach ($roots[0]['children'] ?? [] as $child) {
+    if (isset($child['parent'])) {
+        $childWithParent = $child;
+        break;
+    }
+}
+
+t(
+    '树形接口预加载了关联列（子节点带 parent 对象）',
+    $childWithParent !== null,
+    $childWithParent === null ? '子节点没有 parent 字段' : '有'
+);
+
 $expRoot = (string) ($treeExp['tree']['root']['name'] ?? '');
 if ($expRoot !== '') {
     t('根节点名称与期望一致', ($roots[0]['name'] ?? '') === $expRoot, (string) ($roots[0]['name'] ?? '(空)'));

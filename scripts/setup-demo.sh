@@ -272,6 +272,8 @@ class DepartmentResource extends Resource
     {
         $grid->column('id', 'ID');
         $grid->column('name', '部门名称');
+        // 关联列 —— 树形页也要能取到值（框架会预加载 /tree 的关联）
+        $grid->column('parent.name', '上级部门');
         $grid->column('sort', '排序');
     }
 

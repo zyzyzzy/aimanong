@@ -75,16 +75,23 @@ class UserResource extends Resource
 
 ```php
 // 树形（层级数据）—— 声明后列表按层级缩进 + 可展开折叠
+// 需要的 use：use Aimanong\Tree\Tree;
+// 完整可抄的 Resource：GET /__ai/examples/tree
 public static function tree(Tree $tree): void
 {
     $tree->parentColumn('parent_id')->titleColumn('name')->orderColumn('sort');
 }
+// ⚠️ 树形页的列表只请求 /tree 接口（返回嵌套 children），所以
+//    $grid->column('parent.name') 这类关联列在树形页取不到值 ——
+//    要显示父级名称请在模型上定义访问器（如 parent_name + $appends）
 
 // 条件显示
 $form->select('priority')->label('优先级')->visibleWhen('type', 'bug');          // 等于
 $form->select('priority')->label('优先级')->visibleWhen('type', ['bug','feature']); // 其中之一
 
 // 自定义批量动作：声明里**引用处理器类**（数据），行为写在处理器里（ADR-003）
+// 处理器实现 Aimanong\Contracts\BatchActionHandler（handle(string $model, array $ids): int）
+// 完整可抄的处理器：GET /__ai/examples/batch-handler
 $grid->batchAction('ship', '标记为已发货')->handler(ShipOrders::class);
 $grid->batchActions(['delete']);   // 内置动作照旧
 

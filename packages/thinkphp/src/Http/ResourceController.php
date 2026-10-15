@@ -258,7 +258,28 @@ final class ResourceController
         $pk = method_exists($probe, 'getPk') ? $probe->getPk() : null;
         $idColumn = is_string($pk) && $pk !== '' ? $pk : 'id';
 
-        $rows = $model::order($config['orderColumn'])->select()->toArray();
+        /*
+         * 关联列要预加载 —— 与 Laravel 侧同一套逻辑。
+         *
+         * 不预加载的后果：树形页里 `$grid->column('parent.name')` 显示空白，
+         * 因为树形页前端只请求本接口，拿到的是模型本体、不含关联数据。
+         * 与 Laravel 侧的差异：ThinkORM 用 `with()`（同名方法）。
+         */
+        $relations = [];
+
+        foreach ($node->columns as $column) {
+            if (str_contains($column->name, '.')) {
+                $relations[] = explode('.', $column->name)[0];
+            }
+        }
+
+        $treeQuery = $model::order($config['orderColumn']);
+
+        if ($relations !== []) {
+            $treeQuery->with(array_unique($relations));
+        }
+
+        $rows = $treeQuery->select()->toArray();
 
         $builder = new TreeBuilder;
 

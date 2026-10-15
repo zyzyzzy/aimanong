@@ -142,5 +142,31 @@
       "affected": 2,
       "final_status": "shipped"
     }
+  },
+  "discoverability": {
+    "_note": "「有这条能力」与「能照着写出来」是两件事 —— 自省资料必须给全签名与 namespace",
+    "_why": [
+      "事故：Tree 类的命名空间在 llms.txt / capabilities.json / /__ai/examples/tree（当时 404）",
+      "三处都拿不到，一个 LLM 最后靠 class_exists() 反射才命中 Aimanong\\Tree\\Tree。",
+      "同一批检查还发现：examples 只有 resource/grid/form，没有 tree 与批量处理器。"
+    ],
+    "examples_must_exist": [
+      "tree",
+      "batch-handler"
+    ],
+    "examples_must_contain": [
+      "Aimanong\\Tree\\Tree",
+      "Aimanong\\Contracts\\BatchActionHandler"
+    ],
+    "tree_options_must_have": [
+      "hook",
+      "use",
+      "example_endpoint"
+    ],
+    "tree_relation_column": {
+      "_why": "树形页只请求 /tree，原先不预加载关联 → 关联列全显示「—」，agent 只能改用访问器绕开",
+      "endpoint_suffix": "/tree",
+      "expect_child_has_parent": true
+    }
   }
 }

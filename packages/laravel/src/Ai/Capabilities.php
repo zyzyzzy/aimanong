@@ -329,11 +329,30 @@ class Capabilities
     public function treeOptions(): array
     {
         return [
+            /*
+             * ⚠️ 这一段原先**只有参数名**，没有钩子签名、没有类命名空间。
+             *
+             * 实测代价（L3 复测）：一个 LLM 知道「有 tree 这个东西」，
+             * 但在 llms.txt、本文件、`/__ai/examples/tree`（当时 404）
+             * 三处都拿不到该 `use` 哪个类，最后靠 `class_exists()` 反射
+             * 才命中 `Aimanong\Tree\Tree`。
+             *
+             * 「有这条能力」与「能照着写出来」是两件事 —— 少了签名与
+             * namespace，这段自省文档就只完成了前一半。
+             */
+            'hook' => "public static function tree(\Aimanong\Tree\Tree \$tree): void",
+            'use' => 'use Aimanong\\Tree\\Tree;',
+            'example' => 'public static function tree(Tree $tree): void { '
+                ."\$tree->parentColumn('parent_id')->titleColumn('name')->orderColumn('sort'); }",
+            'example_endpoint' => 'GET /__ai/examples/tree 给出可直接照抄的完整 Resource',
             'parentColumn' => '父级字段名，参数: 字符串（默认 parent_id）',
             'titleColumn' => '节点显示字段，参数: 字符串（默认 name）',
             'orderColumn' => '排序字段，参数: 字符串（默认 sort）',
             'draggable' => '（尚未实现）声明允许拖拽。当前前端无拖拽 UI，调整层级请用编辑表单或 PUT /{uri}/{id}/move',
             'maxDepth' => '最大层级，参数: int（0 = 不限制）',
+            'caveat' => '树形页的列表**只请求 /tree 接口**（返回嵌套 children）。'
+                .'因此 $grid->column("parent.name") 这类**关联列在树形页取不到值**（显示为空）——'
+                .'需要父级名称时在模型上定义访问器（如 parent_name + $appends）',
         ];
     }
 

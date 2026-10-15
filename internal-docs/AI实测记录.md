@@ -1294,3 +1294,71 @@ L3-3 的 agent 报告：自定义动作 `ship` 弹出的确认框标题是「批
 - 树形页里 `$grid->column('parent.name')` 渲染为 `—`：树形模式前端只请求
   `/tree`，返回的是模型本体、不含关联。**应补 eager load 或明确文档告知。**
 - `draggable` 明确「尚未实现」，两轮 agent 都正确避开了（capabilities 里写清了）。
+
+---
+
+# 第十四轮：补掉「能力存在但发现不了 / 用不对」的两个缺口
+
+**日期**：2026-10-15
+**起因**：第十三轮末尾记下的两条遗留。两者都不是「能力不存在」，
+而是**能力在、但 agent 拿不到或用了不对**。
+
+## 缺口①：`Tree` 的命名空间三处资料都没有
+
+**实测经过**（第十三轮 L3-4 的 agent）：它读懂了「有 tree 这个东西」，
+但在 llms.txt、`capabilities.json`、`/__ai/examples/tree`（当时 **404**）
+三处都拿不到该 `use` 哪个类，最后靠 `class_exists()` 反射才命中
+`Aimanong\Tree\Tree`。
+
+**根因**：`tree_options` 只列了**参数名**，没有钩子签名、没有 namespace；
+`examples` 端点只有 `resource` / `grid` / `form` 三个片段。
+
+**修**：
+
+| 位置 | 补了什么 |
+|---|---|
+| `tree_options` | `hook`（完整签名含命名空间）/ `use` / `example_endpoint` / `caveat` |
+| `/__ai/examples` | 新增 `tree`（可直接照抄的完整 Resource，57 行） |
+| `/__ai/examples` | 新增 `batch-handler`（含 `Aimanong\Contracts\BatchActionHandler`） |
+| `llms.txt` | 补 `use Aimanong\Tree\Tree;` 与两个示例端点指引 |
+
+> 顺带按同一标准查了其他钩子：`Resource` / `Grid` / `Form` / `Show` 都在
+> resource 示例里给了 namespace；`BatchActionHandler` 原先只在 capabilities
+> 正文里提到、没有可照抄的片段 —— 一并补了。
+
+## 缺口②：树形页的关联列整列显示「—」
+
+**实测经过**（同一位 agent）：写 `$grid->column('parent.name','上级部门')`，
+页面显示「—」。根因是**树形页前端只请求 `/tree` 接口**，
+而该接口返回的是模型本体、**不含关联数据**；点号列在前端靠深取
+`row.parent.name`，自然取不到。agent 只好改用模型访问器绕开 ——
+而它没有任何办法知道「是接口没带关联」。
+
+**修**：给 `/tree` 补关联预加载，与普通列表（`Repository::paginate`）
+同一套逻辑（从 `$node->columns` 里挑出点号列，取第一段做 `with()`）。
+两端都改（Eloquent 用 `with()`、ThinkORM 同名方法）。
+
+浏览器实测：
+
+    修前：上级部门列全部显示「—」
+    修后：总部「—」（顶级无父级，正确）/ 研发部「总部」/ 前端组「研发部」/ 市场部「总部」
+
+## 验收
+
+| | 修前 | 修后 |
+|---|---|---|
+| PHPUnit | 257 | 257 |
+| http-e2e | 77 | **85**（+8：可发现性 6 + 关联预加载 2） |
+| thinkphp-e2e | 157 | **158** |
+| framework-e2e | 102 | 102 |
+
+新增共享期望段 `discoverability`（两端读同一份）。
+
+## 一个自己踩的坑（记下来）
+
+写「示例含 namespace」这条断言时，第一版直接在**原始 HTTP body** 上
+`str_contains('Aimanong\Tree\Tree')` —— **永远找不到**：JSON 会把反斜杠
+转义成 `\\`。断言红了，但代码其实是对的。
+
+**断言写错会伪装成「代码有 bug」**，和它的反面对称（代码有 bug 伪装成断言通过）。
+必须在**解码后**的字段里找。

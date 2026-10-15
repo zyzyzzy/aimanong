@@ -632,10 +632,31 @@ class ResourceController extends Controller
 
         $idColumn = $this->idColumn($node);
 
-        $rows = $node->model::query()
-            ->orderBy($config['orderColumn'])
-            ->get()
-            ->toArray();
+        /*
+         * 关联列要预加载 —— 与普通列表（Repository::paginate）同一套逻辑。
+         *
+         * ⚠️ 这里原先**没有**预加载，后果是树形页里 `$grid->column('parent.name')`
+         * 渲染成空白/「—」：树形页前端只请求本接口，拿到的是模型本体、
+         * 不含关联数据，而点号列在前端靠深取 `row.parent.name`。
+         *
+         * 实测（L3 复测）：一个 LLM 写了关联列发现显示「—」，只能改用
+         * 模型访问器绕开 —— 而它没有任何办法知道「是接口没带关联」。
+         */
+        $relations = [];
+
+        foreach ($node->columns as $column) {
+            if (str_contains($column->name, '.')) {
+                $relations[] = explode('.', $column->name)[0];
+            }
+        }
+
+        $query = $node->model::query()->orderBy($config['orderColumn']);
+
+        if ($relations !== []) {
+            $query->with(array_unique($relations));
+        }
+
+        $rows = $query->get()->toArray();
 
         $builder = new TreeBuilder;
 

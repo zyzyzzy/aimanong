@@ -240,6 +240,106 @@ public static function grid(Grid $grid): void
     $grid->perPage(20);
 }
 PHP,
+            /*
+             * 树形。
+             *
+             * ⚠️ 之前**没有这一段** —— 实测（L3 复测）一个 LLM 想用 tree()，在
+             * llms.txt、capabilities.json、`/__ai/examples/tree`（404）三处
+             * 都拿不到 `Tree` 类的命名空间，最后靠 `class_exists()` 反射才命中
+             * `Aimanong\Tree\Tree`。片段本身就是给「不知道写什么」用的，
+             * 少了 namespace 等于没用。
+             */
+            'tree' => <<<'PHP'
+<?php
+
+namespace App\Aimanong;
+
+use Aimanong\Resource;
+use Aimanong\Tree\Tree;   // ← 树形钩子的参数类型
+use App\Models\Department;
+
+class DepartmentResource extends Resource
+{
+    public static function model(): string
+    {
+        return Department::class;
+    }
+
+    public static function label(): string
+    {
+        return '部门';
+    }
+
+    public static function uri(): string
+    {
+        return 'departments';
+    }
+
+    /**
+     * 声明为树形 —— 列表会自动按层级缩进 + 给出展开/折叠。
+     *
+     * 四个参数都有默认值（parent_id / name / sort / 0），可以只写用得着的：
+     *   $tree->parentColumn('parent_id')->titleColumn('name')->orderColumn('sort');
+     *
+     * ⚠️ 树形页的列表**只请求 /tree 接口**，所以：
+     *   · 关联列（`$grid->column('parent.name')`）在树形页取不到值
+     *   · 需要显示父级名称时用模型访问器（见下方 parent_name）
+     */
+    public static function tree(Tree $tree): void
+    {
+        $tree->parentColumn('parent_id')
+            ->titleColumn('name')
+            ->orderColumn('sort');
+    }
+
+    public static function grid(\Aimanong\Grid\Grid $grid): void
+    {
+        $grid->column('id', 'ID');
+        // 树形页**不要**用关联列 —— 改用访问器（模型里定义 parent_name 并 $appends）
+        $grid->column('name', '部门名称');
+        $grid->column('sort', '排序');
+    }
+
+    public static function form(\Aimanong\Form\Form $form): void
+    {
+        $form->text('name', '部门名称')->required();
+        // 外键下拉：候选自动来自模型关联（本表**自关联**也一样）
+        $form->belongsTo('parent_id', '上级部门');
+    }
+}
+PHP,
+            /*
+             * 自定义批量动作的处理器。
+             *
+             * 与 'tree' 同样的理由：片段的用途就是「照抄」，所以必须给全
+             * namespace —— 契约类在 `Aimanong\Contracts` 下。
+             */
+            'batch-handler' => <<<'PHP'
+<?php
+
+namespace App\Aimanong\Actions;
+
+use Aimanong\Contracts\BatchActionHandler;   // ← 必须实现的契约
+
+/**
+ * 批量把订单标记为已发货。
+ *
+ * 只写业务：权限（{uri}.{动作名} 节点）、id 校验、操作日志都由框架
+ * 在调用它之前处理掉，这里不需要也不应该再判一次。
+ */
+class ShipOrders implements BatchActionHandler
+{
+    /**
+     * @param  string  $model  当前 Resource 的模型类名
+     * @param  array<int, mixed>  $ids  被选中的主键
+     * @return int  受影响行数（回给前端做提示）
+     */
+    public function handle(string $model, array $ids): int
+    {
+        return $model::whereIn('id', $ids)->update(['status' => 'shipped']);
+    }
+}
+PHP,
             'form' => <<<'PHP'
 public static function form(Form $form): void
 {

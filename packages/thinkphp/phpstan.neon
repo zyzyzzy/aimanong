@@ -36,11 +36,16 @@ parameters:
                 - src/Models/*.php
                 - src/Console/InstallCommand.php
         # 关系属性的读取走 TP 的 __get（roles() 方法 → $model->roles）
+        #
+        # HomeController 也算在内：控制台要显示当前用户的角色名，
+        # 读的就是 $user->roles（那里判的是 Permissible 契约，
+        # 运行时由 ORM 的 __get 解析成关系）。
         -
             identifier: property.notFound
             paths:
                 - src/Models/*.php
                 - src/ThinkPermissionChecker.php
+                - src/Http/HomeController.php
         # getFields() 在 think\db\Query 上（Db::table() 返回的是它），
         # 但类型声明写的是 BaseQuery —— 运行时可用，e2e 覆盖了
         -

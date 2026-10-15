@@ -229,13 +229,20 @@ def conv(src: str, name: str, hoisted: dict) -> tuple[str, list[str]]:
                lambda m: '{extend name="%s" /}' % re.sub(r'^[A-Za-z_]\w*::', '', m.group(1)).replace('.', '/'), s)
     s = re.sub(r"@section\s*\(\s*'(.*?)'\s*\)", r'{block name="\1"}', s)
     s = re.sub(r'@endsection\b', '{/block}', s)
+    # ⚠️ 产出**非自闭合**的 {block name="x"}{/block}。
+    #
+    # think-template 的布局占位符**不支持自闭合形式** `{block name="x" /}`：
+    # 写了它不会报错，但替换那一步匹配不到 → 布局照常渲染、**子模板内容整块丢失**
+    # （实测踩到：控制台页面只有侧边栏和主题面板，正文一个字都没有，
+    #   而 e2e 的断言只查布局里的串，全绿）。
     s = re.sub(r"@yield\s*\(\s*'([^']*)'\s*\)",
-               lambda m: '{block name="%s" /}' % re.sub(r'^[A-Za-z_]\w*::','',m.group(1)).replace('.','/'), s)
+               lambda m: '{block name="%s"}{/block}' % re.sub(r'^[A-Za-z_]\w*::','',m.group(1)).replace('.','/'), s)
     if re.search(r'@push\s*\(|@stack\s*\(', s):
         todo.append('@push/@stack 在 TP 无对应机制，需人工改写')
     s = re.sub(r"@push\s*\(\s*'(.*?)'\s*\)", r'{block name="\1"}', s)
     s = re.sub(r'@endpush\b', '{/block}', s)
-    s = re.sub(r"@stack\s*\(\s*'(.*?)'\s*\)", r'{block name="\1" /}', s)
+    # 同上：@stack → 非自闭合（自闭合在 think-template 里不会被替换）
+    s = re.sub(r"@stack\s*\(\s*'(.*?)'\s*\)", r'{block name="\1"}{/block}', s)
 
     # ⑪ @switch / @case / @default / @break → {if} / {elseif} / {else}
     #

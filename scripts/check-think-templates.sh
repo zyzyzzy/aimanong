@@ -166,6 +166,42 @@ else
     printf "  ${GREEN}✅${NC} 规则④：代码区无 Blade 指令残留\n"
 fi
 
+# ── 规则⑤：布局占位符不得用自闭合 block ──
+#
+# think-template 的 {block name="x" /}（自闭合）**不会被替换**：
+# 它不报错，但替换那一步匹配不到 → 布局照常渲染、**子模板内容整块丢失**。
+#
+# 实测踩到：控制台页面只剩侧边栏 + 主题面板，正文一个字都没有，
+# 而 e2e 全绿（断言只查布局里的串）。
+# 来源是 blade2think.py 把 @yield/@stack 转成了自闭合形式 —— 已一并修。
+rule5=$(python3 - "$TPL" <<'PYEOF'
+import glob, os, re, sys
+
+root = sys.argv[1]
+# 只查 block：{block ... /}
+pat = re.compile(r'\{block\b[^}]*?/\}')
+bad = []
+
+for f in glob.glob(os.path.join(root, '**', '*.html'), recursive=True):
+    src = open(f, encoding='utf-8').read()
+    for m in pat.finditer(src):
+        line = src[:m.start()].count('\n') + 1
+        bad.append(f"{os.path.relpath(f, root)}:{line}  {m.group(0)}")
+
+print('\n'.join(bad))
+PYEOF
+)
+
+if [ -n "$rule5" ]; then
+    printf "${RED}❌ 规则⑤：布局占位符用了自闭合 {block ... /}${NC}\n"
+    printf '%s\n' "$rule5" | sed 's|^|     |'
+    printf "     → think-template 不会替换它：不报错，但子模板内容**整块丢失**。\n"
+    printf "     → 改成 {block name=\"x\"}{/block}（非自闭合）。\n"
+    FAIL=1
+else
+    printf "  ${GREEN}✅${NC} 规则⑤：无自闭合 block 占位符\n"
+fi
+
 printf '\n'
 if [ "$FAIL" -eq 0 ]; then
     printf "${GREEN}✅ 模板产物通过全部硬性规则${NC}\n"

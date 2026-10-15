@@ -58,8 +58,8 @@ composer require aimanong/thinkphp
 | 能力 | 说明 |
 |---|---|
 | ✅ 5 个契约 | 数据源 / Schema 内省 / 字典 / 权限 / 上传能力 |
-| ✅ 后台页面 | `/admin` 首页、侧边栏、主题面板 |
-| ✅ 数据 API | `index` / `show` / `store` / `update` / `destroy` |
+| ✅ 控制台页面 | `/admin` 首页、侧边栏、主题面板（**两端都只有这一个 HTML 页面**） |
+| ✅ 数据 API | `index` / `show` / `store` / `update` / `destroy`（JSON） |
 | ✅ 分页 / 搜索 / 排序 / 筛选 | 由 `->searchable()` / `->sortable()` / `->filter()` 声明驱动 |
 | ✅ 幽灵列检测 | 声明了不存在的列 → 编译期报错并给出 `did_you_mean` |
 | ✅ `->required()` / `->requiredOnCreate()` 校验 | 新增必填、编辑可留空 |
@@ -78,6 +78,7 @@ composer require aimanong/thinkphp
 | 能力 | ThinkPHP 侧的情况 |
 |---|---|
 | ❌ `batch` / `export` / `tree` / `move` | **返回 501**，不是静默失败 |
+| ❌ **资源页面的 HTML 路由** | 只有控制台有 HTML。`/admin/customers` 等 **404**，数据只能走 API。控制台菜单的链接目前指向它们（**点进去是 404**，已知未修） |
 | ❌ 内置 Resource | 管理员账号 / 操作日志 / 登录日志 / 字典管理 / 个人中心 |
 | ❌ MCP 工具 | 8 个 MCP 工具（AI Agent 直接调用） |
 | ❌ 扩展机制 | `aimanong:make-extension` / `extensions` |

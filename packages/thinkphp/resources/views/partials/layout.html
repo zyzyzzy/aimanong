@@ -60,7 +60,7 @@
 <link rel="stylesheet" href="<?php echo $asset('css/themes.css'); ?>">
 <link rel="stylesheet" href="<?php echo $asset('css/user-prefs.css'); ?>">
 <link rel="icon" href="<?php echo $asset('favicon-32.png'); ?>">
-{block name="head" /}
+{block name="head"}{/block}
 </head>
 <body>
 <div class="am-shell">
@@ -69,7 +69,7 @@
   <div class="am-main">
     {include file="partials/topbar" /}
     <div class="am-content">
-      {block name="content" /}
+      {block name="content"}{/block}
     </div>
     {if $ui['footer'] ?? true}
       <footer class="am-footer">
@@ -122,6 +122,6 @@
   });
 })();
 </script>
-{block name="scripts" /}
+{block name="scripts"}{/block}
 </body>
 </html>

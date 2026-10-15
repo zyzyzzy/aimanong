@@ -401,7 +401,24 @@ t('登录后 session id 已更换', ($mBefore[1] ?? '') !== '' && ($mAfter[1] ??
 
 [$st, $body] = $auth('GET', '/admin');
 t('登录后 /admin → 200', $st === 200, "HTTP {$st}");
+/*
+ * ⚠️ 这里原本只有 `str_contains($body, 'Aimanong')` —— 而 'Aimanong'
+ * 出现在**布局**（品牌行/页脚）里，所以这条断言**永远为真**。
+ *
+ * 后果：think-template 的 `{block name="content" /}` 自闭合占位符不会被替换，
+ * 子模板内容**整块丢失**（控制台只剩侧边栏与主题面板，正文一个字没有），
+ * 而这里一路全绿。真实存在了很多天。
+ *
+ * 改成查**页面主体**的独有标记，再补一条「无未替换的模板占位符」。
+ */
 t('登录后页面有内容', str_contains($body, 'Aimanong'));
+
+// 主体标记：am-page-head 只在页面内容块里，布局里没有
+t('控制台渲染了页面主体（不只是布局）', str_contains($body, 'am-page-head'), 'am-page-head');
+
+// 未替换的模板占位符 —— 出现即说明布局/块机制没生效
+$leftover = str_contains($body, '{block') || str_contains($body, '{extend') || str_contains($body, '{/block}');
+t('页面无未替换的模板占位符', ! $leftover, $leftover ? '发现 {block}/{extend} 字面量' : '干净');
 
 [$st, $body] = $auth('GET', '/admin/api/customers');
 t('登录后 API → 200 且有数据', $st === 200 && str_contains($body, '"data"'), "HTTP {$st}");

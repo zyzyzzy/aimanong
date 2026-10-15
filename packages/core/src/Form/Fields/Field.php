@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Form\Fields;
 
+use Aimanong\Support\SuggestsMethods;
 use Aimanong\Exceptions\UnknownFieldTypeException;
 use Aimanong\Schema\Ast\FieldNode;
 use Aimanong\Support\FieldType;
@@ -18,6 +19,8 @@ use Aimanong\Support\FieldType;
  */
 abstract class Field
 {
+    use SuggestsMethods;
+
     /**
      * 字段类型标识，子类覆盖。
      */

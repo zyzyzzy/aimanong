@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Grid;
 
+use Aimanong\Support\SuggestsMethods;
 use Aimanong\Grid\Concerns\CanExport;
 use Aimanong\Schema\Ast\ColumnNode;
 
@@ -14,6 +15,8 @@ use Aimanong\Schema\Ast\ColumnNode;
  */
 class Grid
 {
+    use SuggestsMethods;
+
     use CanExport;
 
     /**

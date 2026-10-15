@@ -94,7 +94,8 @@ $form->select('author_id', '作者')->options(Author::pluck('name','id'))->rules
 ```
 
 `/__ai/capabilities.json` 是**全量**能力清单（字段类型、每个声明方法的参数、可用规则）。
-不确定某个方法叫什么时先查它，不要猜 —— 猜错只会得到 `Call to undefined method`。
+不确定某个方法叫什么时先查它，不要猜。
+猜错也不会卡住：报错会给出**最近匹配 + 该类的全部可用方法**，照它改一次即可。
 
 ## 铁律（违反会导致生成失败）
 

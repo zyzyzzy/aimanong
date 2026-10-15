@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Grid;
 
+use Aimanong\Support\SuggestsMethods;
 use Aimanong\Exceptions\DictNotFoundException;
 use Aimanong\Schema\Ast\ColumnNode;
 use Aimanong\Support\Drivers;
@@ -15,6 +16,8 @@ use Aimanong\Support\Drivers;
  */
 class Column
 {
+    use SuggestsMethods;
+
     protected string $label;
 
     protected bool $sortable = false;

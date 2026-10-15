@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Tree;
 
+use Aimanong\Support\SuggestsMethods;
 /**
  * 树形结构定义。
  *
@@ -13,6 +14,8 @@ namespace Aimanong\Tree;
  */
 class Tree
 {
+    use SuggestsMethods;
+
     protected string $parentColumn = 'parent_id';
 
     protected string $orderColumn = 'sort';

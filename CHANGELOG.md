@@ -4,6 +4,32 @@
 
 ## [Unreleased]
 
+### 新增：方法名猜错时给出可自愈报错（`did_you_mean`）
+
+PHP 原生只回一句 `Call to undefined method ...::showWhen()`，而现在：
+
+```
+Text 上不存在方法 showWhen()。
+你是不是想调用: visibleWhen()
+可用方法: dateFormat, dateTime, default, ..., required, ..., visibleWhen
+```
+
+覆盖 `Field` / `Column` / `Grid` / `Show` / `Tree` 五个声明层 API 类
+（`Form` 的字段类型分发也接上了，保留原有的「可用字段类型」清单）。
+
+**两条判据**，因为两类错法不一样：
+
+| 错法 | 例子 | 靠什么认出 |
+|---|---|---|
+| 拼写错误 | `requried` → `required` | 编辑距离 |
+| **用词不同** | `showWhen` → `visibleWhen` | **公共后缀**（`when`） |
+
+第二条是必须的：`showWhen` 与 `visibleWhen` 编辑距离 6、字符串相似度 0.53 ——
+它压根不是拼写错误，任何编辑距离阈值都够不着。
+
+> 实测背景：一个 LLM 为确认「`visibleWhen` 到底叫什么」，**反射了 142 个框架类**。
+> 差别不在模型强弱，只在框架有没有把**已经知道的信息**说出来。
+
 ### 新增：条件显示与按钮级权限（声明层，两端一致）
 
 **条件显示** —— `$form->select('priority')->visibleWhen('type', 'bug')`

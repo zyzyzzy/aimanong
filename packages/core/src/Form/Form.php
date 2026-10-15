@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Form;
 
+use Aimanong\Support\MethodSuggester;
 use Aimanong\Form\Concerns\HasSteps;
 use Aimanong\Form\Fields\Checkbox;
 use Aimanong\Form\Fields\Color;
@@ -233,12 +234,14 @@ class Form
         $class = FieldType::fieldClass($method);
 
         if ($class === null) {
-            $available = implode(', ', FieldType::all());
-
+            /*
+             * 走统一的建议器：先给「你是不是想调用 X()」，
+             * 再列可用字段类型。字段类型不在类的方法表里，
+             * 所以要用 $extra 传进去一起参与匹配。
+             */
             throw new \BadMethodCallException(
-                "Form 上不存在方法 {$method}()。\n"
-                ."可用字段类型: {$available}\n"
-                .'提示：插件提供的字段需先在扩展中注册（Extension::field()）。'
+                MethodSuggester::message(static::class, $method, FieldType::all(), '可用字段类型')
+                ."\n提示：插件提供的字段需先在扩展中注册（Extension::field()）。"
             );
         }
 

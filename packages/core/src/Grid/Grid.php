@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Grid;
 
+use Aimanong\Grid\Actions\BatchAction;
 use Aimanong\Support\SuggestsMethods;
 use Aimanong\Grid\Concerns\CanExport;
 use Aimanong\Schema\Ast\ColumnNode;
@@ -36,6 +37,9 @@ class Grid
 
     /** @var array<int, mixed> */
     protected array $batchActions = [];
+
+    /** @var array<string, BatchAction> */
+    protected array $customBatchActions = [];
 
     protected int $perPage = 20;
 
@@ -122,13 +126,85 @@ class Grid
     }
 
     /**
+     * 声明一个**自定义**批量动作。
+     *
+     * ```php
+     * $grid->batchAction('ship', '标记为已发货')->handler(ShipOrders::class);
+     * ```
+     *
+     * ## 为什么是「引用类」而不是「传闭包」
+     *
+     * ADR-003 定的是「声明层只放数据，不放行为」—— 因为声明要被序列化、
+     * 自省、被 AI 读、被跨框架执行，闭包这四件都做不到。
+     *
+     * 但「不收闭包」不等于「不能有自定义动作」：中间那条路是**引用**。
+     * 声明里放类名（数据），框架按名实例化并调用 ——
+     * 既守住 ADR-003，又让动作真的可声明。
+     *
+     * 在本方法出现之前，`batchActions()` 是硬白名单 {delete, export}：
+     * 实测中一个 LLM 为做「批量改状态」，把 23 个可能的动作名逐个塞进去
+     * 全部被拒，最后自己写了一个扩展 + 注入 JS，并**丢掉了权限与字段校验**
+     * （它自己在报告里标了这是安全缺口）。
+     */
+    public function batchAction(string $name, string $label): BatchAction
+    {
+        if (in_array($name, self::BATCH_ACTIONS, true)) {
+            throw new \InvalidArgumentException(
+                "批量动作 [{$name}] 是内置动作，不要用 batchAction() 重定义。"
+                .'用 batchActions([...]) 声明即可。'
+            );
+        }
+
+        $action = new BatchAction($name, $label);
+        $this->customBatchActions[$name] = $action;
+
+        return $action;
+    }
+
+    /**
      * 已声明的批量动作。
      *
      * @return array<int, string>
      */
     public function getBatchActions(): array
     {
-        return $this->batchActions;
+        // 内置动作 + 自定义动作名，前端按同一个列表渲染按钮
+        return array_merge($this->batchActions, array_keys($this->customBatchActions));
+    }
+
+    /**
+     * 自定义批量动作的完整声明（含处理器类名）。
+     *
+     * 编译产物里带这个，控制器才能把动作名分发到处理器。
+     *
+     * @return array<int, array{name: string, label: string, handler: string}>
+     */
+    public function getCustomBatchActions(): array
+    {
+        $out = [];
+
+        foreach ($this->customBatchActions as $action) {
+            /*
+             * 声明了动作却没给处理器 —— 编译期就拦住。
+             * 否则运行期表现为「点按钮 501」，与「声明了却不能用」
+             * （本项目最反对的情况）是同一个问题。
+             */
+            if ($action->getHandler() === null) {
+                throw new \InvalidArgumentException(
+                    "自定义批量动作 [{$action->getName()}] 没有指定处理器。"
+                    ."用 ->handler(SomeHandler::class) 指定 —— 它需要实现 "
+                    .\Aimanong\Contracts\BatchActionHandler::class
+                );
+            }
+
+            $out[] = [
+                'name' => $action->getName(),
+                'label' => $action->getLabel(),
+                'handler' => $action->getHandler(),
+            ];
+        }
+
+        return $out;
     }
 
     /**

@@ -54,7 +54,7 @@ Route::group(function (): void {
     |
     | 路径：/admin/api/{uri}
     |
-    | 只登记**已实现**的动作。未移植的三个（batch / export / move）
+    | 只登记**已实现**的动作。未移植的两个（export / move）
     | 不在这里挂着 —— 它们会被 TP 当成默认控制器路由，报「控制器不存在」，
     | 那是个让人摸不着头脑的错误。真要调时由 unimplemented() 明确回 501。
     */
@@ -78,6 +78,8 @@ Route::group(function (): void {
         // ⚠️ `:uri/tree` 必须排在 `:uri/:id` **之前** ——
         //    否则 TP 会把 `tree` 当成 id，走进详情接口报「不存在 id=tree 的记录」。
         Route::get(':uri/tree', [ResourceController::class, 'tree'])->pattern(['uri' => $uri]);
+        // 批量动作：同样必须排在 `:uri/:id` 之前
+        Route::post(':uri/batch', [ResourceController::class, 'batch'])->pattern(['uri' => $uri]);
         Route::get(':uri/:id', [ResourceController::class, 'show'])->pattern(['uri' => $uri]);
         Route::get(':uri', [ResourceController::class, 'index'])->pattern(['uri' => $uri]);
         Route::post(':uri', [ResourceController::class, 'store'])->pattern(['uri' => $uri]);

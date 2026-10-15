@@ -6,6 +6,7 @@ namespace Aimanong\Http\Controllers;
 
 use Aimanong\Aimanong;
 use Aimanong\Auth\PermissionGate;
+use Aimanong\Contracts\BatchActionHandler;
 use Aimanong\Contracts\Repository;
 use Aimanong\Repository\EloquentRepository;
 use Aimanong\Schema\Ast\ResourceNode;
@@ -333,13 +334,79 @@ class ResourceController extends Controller
             ], 403);
         }
 
-        return match ($data['action']) {
-            'delete' => $this->batchDelete($uri, $node, $data['ids']),
-            default => response()->json([
+        if ($data['action'] === 'delete') {
+            return $this->batchDelete($uri, $node, $data['ids']);
+        }
+
+        return $this->runCustomBatch($uri, $node, (string) $data['action'], $data['ids']);
+    }
+
+    /**
+     * 执行自定义批量动作 —— 分发到声明里**引用的处理器类**。
+     *
+     * ## 为什么这样设计
+     *
+     * ADR-003 说声明层不收闭包（声明要被序列化/自省/跨框架执行）。
+     * 但「不收闭包」不等于「不能有自定义动作」：声明里放**类名**，
+     * 框架按名实例化 —— 数据留在声明层，行为留在代码里。
+     *
+     * ## 与自建接口的区别（这是关键）
+     *
+     * 实测里一个 LLM 因为框架不支持自定义动作，自己写了一个扩展 +
+     * 注入 JS + 一个自己的路由。它自己在报告里标了三个缺口：
+     * ① 丢了 `orders.update` 权限校验 ② 丢了字段校验 ③ 依赖未公开的钩子。
+     *
+     * 走这条路的三个缺口都不存在：权限走 `{uri}.{动作名}` 节点（上面已校验）、
+     * id 走框架的 `ids.*` 校验、不依赖任何未公开约定。
+     */
+    protected function runCustomBatch(string $uri, ResourceNode $node, string $action, array $ids): JsonResponse
+    {
+        $declared = null;
+
+        foreach ($node->meta['customBatchActions'] ?? [] as $custom) {
+            if (is_array($custom) && ($custom['name'] ?? null) === $action) {
+                $declared = $custom;
+                break;
+            }
+        }
+
+        if ($declared === null || ! is_string($declared['handler'] ?? null)) {
+            return response()->json([
                 'error' => 'BATCH_ACTION_NOT_IMPLEMENTED',
-                'message' => "批量动作 [{$data['action']}] 尚未实现",
-            ], 501),
-        };
+                'message' => "批量动作 [{$action}] 尚未实现",
+                'hint' => '自定义动作要用 $grid->batchAction(名称, 标签)->handler(处理器类) 声明',
+            ], 501);
+        }
+
+        // 自定义动作有自己的权限节点（PermissionNodes::actionsFor 会生成）
+        $this->authorize_($uri, $action);
+
+        $handlerClass = $declared['handler'];
+
+        if (! class_exists($handlerClass)) {
+            return response()->json([
+                'error' => 'BATCH_HANDLER_MISSING',
+                'message' => "批量动作 [{$action}] 的处理器 {$handlerClass} 不存在",
+            ], 500);
+        }
+
+        /** @var BatchActionHandler $handler */
+        $handler = app()->make($handlerClass);
+
+        try {
+            $affected = $handler->handle($node->model, $ids);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => 'BATCH_ACTION_FAILED',
+                'message' => "批量动作 [{$action}] 执行失败：".$e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'action' => $action,
+            'affected' => $affected,
+            'message' => "已处理 {$affected} 条",
+        ]);
     }
 
     /**

@@ -128,6 +128,8 @@ class Compiler
                  * 声明了、对外文档也写了，实际是个彻底的空操作。
                  */
                 'batchActions' => $grid->getBatchActions(),
+                // 自定义批量动作的完整声明（动作名 + 标签 + 处理器类名）
+                'customBatchActions' => $grid->getCustomBatchActions(),
                 'tree' => $tree?->toArray(),
                 'stepped' => $form->isStepped(),
                 // 只读 Resource：前端隐藏写按钮、后端拒绝写请求

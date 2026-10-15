@@ -213,7 +213,8 @@ final class ThinkPermissionChecker implements PermissionChecker
                     $perm = new Permission;
                     $perm->save([
                         'slug' => $slug,
-                        'name' => $label.' · '.PermissionNodes::label($action)
+                        // 自定义动作的标签由声明方提供
+                        'name' => $label.' · '.PermissionNodes::labelFor($node, $action)
                             .($app !== null ? '（'.$apps->title($app).'）' : ''),
                         'group' => $app !== null ? $apps->title($app).' / '.$label : $label,
                     ]);

@@ -91,6 +91,7 @@ class AimanongDemoService extends Service
         Aimanong::registry()->register(CustomerResource::class);
         Aimanong::registry()->register(ReadonlyCustomerResource::class);
         Aimanong::registry()->register(DepartmentResource::class);
+        Aimanong::registry()->register(ShipOrderResource::class);
     }
 }
 PHPEOF
@@ -217,6 +218,87 @@ class Department extends Model
     public function parent()
     {
         return $this->belongsTo(Department::class, 'parent_id');
+    }
+}
+PHPEOF
+
+mkdir -p "$TARGET/app/Aimanong/Actions"
+
+cat > "$TARGET/app/ShipOrder.php" <<'PHPEOF'
+<?php
+
+namespace app;
+
+use think\Model;
+
+class ShipOrder extends Model
+{
+    protected $name = 'ship_orders';
+    protected $pk = 'id';
+}
+PHPEOF
+
+cat > "$TARGET/app/Aimanong/Actions/ShipOrders.php" <<'PHPEOF'
+<?php
+
+namespace app\Aimanong\Actions;
+
+use Aimanong\Contracts\BatchActionHandler;
+use app\ShipOrder;
+
+/**
+ * 自定义批量动作的处理器（ThinkPHP 版）—— 与 Laravel 侧同一套契约。
+ */
+class ShipOrders implements BatchActionHandler
+{
+    public function handle(string $model, array $ids): int
+    {
+        return ShipOrder::whereIn('id', $ids)->update(['status' => 'shipped']);
+    }
+}
+PHPEOF
+
+cat > "$TARGET/app/ShipOrderResource.php" <<'PHPEOF'
+<?php
+
+namespace app;
+
+use Aimanong\Resource;
+
+/**
+ * 订单 —— 带一个**声明式**自定义批量动作（跨框架同一种写法）。
+ */
+class ShipOrderResource extends Resource
+{
+    public static function model(): string
+    {
+        return ShipOrder::class;
+    }
+
+    public static function label(): string
+    {
+        return '发货单';
+    }
+
+    public static function uri(): string
+    {
+        return 'ship-orders';
+    }
+
+    public static function grid(\Aimanong\Grid\Grid $grid): void
+    {
+        $grid->column('id', 'ID');
+        $grid->column('order_no', '订单号');
+        $grid->column('amount', '金额');
+        $grid->column('status', '状态');
+        $grid->batchAction('ship', '标记为已发货')->handler(\app\Aimanong\Actions\ShipOrders::class);
+        $grid->batchActions(['delete']);
+    }
+
+    public static function form(\Aimanong\Form\Form $form): void
+    {
+        $form->text('order_no', '订单号')->required();
+        $form->number('amount', '金额');
     }
 }
 PHPEOF
@@ -397,6 +479,9 @@ $pdo->exec("INSERT INTO customers VALUES (1,\"深圳宏远精密\",\"制造业\"
 // 树形资源的数据（e2e 要断言层级渲染）
 $pdo->exec("CREATE TABLE departments (id INTEGER PRIMARY KEY, name TEXT, parent_id INTEGER, sort INTEGER)");
 $pdo->exec("INSERT INTO departments VALUES (1,\"总部\",NULL,1),(2,\"研发部\",1,2),(3,\"前端组\",2,3),(4,\"市场部\",1,4)");
+// 自定义批量动作的夹具（与 Laravel 侧同名同结构）
+$pdo->exec("CREATE TABLE ship_orders (id INTEGER PRIMARY KEY, order_no TEXT, amount REAL, status TEXT)");
+$pdo->exec("INSERT INTO ship_orders VALUES (1,\"SO-001\",100.5,\"paid\"),(2,\"SO-002\",20.0,\"pending\")");
 $pdo->exec("CREATE TABLE agents (id INTEGER PRIMARY KEY, username TEXT UNIQUE, name TEXT, password TEXT, company TEXT, enabled INTEGER DEFAULT 1)");
 $pdo->exec("INSERT INTO agents VALUES (1,\"agent1\",\"代理A\",\"".password_hash("agent123", PASSWORD_BCRYPT)."\",\"华北代理\",1)");
 ' "$TARGET/runtime/aimanong-e2e.sqlite"

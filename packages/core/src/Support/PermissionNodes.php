@@ -44,7 +44,40 @@ final class PermissionNodes
      */
     public static function actionsFor(ResourceNode $node): array
     {
-        return ($node->meta['readonly'] ?? false) ? self::READONLY_ACTIONS : self::ACTIONS;
+        $actions = ($node->meta['readonly'] ?? false) ? self::READONLY_ACTIONS : self::ACTIONS;
+
+        /*
+         * 自定义批量动作也是权限节点。
+         *
+         * 不做这一步的后果很具体：动作能调，但**没有任何权限节点管得住它** ——
+         * 实测里一个 LLM 自建批量接口时就丢掉了权限校验，它自己在报告里
+         * 标为安全缺口。框架既然收了这个动作，就得让它进权限体系。
+         */
+        foreach ($node->meta['customBatchActions'] ?? [] as $custom) {
+            $name = is_array($custom) ? ($custom['name'] ?? null) : null;
+
+            if (is_string($name) && $name !== '' && ! in_array($name, $actions, true)) {
+                $actions[] = $name;
+            }
+        }
+
+        return $actions;
+    }
+
+    /**
+     * 动作的中文标签（含自定义动作）。
+     *
+     * 自定义动作的标签由声明方提供（`batchAction('ship', '标记为已发货')`）。
+     */
+    public static function labelFor(ResourceNode $node, string $action): string
+    {
+        foreach ($node->meta['customBatchActions'] ?? [] as $custom) {
+            if (is_array($custom) && ($custom['name'] ?? null) === $action) {
+                return (string) ($custom['label'] ?? $action);
+            }
+        }
+
+        return self::label($action);
     }
 
     public static function label(string $action): string

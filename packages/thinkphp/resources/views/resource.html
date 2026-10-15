@@ -485,7 +485,11 @@ const app = createApp({
         const hasBatch = computed(() => batchActions.value.length > 0);
         const selectedIds = ref([]);
 
+        // 自定义动作的标签来自声明（batchAction 的第二个参数）
         const batchLabels = { delete: '批量删除', export: '导出选中' };
+        for (const a of (schema.grid?.customBatchActions ?? [])) {
+            if (a && a.name) batchLabels[a.name] = a.label || a.name;
+        }
 
         const allSelected = computed(() =>
             rows.value.length > 0 && selectedIds.value.length === rows.value.length
@@ -775,16 +779,71 @@ const app = createApp({
                 return;
             }
 
-            toast('未实现的批量动作', action, 'danger');
+            /*
+             * 自定义批量动作（`$grid->batchAction('ship', '标记为已发货')`）。
+             *
+             * 与 delete 一样先走确认弹窗 —— 批量操作会改多条数据，
+             * 点错一次的代价是「一批数据被改」。
+             */
+            confirmState.value = {
+                open: true,
+                id: null,
+                label: `选中的 ${selectedIds.value.length} 条记录`,
+                batch: true,
+                action,
+            };
         }
 
         /** 确认弹窗的统一入口：按是否批量分发 */
         function confirmRun() {
             if (confirmState.value.batch) {
+                // 有 action 的是自定义动作；没有的（delete / 内置）走批量删除
+                if (confirmState.value.action && confirmState.value.action !== 'delete') {
+                    return doCustomBatch(confirmState.value.action);
+                }
+
                 return doBatchDelete();
             }
 
             return doDelete();
+        }
+
+        /**
+         * 执行自定义批量动作。
+         *
+         * 请求的是**框架自己的**批量端点（`{base}/batch`），不是自建路由 ——
+         * 这样权限校验（`{uri}.{动作名}` 节点）、id 校验、操作日志全都继承，
+         * 不需要重写一遍。
+         */
+        async function doCustomBatch(action) {
+            const ids = [...selectedIds.value];
+            const label = batchLabels[action] || action;
+            confirmState.value.open = false;
+
+            try {
+                const res = await fetch(`${base}/batch`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                    },
+                    body: JSON.stringify({ action, ids }),
+                });
+                const json = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    toast(label + '失败', json.message || '', 'danger');
+
+                    return;
+                }
+
+                toast(label + '完成', json.message || '', 'success');
+                clearSelection();
+                load(currentPage.value);
+            } catch (e) {
+                toast(label + '失败', e.message || '网络异常', 'danger');
+            }
         }
 
         async function doBatchDelete() {

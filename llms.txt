@@ -84,6 +84,10 @@ public static function tree(Tree $tree): void
 $form->select('priority')->label('优先级')->visibleWhen('type', 'bug');          // 等于
 $form->select('priority')->label('优先级')->visibleWhen('type', ['bug','feature']); // 其中之一
 
+// 自定义批量动作：声明里**引用处理器类**（数据），行为写在处理器里（ADR-003）
+$grid->batchAction('ship', '标记为已发货')->handler(ShipOrders::class);
+$grid->batchActions(['delete']);   // 内置动作照旧
+
 // 数据字典（把枚举变成一等公民）
 $form->select('status')->dict('order_status');
 $grid->column('status', '状态')->dict('order_status');

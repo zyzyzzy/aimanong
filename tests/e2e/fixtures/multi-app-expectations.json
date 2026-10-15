@@ -110,5 +110,23 @@
         "label"
       ]
     }
+  },
+  "custom_batch_action": {
+    "_note": "声明式自定义批量动作：两端必须产出同一套声明，且真的能改数据",
+    "_why": [
+      "此前 batchActions() 是硬白名单 {delete, export}，声明层不收闭包（ADR-003）。",
+      "实测：一个 LLM 为做「批量改状态」，把 23 个可能的动作名逐个塞进去全被拒，",
+      "最后自己写扩展 + 注入 JS + 自建路由 —— 而它自己标出这条路丢了",
+      "权限校验与字段校验。",
+      "现在：声明里引用处理器类（数据），行为留在代码里 ——",
+      "权限节点 {uri}.{action} 自动生成，id 校验与操作日志都继承框架的。"
+    ],
+    "resource": "ship-orders",
+    "action": "ship",
+    "label": "标记为已发货",
+    "expect": {
+      "affected": 2,
+      "final_status": "shipped"
+    }
   }
 }

@@ -492,6 +492,11 @@ class Capabilities
             'default' => '默认值，参数: mixed',
             'readonly' => '只读',
             'hidden' => '隐藏（静态，永远不显示）',
+            'batchAction(自定义批量动作)' => '声明一个自定义批量动作。'
+                ."参数: (动作名, 标签)，然后 ->handler(处理器类)。"
+                ."处理器实现 Aimanong\\Contracts\\BatchActionHandler（handle(string \$model, array \$ids): int）。"
+                ."例: \$grid->batchAction('ship', '标记为已发货')->handler(ShipOrders::class);  "
+                .'权限节点 {uri}.{动作名} 自动生成，id 校验与操作日志继承框架的',
             'belongsTo(外键下拉)' => '外键下拉，候选与 exists 规则**自动**从模型关联解析。'
                 .'参数: (字段名, 标签)。关联名默认从字段名推断（author_id → author），'
                 .'可用 ->relation() 显式指定、->labelColumn() 指定显示列。'

@@ -1085,6 +1085,86 @@ if ($btExp === null) {
     }
 }
 
+/*
+ * ③-3 声明式自定义批量动作 —— 与 Laravel 侧读同一份共享期望。
+ *
+ * 断言四件事：动作在声明里、标签正确、调一次真的写库、未声明的动作被拒。
+ */
+$cbExp = $treeExp['custom_batch_action'] ?? null;
+
+if ($cbExp === null) {
+    t('读得到批量动作共享期望', false, 'fixtures 里缺 custom_batch_action');
+} else {
+    [$cbc, $cbb] = $treeReq('/admin/'.$cbExp['resource']);
+    t('批量动作样本页面可访问', $cbc === 200, "HTTP {$cbc}");
+
+    preg_match('~schema\s*=\s*(\{.*?\});~s', $cbb, $cbm);
+    $cbSchema = json_decode($cbm[1] ?? '{}', true) ?: [];
+    $cbGrid = $cbSchema['grid'] ?? [];
+
+    t(
+        '自定义动作出现在 batchActions 里',
+        in_array($cbExp['action'], $cbGrid['batchActions'] ?? [], true),
+        implode(',', $cbGrid['batchActions'] ?? [])
+    );
+
+    $cbDecl = $cbGrid['customBatchActions'][0] ?? [];
+    t('声明里带标签', ($cbDecl['label'] ?? '') === $cbExp['label'], (string) ($cbDecl['label'] ?? ''));
+    t('声明里带处理器类名', is_string($cbDecl['handler'] ?? null), (string) ($cbDecl['handler'] ?? '(无)'));
+
+    // 真的调一次 —— 只验声明是不够的：声明对了但处理器没被调用，
+    // 界面照样显示按钮
+    [$_, $cbListBody] = $treeReq("/admin/api/{$cbExp['resource']}");
+    $cbIds = [];
+
+    foreach (json_decode($cbListBody, true)['data'] ?? [] as $row) {
+        if (isset($row['id'])) {
+            $cbIds[] = $row['id'];
+        }
+    }
+
+    t('批量样本有可操作的行', $cbIds !== [], count($cbIds).' 行');
+
+    $cbCsrf = '';
+    if (preg_match('~name="csrf-token" content="([^"]+)"~', $cbb, $cm2)) {
+        $cbCsrf = $cm2[1];
+    }
+
+    [$cbCode, $cbBody] = $treeReq(
+        "/admin/api/{$cbExp['resource']}/batch",
+        'POST',
+        (string) json_encode(['action' => $cbExp['action'], 'ids' => $cbIds])
+    );
+
+    $cbJson = json_decode($cbBody, true);
+    t('调用自定义批量动作 → 200', $cbCode === 200, "HTTP {$cbCode} ".substr($cbBody, 0, 80));
+    t(
+        '受影响行数与期望一致',
+        (int) ($cbJson['affected'] ?? -1) === (int) $cbExp['expect']['affected'],
+        'affected='.var_export($cbJson['affected'] ?? null, true)
+    );
+
+    // 复查：状态真的变了
+    [$_, $cbAfterBody] = $treeReq("/admin/api/{$cbExp['resource']}");
+    $cbStatuses = array_map(
+        static fn ($r) => $r['status'] ?? null,
+        json_decode($cbAfterBody, true)['data'] ?? []
+    );
+    t(
+        '数据真的被改（不是只回了 200）',
+        $cbStatuses !== [] && ! array_diff(array_filter($cbStatuses), [$cbExp['expect']['final_status']]),
+        implode(',', array_map(static fn ($v) => (string) $v, $cbStatuses))
+    );
+
+    // 未声明的动作必须被拒
+    [$cbBadCode] = $treeReq(
+        "/admin/api/{$cbExp['resource']}/batch",
+        'POST',
+        (string) json_encode(['action' => 'not-declared-anywhere', 'ids' => $cbIds])
+    );
+    t('未声明的动作被拒', $cbBadCode === 403, "HTTP {$cbBadCode}");
+}
+
 // ④ 非树形资源应明确报错，而不是返回空
 [$nc, $nbody] = $treeReq('/admin/api/customers/tree');
 t(

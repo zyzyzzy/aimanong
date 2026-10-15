@@ -138,7 +138,10 @@ $pdo = new PDO("sqlite:".$db);
 $pdo->exec("DROP TABLE IF EXISTS departments");
 $pdo->exec("CREATE TABLE departments (id INTEGER PRIMARY KEY, name TEXT, parent_id INTEGER, sort INTEGER)");
 $pdo->exec("INSERT INTO departments VALUES (1,\"总部\",NULL,1),(2,\"研发部\",1,2),(3,\"前端组\",2,3),(4,\"市场部\",1,4)");
-echo "     departments 表就绪\n";
+$pdo->exec("DROP TABLE IF EXISTS ship_orders");
+$pdo->exec("CREATE TABLE ship_orders (id INTEGER PRIMARY KEY, order_no TEXT, amount REAL, status TEXT)");
+$pdo->exec("INSERT INTO ship_orders VALUES (1,\"SO-001\",100.5,\"paid\"),(2,\"SO-002\",20.0,\"pending\")");
+echo "     departments + ship_orders 表就绪\n";
 '
 cat > app/Models/Department.php <<'PHPEOF'
 <?php
@@ -160,6 +163,85 @@ class Department extends Model
     }
 }
 PHPEOF
+mkdir -p app/Aimanong/Actions
+
+cat > app/Aimanong/Actions/ShipOrders.php <<'PHPEOF'
+<?php
+
+namespace App\Aimanong\Actions;
+
+use Aimanong\Contracts\BatchActionHandler;
+use App\Models\ShipOrder;
+
+/**
+ * 自定义批量动作的处理器 —— 只写业务。
+ *
+ * 权限（`orders.ship` 节点）、id 校验、操作日志都由框架在调用它之前处理掉。
+ */
+class ShipOrders implements BatchActionHandler
+{
+    public function handle(string $model, array $ids): int
+    {
+        return ShipOrder::whereIn('id', $ids)->update(['status' => 'shipped']);
+    }
+}
+PHPEOF
+
+cat > app/Models/ShipOrder.php <<'PHPEOF'
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class ShipOrder extends Model
+{
+    protected $table = 'ship_orders';
+    public $timestamps = false;
+    protected $guarded = [];
+}
+PHPEOF
+
+cat > app/Aimanong/ShipOrderResource.php <<'PHPEOF'
+<?php
+
+namespace App\Aimanong;
+
+use Aimanong\Resource;
+use App\Aimanong\Actions\ShipOrders;
+use App\Models\ShipOrder;
+
+/**
+ * 订单 —— 带一个**声明式**自定义批量动作。
+ *
+ * 声明里只有数据（动作名/标签/处理器类名），行为在处理器里（ADR-003）。
+ */
+class ShipOrderResource extends Resource
+{
+    public static function model(): string { return ShipOrder::class; }
+    public static function label(): string { return '订单'; }
+    public static function uri(): string { return 'ship-orders'; }
+
+    public static function grid(\Aimanong\Grid\Grid $grid): void
+    {
+        $grid->column('id', 'ID');
+        $grid->column('order_no', '订单号');
+        $grid->column('amount', '金额');
+        $grid->column('status', '状态');
+        $grid->batchAction('ship', '标记为已发货')->handler(ShipOrders::class);
+        $grid->batchActions(['delete']);
+    }
+
+    public static function form(\Aimanong\Form\Form $form): void
+    {
+        $form->text('order_no', '订单号')->required();
+        $form->number('amount', '金额');
+        $form->select('status', '状态')->options(['paid' => '已付款', 'pending' => '待付款', 'shipped' => '已发货']);
+    }
+}
+PHPEOF
+mkdir -p app/Aimanong/Actions
+
 cat > app/Aimanong/DepartmentResource.php <<'PHPEOF'
 <?php
 
@@ -207,64 +289,48 @@ php -r '
 $f = "app/Providers/AppServiceProvider.php";
 $s = file_get_contents($f);
 
-if (str_contains($s, "DepartmentResource")) {
-    echo "     DepartmentResource 已在 Provider 里\n";
+/*
+ * 幂等守卫要检**全部**要注册的类，不能只看第一个 ——
+ * 只看 DepartmentResource 的话，后加的 ShipOrderResource 永远进不来
+ * （重跑脚本时被守卫提前 exit）。实测踩到。
+ */
+$needed = ["DepartmentResource", "ShipOrderResource"];
+$missing = array_values(array_filter($needed, fn ($c) => ! str_contains($s, $c)));
+
+if ($missing === []) {
+    echo "     两个 Resource 都已在 Provider 里\n";
     exit(0);
 }
 
-// 补 use
-if (! str_contains($s, "use Aimanong\\Aimanong;")) {
-    $s = preg_replace("/^use /m", "use Aimanong\\Aimanong;\nuse App\\Aimanong\\DepartmentResource;\nuse ", $s, 1);
+/*
+ * 补 use —— **逐个**检查，不能只看第一个。
+ *
+ * ⚠️ 踩过：只判 `use Aimanong\\Aimanong;` 在不在，而它一直在，
+ * 于是后加的 ShipOrderResource 的 use 永远写不进去。
+ * 而 `register(ShipOrderResource::class)` 会解析成
+ * `App\\Providers\\ShipOrderResource`（不存在）—— **静默失败**：
+ * provider 文件里明明有那一行，注册表里没有，页面 404，极难定位。
+ */
+foreach (["use Aimanong\\Aimanong;", "use App\\Aimanong\\DepartmentResource;", "use App\\Aimanong\\ShipOrderResource;"] as $useLine) {
+    if (! str_contains($s, $useLine)) {
+        $s = preg_replace("/^use /m", $useLine."\nuse ", $s, 1);
+    }
 }
 
-// 把注册写进 register()
-$body = "\n        Aimanong::registry()->register(DepartmentResource::class);";
-if (preg_match("/(public function register\\(\\): void\\s*\\{)/", $s)) {
+// 把注册写进 register() —— 已注册的不重复插（重跑脚本否则插出重复行）
+$body = "";
+foreach (["DepartmentResource", "ShipOrderResource"] as $cls) {
+    if (! str_contains($s, "register({$cls}::class)")) {
+        $body .= "\n        Aimanong::registry()->register({$cls}::class);";
+    }
+}
+
+if ($body !== "" && preg_match("/(public function register\\(\\): void\\s*\\{)/", $s)) {
     $s = preg_replace("/(public function register\\(\\): void\\s*\\{)/", "$1".$body, $s, 1);
-} else {
+} elseif ($body !== "") {
     fwrite(STDERR, "     ⚠️ 没找到 register()，需人工处理\n");
     exit(1);
 }
-
-file_put_contents($f, $s);
-echo "     DepartmentResource 已写入 AppServiceProvider\n";
-' 2>&1 | tail -1
-
-# ── 权限节点（内置 Resource 的节点要写库）──
-echo "  → 同步权限节点"
-php artisan aimanong:permission sync >/dev/null 2>&1 || true
-
-# ── 登记 region 扩展 ──
-#
-# ⚠️ 2026-10-13 修：插件的扩展**必须显式列进** `config('aimanong.extensions')`，
-# 框架不会自动发现。
-#
-# region 包的 composer.json 里写了 `extra.aimanong.extension`，
-# 但**全仓库没有任何代码读它**（grep 过），InstallCommand 也不扫 composer 元数据。
-# 也就是说那是一段死元数据。
-#
-# 后果（实测）：全新项目 `composer require aimanong/region` 之后，
-# RegionExtension 根本不会 boot —— `FieldType::fieldViewFor('region')` 是 null，
-# 省市区字段退化成普通文本框。而 e2e 里那两条断言就是在测这个。
-#
-# demo 的职责是**真的把插件跑起来**，所以这里显式登记。
-# （插件自动发现是独立的产品决策，见拆包计划「本段遗留」。）
-echo "  → 登记 region 扩展"
-php -r '
-$f = "config/aimanong.php";
-if (! is_file($f)) { exit(0); }
-$s = (string) file_get_contents($f);
-if (str_contains($s, "RegionExtension::class")) { exit(0); }
-$needle = "\x27extensions\x27 => [";
-$pos = strpos($s, $needle);
-if ($pos === false) {
-    fwrite(STDERR, "  ⚠️  配置里找不到 extensions 键，region 扩展未登记\n");
-    exit(1);
-}
-$pos += strlen($needle);
-$s = substr($s, 0, $pos)
-    . "\n        \\Aimanong\\Region\\RegionExtension::class,"
-    . substr($s, $pos);
 file_put_contents($f, $s);
 '
 
@@ -276,6 +342,118 @@ echo "  → 配置多应用（admin / user / agent）"
 php "$ROOT/scripts/setup-demo-multiapp.php" 2>&1 | sed 's/^/  /' || {
     echo "  ⚠️  多应用配置失败（e2e 会跳过相关断言）"
 }
+
+# ── 登记 region 扩展 ──
+#
+# ⚠️ 扩展**必须显式登记**，框架不自动发现（见 region/README）。
+#
+# ⚠️ 而且必须放在 `aimanong:install` **之后**：install 会重新发布
+# config/aimanong.php，把之前手工加的 extensions 覆盖掉。
+# 实测：重跑本脚本后 region 字段全部编译失败
+# （`Form 上不存在方法 region()`），7 个 Resource 红。
+# ── 数据字典声明（演示用的场景资源要靠它）──
+#
+# ⚠️ 两个坑，都实测踩过：
+#
+# ① 字典是**代码声明**（config 里的 foundation.dict.declarations），不是种子数据。
+#    而 `aimanong:install` 会重新发布 config/aimanong.php —— 手工加过的声明被覆盖，
+#    引用这些字典的 Resource 就全部 `DICT_NOT_FOUND` 编译失败，
+#    **连带 e2e 的「可读 Resource」断言一起红**。
+# ② 位置必须是 `foundation.dict.declarations`。加到顶层 `dict` 不报错，
+#    但框架读不到 —— 静默无效。
+echo "  → 声明演示用数据字典"
+php -r '
+$f = "config/aimanong.php";
+$s = file_get_contents($f);
+
+if (str_contains($s, "crm_contract_status")) {
+    echo "     字典已声明\n";
+    exit(0);
+}
+
+$decls = <<<'"'"'PHP'"'"'
+[
+                '"'"'priority'"'"' => [
+                    '"'"'name'"'"' => '"'"'优先级'"'"',
+                    '"'"'items'"'"' => ['"'"'low'"'"' => '"'"'低'"'"', '"'"'normal'"'"' => '"'"'普通'"'"', '"'"'high'"'"' => '"'"'高'"'"', '"'"'urgent'"'"' => '"'"'紧急'"'"'],
+                ],
+                '"'"'article_status'"'"' => [
+                    '"'"'name'"'"' => '"'"'文章状态'"'"',
+                    '"'"'items'"'"' => ['"'"'draft'"'"' => '"'"'草稿'"'"', '"'"'pending'"'"' => '"'"'待审'"'"', '"'"'published'"'"' => '"'"'已发布'"'"', '"'"'archived'"'"' => '"'"'已归档'"'"'],
+                ],
+                '"'"'crm_level'"'"' => [
+                    '"'"'name'"'"' => '"'"'客户等级'"'"',
+                    '"'"'items'"'"' => ['"'"'A'"'"' => '"'"'A 级（重点）'"'"', '"'"'B'"'"' => '"'"'B 级（常规）'"'"', '"'"'C'"'"' => '"'"'C 级（观察）'"'"'],
+                ],
+                '"'"'crm_stage'"'"' => [
+                    '"'"'name'"'"' => '"'"'商机阶段'"'"',
+                    '"'"'items'"'"' => ['"'"'lead'"'"' => '"'"'线索'"'"', '"'"'qualified'"'"' => '"'"'已确认'"'"', '"'"'proposal'"'"' => '"'"'方案报价'"'"', '"'"'negotiation'"'"' => '"'"'商务谈判'"'"', '"'"'won'"'"' => '"'"'赢单'"'"', '"'"'lost'"'"' => '"'"'输单'"'"'],
+                ],
+                '"'"'crm_followup_type'"'"' => [
+                    '"'"'name'"'"' => '"'"'跟进方式'"'"',
+                    '"'"'items'"'"' => ['"'"'call'"'"' => '"'"'电话'"'"', '"'"'visit'"'"' => '"'"'拜访'"'"', '"'"'meeting'"'"' => '"'"'会议'"'"', '"'"'email'"'"' => '"'"'邮件'"'"', '"'"'wechat'"'"' => '"'"'微信'"'"'],
+                ],
+                '"'"'crm_source'"'"' => [
+                    '"'"'name'"'"' => '"'"'客户来源'"'"',
+                    '"'"'items'"'"' => ['"'"'web'"'"' => '"'"'官网'"'"', '"'"'referral'"'"' => '"'"'转介绍'"'"', '"'"'exhibition'"'"' => '"'"'展会'"'"', '"'"'cold'"'"' => '"'"'陌生拜访'"'"', '"'"'ad'"'"' => '"'"'广告投放'"'"'],
+                ],
+                '"'"'crm_customer_status'"'"' => [
+                    '"'"'name'"'"' => '"'"'客户状态'"'"',
+                    '"'"'items'"'"' => ['"'"'potential'"'"' => '"'"'潜在'"'"', '"'"'following'"'"' => '"'"'跟进中'"'"', '"'"'signed'"'"' => '"'"'已签约'"'"', '"'"'lost'"'"' => '"'"'已流失'"'"'],
+                ],
+                '"'"'crm_industry'"'"' => [
+                    '"'"'name'"'"' => '"'"'所属行业'"'"',
+                    '"'"'items'"'"' => ['"'"'manufacturing'"'"' => '"'"'制造业'"'"', '"'"'internet'"'"' => '"'"'互联网'"'"', '"'"'finance'"'"' => '"'"'金融'"'"', '"'"'education'"'"' => '"'"'教育'"'"', '"'"'medical'"'"' => '"'"'医疗'"'"', '"'"'retail'"'"' => '"'"'零售'"'"', '"'"'other'"'"' => '"'"'其他'"'"'],
+                ],
+                '"'"'crm_contract_status'"'"' => [
+                    '"'"'name'"'"' => '"'"'合同状态'"'"',
+                    '"'"'items'"'"' => ['"'"'draft'"'"' => '"'"'草稿'"'"', '"'"'reviewing'"'"' => '"'"'审核中'"'"', '"'"'signed'"'"' => '"'"'已签署'"'"', '"'"'executing'"'"' => '"'"'执行中'"'"', '"'"'finished'"'"' => '"'"'已完成'"'"', '"'"'terminated'"'"' => '"'"'已终止'"'"'],
+                ],
+            ]
+PHP;
+
+// 只替换 foundation.dict 里那个空的 declarations
+$s = preg_replace(
+    "/('"'"'declarations'"'"'\s*=>\s*)\[\s*\]/",
+    "$1" . $decls,
+    $s,
+    1
+);
+
+if (! str_contains($s, "crm_contract_status")) {
+    fwrite(STDERR, "     ⚠️ 没能写入 foundation.dict.declarations\n");
+    exit(1);
+}
+
+file_put_contents($f, $s);
+echo "     6 个字典已声明\n";
+' 2>&1 | tail -1
+
+echo "  → 登记 region 扩展"
+php -r '
+$f = "config/aimanong.php";
+$s = file_get_contents($f);
+
+if (str_contains($s, "RegionExtension")) {
+    echo "     region 扩展已登记\n";
+    exit(0);
+}
+
+$s = preg_replace(
+    "/^([ \t]*)'"'"'extensions'"'"' => \[\n/m",
+    "$1'"'"'extensions'"'"' => [\n$1    \\Aimanong\\Region\\RegionExtension::class,\n",
+    $s,
+    1
+);
+
+if (! str_contains($s, "RegionExtension")) {
+    fwrite(STDERR, "     ⚠️ 没能写入 extensions，region 字段会编译失败\n");
+    exit(1);
+}
+
+file_put_contents($f, $s);
+echo "     region 扩展已登记\n";
+' 2>&1 | tail -1
 
 # ── 按钮级权限验证账号 ──
 #

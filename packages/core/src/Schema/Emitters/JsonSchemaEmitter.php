@@ -70,6 +70,15 @@ class JsonSchemaEmitter
              * 界面没有、后端也没有。
              */
             'batchActions' => $node->meta['batchActions'] ?? [],
+            /*
+             * 自定义批量动作的声明（动作名 + 标签 + 处理器）。
+             *
+             * ⚠️ 必须一起下发：前端要靠它拿**标签**（否则按钮上显示的是
+             * 英文动作名 `ship` 而不是「标记为已发货」）。
+             * 这正是 batchActions 当初漏掉时踩的同一类坑 ——
+             * 声明层有、schema 没有，界面就无从知道。
+             */
+            'customBatchActions' => $node->meta['customBatchActions'] ?? [],
             // tree 为 null 表示非树形 Resource —— 前端据此切换渲染模式
             'tree' => $node->meta['tree'] ?? null,
             'columns' => array_map(

@@ -307,6 +307,99 @@ if ($firstLogId === null) {
 }
 
 /*
+ * ═══ 声明式自定义批量动作 ═══
+ *
+ * 声明里只有数据（动作名/标签/处理器类名），行为在处理器里。
+ * 权限节点 `{uri}.{action}` 自动生成，id 校验与操作日志继承框架的 ——
+ * 这正是「自建批量接口」那条路丢掉的东西。
+ */
+echo "\n═══ 声明式自定义批量动作 ═══\n";
+
+$cbExp = json_decode((string) @file_get_contents(__DIR__.'/fixtures/multi-app-expectations.json'), true)['custom_batch_action'] ?? null;
+
+if ($cbExp === null) {
+    t('读得到批量动作共享期望', false, 'fixtures 里缺 custom_batch_action');
+} else {
+    $cbPage = http("$base/admin/{$cbExp['resource']}");
+    t('批量动作样本页面可访问', $cbPage['code'] === 200, "HTTP {$cbPage['code']}");
+
+    preg_match('~schema\s*=\s*(\{.*?\});~s', (string) $cbPage['body'], $cbm);
+    $cbSchema = json_decode($cbm[1] ?? '{}', true) ?: [];
+    $cbGrid = $cbSchema['grid'] ?? [];
+
+    t(
+        '自定义动作出现在 batchActions 里',
+        in_array($cbExp['action'], $cbGrid['batchActions'] ?? [], true),
+        implode(',', $cbGrid['batchActions'] ?? [])
+    );
+
+    $cbDeclared = $cbGrid['customBatchActions'][0] ?? [];
+    t('声明里带标签', ($cbDeclared['label'] ?? '') === $cbExp['label'], (string) ($cbDeclared['label'] ?? ''));
+    t('声明里带处理器类名', is_string($cbDeclared['handler'] ?? null), (string) ($cbDeclared['handler'] ?? '(无)'));
+
+    // ── 真的调一次，确认它写库 ──
+    // 只验「声明存在」是不够的：声明对了但处理器没被调用，界面照样显示按钮
+    $cbCsrf = '';
+    if (preg_match('~name="csrf-token" content="([^"]+)"~', (string) $cbPage['body'], $cm)) {
+        $cbCsrf = $cm[1];
+    }
+
+    $cbIds = [];
+    $cbList = http("$base/admin/api/{$cbExp['resource']}");
+    $cbPayload = json_decode((string) $cbList['body'], true) ?: [];
+    // 列表接口的数组键在各版本里可能是 data / items —— 两个都试
+    $cbRows = $cbPayload['data'] ?? $cbPayload['items'] ?? [];
+
+    foreach ($cbRows as $row) {
+        if (is_array($row) && isset($row['id'])) {
+            $cbIds[] = $row['id'];
+        }
+    }
+
+    t('批量样本有可操作的行', $cbIds !== [], count($cbIds).' 行');
+
+    $cbRun = http("$base/admin/api/{$cbExp['resource']}/batch", 'POST', [
+        'action' => $cbExp['action'],
+        'ids' => $cbIds,
+    ], ['X-CSRF-TOKEN: '.$cbCsrf]);
+
+    $cbJson = json_decode((string) $cbRun['body'], true);
+    t(
+        '调用自定义批量动作 → 200',
+        $cbRun['code'] === 200,
+        "HTTP {$cbRun['code']} ".substr((string) $cbRun['body'], 0, 80)
+    );
+    t(
+        '受影响行数与期望一致',
+        (int) ($cbJson['affected'] ?? -1) === (int) $cbExp['expect']['affected'],
+        'affected='.var_export($cbJson['affected'] ?? null, true)
+    );
+
+    // 复查：状态真的变了（防止「返回 200 但没写库」）
+    $cbAfter = http("$base/admin/api/{$cbExp['resource']}");
+    $cbStatuses = array_map(
+        static fn ($r) => $r['status'] ?? null,
+        json_decode((string) $cbAfter['body'], true)['data'] ?? []
+    );
+    t(
+        '数据真的被改（不是只回了 200）',
+        $statuses !== [] && ! array_diff(array_filter($cbStatuses), [$cbExp['expect']['final_status']]),
+        implode(',', array_map(static fn ($v) => (string) $v, $cbStatuses))
+    );
+
+    // 未声明的动作必须被拒 —— 不做「没声明也能调」的隐式行为
+    $cbBad = http("$base/admin/api/{$cbExp['resource']}/batch", 'POST', [
+        'action' => 'not-declared-anywhere',
+        'ids' => $cbIds,
+    ], ['X-CSRF-TOKEN: '.$cbCsrf]);
+    t(
+        '未声明的动作被拒',
+        $cbBad['code'] === 403 && str_contains((string) $cbBad['body'], 'BATCH_ACTION_NOT_DECLARED'),
+        "HTTP {$cbBad['code']}"
+    );
+}
+
+/*
  * ═══ 外键下拉（belongsTo）═══
  *
  * 声明方只写一行：`$form->belongsTo('parent_id', '上级部门')`。

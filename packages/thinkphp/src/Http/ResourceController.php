@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\ThinkPHP\Http;
 
 use Aimanong\Aimanong;
+use Aimanong\Contracts\BatchActionHandler;
 use Aimanong\Schema\Ast\ResourceNode;
 use Aimanong\Schema\Compiler;
 use Aimanong\Services\TreeBuilder;
@@ -39,7 +40,7 @@ final class ResourceController
      *
      * @var array<int, string>
      */
-    public const IMPLEMENTED = ['index', 'show', 'store', 'update', 'destroy', 'tree'];
+    public const IMPLEMENTED = ['index', 'show', 'store', 'update', 'destroy', 'tree', 'batch'];
 
     protected ?ResourceNode $node = null;
 
@@ -282,6 +283,140 @@ final class ResourceController
                 'orderColumn' => $config['orderColumn'],
                 'idColumn' => $idColumn,
             ]),
+        ], 'json', 200);
+    }
+
+    /**
+     * 批量动作 —— 与 Laravel 侧同一套语义。
+     *
+     * 内置 delete + 声明式自定义动作（`$grid->batchAction(...)->handler(...)`）。
+     * 自定义动作的处理器必须是 core 的 `BatchActionHandler` 实现，
+     * 只拿到「模型类名 + ids」—— 权限、参数校验由框架在前面做掉。
+     */
+    public function batch(Request $request, string $uri): Response
+    {
+        if (($deny = $this->deny($uri, 'index')) !== null) {
+            return $deny;
+        }
+
+        $node = $this->resolve($uri);
+
+        $payload = $this->payload($request);
+        $action = is_string($payload['action'] ?? null) ? $payload['action'] : '';
+        $ids = $payload['ids'] ?? null;
+
+        if ($action === '' || ! is_array($ids) || $ids === []) {
+            return Response::create([
+                'error' => 'INVALID_BATCH_PAYLOAD',
+                'message' => '批量动作需要 action（字符串）与非空 ids（数组）',
+            ], 'json', 422);
+        }
+
+        // 动作必须**声明过** —— 不做「没声明也能调」的隐式行为
+        $declared = is_array($node->meta['batchActions'] ?? null) ? $node->meta['batchActions'] : [];
+
+        if (! in_array($action, $declared, true)) {
+            return Response::create([
+                'error' => 'BATCH_ACTION_NOT_DECLARED',
+                'message' => "Resource [{$uri}] 未声明批量动作 [{$action}]",
+                'hint' => $declared === []
+                    ? "在 grid() 中声明：内置用 \$grid->batchActions(['delete'])，自定义用 \$grid->batchAction('名称','标签')->handler(处理器类)"
+                    : '已声明：'.implode(', ', $declared),
+            ], 'json', 403);
+        }
+
+        if ($action === 'delete') {
+            return $this->batchDelete($uri, $node, $ids);
+        }
+
+        return $this->runCustomBatch($uri, $node, $action, $ids);
+    }
+
+    /**
+     * 批量删除（权限复用单条删除）。
+     *
+     * @param  array<int, mixed>  $ids
+     */
+    protected function batchDelete(string $uri, ResourceNode $node, array $ids): Response
+    {
+        if (($deny = $this->deny($uri, 'destroy')) !== null) {
+            return $deny;
+        }
+
+        $model = $node->model;
+        $probe = new $model;
+        $pk = method_exists($probe, 'getPk') ? $probe->getPk() : null;
+        $key = is_string($pk) && $pk !== '' ? $pk : 'id';
+
+        try {
+            $affected = $model::whereIn($key, $ids)->delete();
+        } catch (\Throwable $e) {
+            return Response::create([
+                'error' => 'BATCH_ACTION_FAILED',
+                'message' => '批量删除失败：'.$e->getMessage(),
+            ], 'json', 422);
+        }
+
+        return Response::create([
+            'action' => 'delete',
+            'affected' => $affected,
+            'message' => "已删除 {$affected} 条",
+        ], 'json', 200);
+    }
+
+    /**
+     * 执行自定义批量动作 —— 分发到声明里引用的处理器类。
+     *
+     * @param  array<int, mixed>  $ids
+     */
+    protected function runCustomBatch(string $uri, ResourceNode $node, string $action, array $ids): Response
+    {
+        $declared = null;
+
+        foreach ($node->meta['customBatchActions'] ?? [] as $custom) {
+            if (is_array($custom) && ($custom['name'] ?? null) === $action) {
+                $declared = $custom;
+                break;
+            }
+        }
+
+        if ($declared === null || ! is_string($declared['handler'] ?? null)) {
+            return Response::create([
+                'error' => 'BATCH_ACTION_NOT_IMPLEMENTED',
+                'message' => "批量动作 [{$action}] 尚未实现",
+                'hint' => '自定义动作要用 $grid->batchAction(名称, 标签)->handler(处理器类) 声明',
+            ], 'json', 501);
+        }
+
+        // 自定义动作有自己的权限节点（PermissionNodes::actionsFor 会生成）
+        if (($deny = $this->deny($uri, $action)) !== null) {
+            return $deny;
+        }
+
+        $handlerClass = $declared['handler'];
+
+        if (! class_exists($handlerClass)) {
+            return Response::create([
+                'error' => 'BATCH_HANDLER_MISSING',
+                'message' => "批量动作 [{$action}] 的处理器 {$handlerClass} 不存在",
+            ], 'json', 500);
+        }
+
+        try {
+            /** @var BatchActionHandler $handler */
+            $handler = new $handlerClass;
+            $affected = $handler->handle($node->model, $ids);
+        } catch (\Throwable $e) {
+            return Response::create([
+                'error' => 'BATCH_ACTION_FAILED',
+                'message' => "批量动作 [{$action}] 执行失败：".$e->getMessage(),
+            ], 'json', 422);
+        }
+
+        return Response::create([
+            'action' => $action,
+            'affected' => $affected,
+            'message' => "已处理 {$affected} 条",
         ], 'json', 200);
     }
 

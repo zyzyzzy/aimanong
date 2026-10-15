@@ -18,6 +18,26 @@ class OpenApiEmitter
     /**
      * @return array<string, mixed>
      */
+    /**
+     * 后台 URL —— 优先走 `Aimanong::url()`，没注册驱动时退回约定路径。
+     *
+     * 为什么要有兜底：本 emitter 在 core 里，而 core 是**零框架依赖**的。
+     * 单测、离线编译产物等场景下可能没有注册 FrameworkRuntime，
+     * 那时 `Aimanong::url()` 会抛 DriverNotRegisteredException ——
+     * 一个「为了修文档路径」的改动不该让离线编译整个炸掉。
+     */
+    protected function path(string $suffix): string
+    {
+        try {
+            return \Aimanong\Aimanong::url($suffix);
+        } catch (\Throwable) {
+            return '/admin/'.ltrim($suffix, '/');
+        }
+    }
+
+    /**
+     * @return array{paths: array<string, array<string, mixed>>, components: array<string, mixed>}
+     */
     public function emit(ResourceNode $node): array
     {
         /*
@@ -44,10 +64,26 @@ class OpenApiEmitter
             $item['delete'] = $this->deleteOperation($node);
         }
 
+        /*
+         * ⚠️ 路径必须走 `Aimanong::url()` —— 它是**唯一**构建后台 URL 的地方。
+         *
+         * 这里原先硬编码 `/admin/{uri}`，漏了中间那层 `/api`：
+         *
+         *     文档写的：  GET /admin/users        ← 其实是 SPA 的 HTML 页面
+         *     真实路由：  GET /admin/api/users    ← 返回 JSON
+         *
+         * 后果（实测）：多个 AI agent 照文档 curl `/admin/users`，拿回一坨
+         * HTML，只能靠 `php artisan route:list` 才发现真接口。
+         * **文档与实现漂移，正是本项目第一条要杜绝的事** ——
+         * 而且它骗的是最信任文档的那类调用方。
+         *
+         * 走 `Aimanong::url()` 顺带解决另一件事：自定义 URL 前缀的项目
+         * （`urlPrefix()` 不是 `admin`）以前拿到的文档路径也是错的。
+         */
         return [
             'paths' => [
-                "/admin/{$node->uri}" => $collection,
-                "/admin/{$node->uri}/{id}" => $item,
+                $this->path("api/{$node->uri}") => $collection,
+                $this->path("api/{$node->uri}/{id}") => $item,
             ],
             'components' => [
                 'schemas' => [

@@ -71,6 +71,15 @@ class UserResource extends Resource
 
 保存后执行：`php artisan ai:verify`（校验）+ `php artisan serve`（访问 `/admin/users`）
 
+## HTTP 约定（容易猜错的三件事）
+
+- **数据接口在 `/api/` 下**：`/admin/api/{uri}` 返回 JSON；不带 `/api` 的 `/admin/{uri}` 是页面（HTML）。
+  以 `GET /__ai/openapi.json` 的 `paths` 为准 —— 它与真实路由同源。
+- **没有独立的「新建页」**：`/admin/{uri}/create` 不存在，表单是列表页里的弹窗。
+  提交用 `POST /admin/api/{uri}`，更新用 `PUT /admin/api/{uri}/{id}`。
+- **排序参数是 `sort` + `direction`**（不是 `order`/`sort_order`）。
+  `?sort=` 指向不存在的列会明确返回 422 `SORT_COLUMN_NOT_DECLARED` 并给 `did_you_mean` —— 不会静默返回未排序数据。
+
 ## 常用声明速查
 
 ```php

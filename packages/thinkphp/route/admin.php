@@ -11,6 +11,7 @@ declare(strict_types=1);
  * 未移植：batch / export / tree / move（调时由 unimplemented() 回 501）。
  */
 
+use Aimanong\Aimanong;
 use Aimanong\ThinkPHP\Http\AssetController;
 use Aimanong\ThinkPHP\Http\AuthController;
 use Aimanong\ThinkPHP\Http\HomeController;
@@ -75,6 +76,28 @@ Route::group(function (): void {
         //    调用方完全看不出错。
         $uri = '[\w\-]+';
 
+        /*
+         * 没有独立的「新建页」—— 表单是列表页里的弹窗。
+         *
+         * ⚠️ 但调用方（尤其是 AI）会**非常自然地**猜 `{uri}/create`。
+         * 不处理的话它落到 `:uri/:id` 上，把 `create` 当成 id，得到
+         * 「不存在 id=create 的记录」—— 这条信息会把人引向
+         * 「是不是数据没建对」，而真正的问题是「这个路由不存在」。
+         *
+         * 与 Laravel 侧 `no-create-page` 对称，也必须排在 `:uri/:id` 之前。
+         */
+        Route::any(':uri/create', function (string $uri) {
+            return json([
+                'error' => 'NO_CREATE_PAGE',
+                'message' => "后台没有独立的「新建页」路由（所以 {$uri}/create 不存在）。",
+                'how_to' => '表单是列表页里的弹窗：打开列表页点「新增」，'
+                    .'或直接 POST 到下面的 create_endpoint。',
+                'list_page' => Aimanong::url($uri),
+                'create_endpoint' => 'POST '.Aimanong::url("api/{$uri}"),
+                'hint' => '同类地，也没有 {uri}/{id}/edit —— 编辑同样在列表页里开弹窗。',
+            ], 404);
+        })->pattern(['uri' => $uri]);
+
         // ⚠️ `:uri/tree` 必须排在 `:uri/:id` **之前** ——
         //    否则 TP 会把 `tree` 当成 id，走进详情接口报「不存在 id=tree 的记录」。
         Route::get(':uri/tree', [ResourceController::class, 'tree'])->pattern(['uri' => $uri]);
@@ -98,6 +121,18 @@ Route::group(function (): void {
     | 也是放在路由表最末尾。
     */
     $uriPattern = '[\w\-]+';
+
+    // 页面层同样没有「新建页」—— 与 API 组那条对称
+    Route::get(':uri/create', function (string $uri) {
+        return json([
+            'error' => 'NO_CREATE_PAGE',
+            'message' => "后台没有独立的「新建页」（所以 /{$uri}/create 不存在）。",
+            'how_to' => '打开列表页点「新增」按钮，表单是页面里的弹窗。',
+            'list_page' => Aimanong::url($uri),
+            'create_endpoint' => 'POST '.Aimanong::url("api/{$uri}"),
+        ], 404);
+    })->pattern(['uri' => $uriPattern]);
+
     Route::get(':uri', [HomeController::class, 'resource'])
         ->pattern(['uri' => $uriPattern]);
 })->middleware(Authenticate::class);

@@ -59,6 +59,19 @@ class Capabilities
             'tree_options' => $this->treeOptions(),
             'extension' => $this->extensionCapabilities(),
             'requirement_keys' => $this->requirementKeys(),
+            /*
+             * ⚠️ 这两条是实测中 agent 花时间最多的摩擦点，写进自省资料。
+             */
+            'http_conventions' => [
+                '数据接口' => '数据接口统一在 {prefix}/api/{uri}（如 /admin/api/users）。'
+                    .'不带 /api 的 /admin/{uri} 是 SPA 的 HTML 页面，curl 它会拿回 HTML 而不是 JSON。'
+                    .'**以 /__ai/openapi.json 里的 paths 为准** —— 它与真实路由同源。',
+                '新建/编辑页' => '**没有**独立的 /admin/{uri}/create 或 /admin/{uri}/{id}/edit 路由 —— '
+                    .'表单是列表页里的弹窗。提交用 POST /admin/api/{uri}、更新用 PUT /admin/api/{uri}/{id}。',
+                '非法排序列' => '?sort= 指向不存在的列会返回 422 SORT_COLUMN_NOT_DECLARED'
+                    .'（附 did_you_mean 与可排序列清单），**不会**静默返回未排序数据。'
+                    .'参数名是 sort + direction（不是 order / sort_order）。',
+            ],
             'cannot_verify' => $this->cannotVerify(),
             'scope_hooks' => ScopeHooks::introspect(),
             'rbac' => $this->rbacCapabilities(),

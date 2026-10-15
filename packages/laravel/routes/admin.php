@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Aimanong\Aimanong;
 use Aimanong\Foundation\Profile\ProfileController;
 use Aimanong\Foundation\Upload\UploadController;
 use Aimanong\Http\Controllers\AuthController;
@@ -120,6 +121,33 @@ Route::prefix('api')->name('api.')->group(function (): void {
     Route::get('{uri}', [ResourceController::class, 'index'])->name('index');
     Route::post('{uri}', [ResourceController::class, 'store'])->name('store');
 
+    /*
+     * 没有独立的「新建页」——表单是列表页里的弹窗。
+     *
+     * ⚠️ 但调用方（尤其是 AI）会**非常自然地**猜 `{uri}/create`。
+     * 不处理的话它落到 `{uri}/{id}` 上，把 `create` 当成 id，得到
+     * 「记录不存在: App\Models\User#create」—— 这条信息会把人引向
+     * 「是不是数据没建对」，而真正的问题是「这个路由不存在」。
+     *
+     * 实测（L1/L2 十五题）有 agent 明确踩到并报上来。
+     *
+     * 所以在这里**明确拦下**并说清该怎么做 —— 排在任何 `{uri}/{id}` 之前。
+     */
+    $noCreatePage = static function (string $uri) {
+        return response()->json([
+            'error' => 'NO_CREATE_PAGE',
+            'message' => "后台没有独立的「新建页」路由（所以 {$uri}/create 不存在）。",
+            'how_to' => '表单是列表页里的弹窗：打开列表页点「新增」，'
+                .'或直接 POST 到下面的 create_endpoint。',
+            'list_page' => Aimanong::url($uri),
+            'create_endpoint' => 'POST '.Aimanong::url("api/{$uri}"),
+            'hint' => '同类地，也没有 {uri}/{id}/edit —— 编辑同样在列表页里开弹窗。',
+        ], 404);
+    };
+
+    Route::any('{uri}/create', static fn (string $uri) => $noCreatePage($uri))->name('no-create-page');
+    Route::any('{uri}/{id}/edit', static fn (string $uri) => $noCreatePage($uri))->name('no-edit-page');
+
     // 静态子路径必须声明在 {uri}/{id} 之前，否则会被当作 id
     Route::get('{uri}/export', [ResourceController::class, 'export'])->name('export');
     Route::get('{uri}/tree', [ResourceController::class, 'tree'])->name('tree');
@@ -151,3 +179,19 @@ if (config('aimanong.foundation.profile.enable', true)) {
 Route::get('{uri}', [HomeController::class, 'resource'])
     ->where('uri', '[a-z0-9\-]+')
     ->name('resource');
+
+/*
+ * 页面层同样没有「新建页」—— 与 API 组那两条对称。
+ *
+ * 不拦的话，`/admin/users/create` 会落到 `{uri}` 上（`create` 被当成 uri），
+ * 得到「Resource [create] 未注册」—— 同样指向错误的方向。
+ */
+Route::get('{uri}/create', static function (string $uri) {
+    return response()->json([
+        'error' => 'NO_CREATE_PAGE',
+        'message' => "后台没有独立的「新建页」（所以 /{$uri}/create 不存在）。",
+        'how_to' => '打开列表页点「新增」按钮，表单是页面里的弹窗。',
+        'list_page' => Aimanong::url($uri),
+        'create_endpoint' => 'POST '.Aimanong::url("api/{$uri}"),
+    ], 404);
+})->name('no-create-page');

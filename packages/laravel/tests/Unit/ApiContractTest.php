@@ -16,6 +16,30 @@ use PHPUnit\Framework\TestCase;
  */
 class ApiContractTest extends TestCase
 {
+    /**
+     * 列表接口的路径 —— 从 **emitter 的实际产出**里取，不硬编码。
+     *
+     * ⚠️ 这些断言原先写死 `/admin/articles`，而真实路由是 `/admin/api/articles`
+     * ——「3 条断言全绿，真实路由全错」。同一个坑在 EmittersTest 里也踩过，
+     * 所以这里改成从产出里找，路径怎么变都不用改测试。
+     */
+    /** @param array<string, mixed> $oa */
+    protected function collectionPath(array $oa): string
+    {
+        /** @var array<string, mixed> $paths */
+        $paths = is_array($oa['paths'] ?? null) ? $oa['paths'] : [];
+
+        foreach (array_keys($paths) as $path) {
+            $path = (string) $path;
+
+            if (! str_contains($path, '{id}')) {
+                return $path;
+            }
+        }
+
+        return '';
+    }
+
     /** @return array<string, mixed> */
     protected function openApi(): array
     {
@@ -29,7 +53,7 @@ class ApiContractTest extends TestCase
     public function test_list_operation_documents_direction(): void
     {
         $oa = $this->openApi();
-        $params = $oa['paths']['/admin/articles']['get']['parameters'] ?? [];
+        $params = $oa['paths'][$this->collectionPath($oa)]['get']['parameters'] ?? [];
 
         $names = array_column($params, 'name');
 
@@ -43,7 +67,7 @@ class ApiContractTest extends TestCase
     {
         $oa = $this->openApi();
 
-        foreach ($oa['paths']['/admin/articles']['get']['parameters'] as $p) {
+        foreach ($oa['paths'][$this->collectionPath($oa)]['get']['parameters'] as $p) {
             if ($p['name'] === 'direction') {
                 $this->assertSame(['asc', 'desc'], $p['schema']['enum']);
                 $this->assertStringContainsString('不是 order', $p['description']);
@@ -59,7 +83,7 @@ class ApiContractTest extends TestCase
     {
         $oa = $this->openApi();
 
-        foreach ($oa['paths']['/admin/articles']['get']['parameters'] as $p) {
+        foreach ($oa['paths'][$this->collectionPath($oa)]['get']['parameters'] as $p) {
             if ($p['name'] === 'sort') {
                 // ArticleResource 只把 id 声明为 sortable
                 $this->assertSame(['id'], $p['schema']['enum']);

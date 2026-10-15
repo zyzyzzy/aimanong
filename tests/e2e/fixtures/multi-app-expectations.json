@@ -168,5 +168,32 @@
       "endpoint_suffix": "/tree",
       "expect_child_has_parent": true
     }
+  },
+  "contract_consistency": {
+    "_note": "三条「文档/一致性问题」—— 都不缺能力，但每个 agent 都多绕了几步",
+    "_why": [
+      "① openapi 把列表接口写成 GET /admin/users，真实路由是 GET /admin/api/{uri}",
+      "   （多个 agent 第一次 curl 拿到 SPA 的 HTML）。更糟的是断言里也写的旧路径 ——",
+      "   **测试把 bug 锁住了**，4 条断言全绿而真实路由全错。",
+      "② 非法 ?sort=不存在列 被静默忽略、返回 200 默认顺序。SQLite 会接受 ORDER BY bogus，",
+      "   MySQL 会报错 —— 行为依赖数据库。SQLite 那种让调用方以为排序生效了。",
+      "③ GET /admin/{uri}/create → 404，且 /admin/api/{uri}/create 会把 create 当成 id，",
+      "   返回「记录不存在: App\\Models\\User#create」—— 指向完全错误的方向。"
+    ],
+    "openapi_path_must_contain": "/admin/api/",
+    "invalid_sort": {
+      "expect_code": 422,
+      "expect_error": "SORT_COLUMN_NOT_DECLARED",
+      "typo": "nam",
+      "typo_did_you_mean": "name"
+    },
+    "no_create_page": {
+      "expect_code": 404,
+      "expect_error": "NO_CREATE_PAGE",
+      "paths": [
+        "/admin/{uri}/create",
+        "/admin/api/{uri}/create"
+      ]
+    }
   }
 }

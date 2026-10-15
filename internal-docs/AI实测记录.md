@@ -1499,3 +1499,77 @@ L2-4 的 agent 说得最清楚：
 
 已修（`Column::toNode()` 解析标签进 `props.map`）。修完 L2-2 与 L2-4
 的写法都能出中文了。
+
+---
+
+# 第十六轮：修掉 L1/L2 暴露的三条「文档/一致性」问题
+
+三条都**不缺能力**，但每个 agent 都多绕了几步 —— 摩擦全花在猜上。
+
+## ① openapi 的路径与真实路由不一致（已修，且发现测试把 bug 锁住了）
+
+    文档写的：  GET /admin/users        ← 其实是 SPA 的 HTML 页面
+    真实路由：  GET /admin/api/users    ← 返回 JSON
+
+多个 agent 照文档 curl，拿回一坨 HTML，只能靠 `php artisan route:list` 才找到真接口。
+
+**根因**：`OpenApiEmitter` 里硬编码 `/admin/{uri}`，漏了中间那层 `/api`。
+
+**更值得记的是**：`EmittersTest` 与 `ApiContractTest` 里**5 条断言也写的旧路径**
+—— 于是「断言全绿、真实路由全错」。测试把 bug 固化了。
+
+修法：emitter 改走 `Aimanong::url()`（唯一构建 URL 的地方，顺带解决自定义前缀的项目），
+测试改成从**产出里取路径**、不硬编码，并加一条反例断言
+（`assertArrayNotHasKey('/admin/articles', ...)` —— 防止有人改回硬编码）。
+
+## ② 非法 `?sort=` 被静默忽略（已修）
+
+`sort` 原先直接透传给 `orderBy()`。列不存在时的行为**取决于数据库**：
+
+    SQLite：静默接受 `ORDER BY bogus`，返回未排序数据 → 200
+    MySQL ：报错 → 500
+
+SQLite 那种更糟：调用方拿到 **200 + 一坨看起来正常的数据**，以为排序生效了。
+两个 agent 都明确报上来：「无法靠报错确认参数被接受」。
+
+**违反宪法 ③「零隐式」（优先级高于 ② 和 ①）** —— 做不到就说做不到。
+
+修法：新增 `SortColumnNotDeclaredException`（`SORT_COLUMN_NOT_DECLARED`，422），
+带 `did_you_mean` + 可排序列清单。只拦「列根本不存在」；
+声明过但没标 `sortable` 的列照旧放行（那种情况下排序**确实生效了**）。
+
+    实测：sort=bogus → 422 + 可排序的列: id, created_at
+          sort=nam   → 422 + did_you_mean: name
+          sort=id    → 200（不受影响）
+
+## ③ `/admin/{uri}/create` 404，且报错指向错误方向（已修）
+
+    拦之前：
+      /admin/users/create      → "The route admin/users/create could not be found."（泛泛）
+      /admin/api/users/create  → "**记录不存在: App\Models\User#create**"  ❌
+
+第二条最坑：它把 `create` 当成了 id，信息把人的思路引向「是不是数据没建对」，
+而真正的问题是「这个路由不存在」。
+
+修法：两端各加两条明确提示（排在 `{uri}/{id}` 之前），返回
+`NO_CREATE_PAGE` + `list_page` + `create_endpoint`。
+页面层与 API 层对称。
+
+## 验收
+
+| | 修前 | 修后 |
+|---|---|---|
+| PHPUnit | 263 | 263（+4 断言） |
+| http-e2e | 85 | **93**（+8） |
+| thinkphp-e2e | 158 | **164**（+6） |
+| framework-e2e | 102 | 102 |
+
+新增共享期望段 `contract_consistency`（两端读同一份）。
+
+## 一个反复出现的模式
+
+**测试写错会伪装成「代码有 bug」，代码写错也会伪装成「测试通过」。**
+
+这轮 ① 就是后者的典型：5 条断言锁着错误路径，全绿。
+和前面「JSON 转义」「schema 结构」「searchable 位置」是同一族问题 ——
+**验证工具本身也需要被验证**。能收敛的地方就收敛（路径从产出取，不硬编码）。

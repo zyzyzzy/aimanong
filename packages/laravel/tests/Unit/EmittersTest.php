@@ -67,8 +67,20 @@ class EmittersTest extends TestCase
     {
         $oa = (new OpenApiEmitter)->emit($this->node());
 
-        $this->assertArrayHasKey('/admin/articles', $oa['paths']);
-        $this->assertArrayHasKey('/admin/articles/{id}', $oa['paths']);
+        /*
+         * ⚠️ 路径必须带 `/api` —— 这两条断言原先写的是 `/admin/articles`，
+         * **把 bug 锁进了测试里**：它们一直是绿的，而真实路由是
+         * `/admin/api/articles`。
+         *
+         * 后果（实测）：多个 AI agent 照 openapi 文档 curl `/admin/articles`，
+         * 拿回一坨 SPA 的 HTML，只能靠 `php artisan route:list` 才找到真接口。
+         *
+         * 断言里同时带上「不带 /api 的旧路径必须不存在」——
+         * 否则将来有人改回硬编码，这些断言照样是绿的。
+         */
+        $this->assertArrayHasKey('/admin/api/articles', $oa['paths']);
+        $this->assertArrayHasKey('/admin/api/articles/{id}', $oa['paths']);
+        $this->assertArrayNotHasKey('/admin/articles', $oa['paths']);
         $this->assertArrayHasKey('Articles', $oa['components']['schemas']);
     }
 
@@ -129,8 +141,8 @@ class EmittersTest extends TestCase
         $this->assertTrue($json['readonly'], 'schema.json 未标记 readonly');
 
         // 2. OpenAPI **不得**出现写接口
-        $collection = $oa['paths']["/admin/{$node->uri}"] ?? [];
-        $item = $oa['paths']["/admin/{$node->uri}/{id}"] ?? [];
+        $collection = $oa['paths'][$this->apiPath($node)] ?? [];
+        $item = $oa['paths'][$this->apiPath($node).'/{id}'] ?? [];
 
         $this->assertArrayHasKey('get', $collection);
         $this->assertArrayNotHasKey('post', $collection, '只读资源不该在 OpenAPI 里宣告 POST');
@@ -143,6 +155,17 @@ class EmittersTest extends TestCase
     }
 
     /**
+     * 资源的数据 API 路径 —— **单点定义**。
+     *
+     * 以前这个前缀在 4 处各写一遍，且全都漏了 `/api` ——
+     * 于是「4 条断言全绿，真实路由全错」。定义一次就不会再散落。
+     */
+    protected function apiPath(ResourceNode $node): string
+    {
+        return '/admin/api/'.$node->uri;
+    }
+
+    /**
      * 可写资源：OpenAPI 必须**有**写接口（防止上面那条修过头）。
      */
     public function test_writable_resource_keeps_write_endpoints(): void
@@ -151,9 +174,9 @@ class EmittersTest extends TestCase
 
         $oa = (new OpenApiEmitter)->emit($node);
 
-        $this->assertArrayHasKey('post', $oa['paths']["/admin/{$node->uri}"]);
-        $this->assertArrayHasKey('put', $oa['paths']["/admin/{$node->uri}/{id}"]);
-        $this->assertArrayHasKey('delete', $oa['paths']["/admin/{$node->uri}/{id}"]);
+        $this->assertArrayHasKey('post', $oa['paths'][$this->apiPath($node)]);
+        $this->assertArrayHasKey('put', $oa['paths'][$this->apiPath($node).'/{id}']);
+        $this->assertArrayHasKey('delete', $oa['paths'][$this->apiPath($node).'/{id}']);
     }
 
     /**

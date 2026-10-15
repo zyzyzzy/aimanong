@@ -6,6 +6,7 @@ namespace Aimanong\ThinkPHP\Http;
 
 use Aimanong\Aimanong;
 use Aimanong\Contracts\BatchActionHandler;
+use Aimanong\Exceptions\SortColumnNotDeclaredException;
 use Aimanong\Schema\Ast\ResourceNode;
 use Aimanong\Schema\Compiler;
 use Aimanong\Services\TreeBuilder;
@@ -18,6 +19,7 @@ use think\exception\HttpException;
 use think\Model;
 use think\Request;
 use think\Response;
+use think\response\Json;
 use think\Validate;
 
 /**
@@ -80,6 +82,21 @@ final class ResourceController
             if (str_contains($column->name, '.')) {
                 $relations[] = $column->name;
             }
+        }
+
+        /*
+         * 非法排序列必须明确报错 —— 与 Laravel 侧同一套语义。
+         *
+         * 原先 sort 直接透传给 order()，列不存在时的行为取决于数据库：
+         * MySQL 报错、SQLite **静默接受并返回未排序数据**。
+         * 后者会让调用方以为排序生效了（实测两个 AI agent 都踩到）。
+         *
+         * 违反宪法 ③「零隐式」：做不到就说做不到。
+         */
+        $sortCheck = $this->sortColumnError($node, $request);
+
+        if ($sortCheck !== null) {
+            return $sortCheck;
         }
 
         $page = $this->repository($node)->paginate([
@@ -839,6 +856,47 @@ final class ResourceController
                 $model->{$relation}()->saveAll($ids);
             }
         }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    /**
+     * `?sort=` 指向了不存在的列 → 422。
+     *
+     * 与 Laravel 侧 `ResourceController::sortColumnError()` 同一套语义：
+     * 只拦「列根本不存在」；声明过但没标 sortable 的列照旧放行
+     * （那种情况下 order 确实生效了，不算欺骗）。
+     */
+    protected function sortColumnError(ResourceNode $node, Request $request): ?Json
+    {
+        $sort = $this->scalar($request->param('sort'));
+
+        if (! is_string($sort) || $sort === '') {
+            return null;
+        }
+
+        $known = [];
+        $sortable = [];
+
+        foreach ($node->columns as $column) {
+            $known[] = $column->name;
+
+            if ($column->sortable) {
+                $sortable[] = $column->name;
+            }
+        }
+
+        if (in_array($sort, $known, true)) {
+            return null;
+        }
+
+        return json((new SortColumnNotDeclaredException(
+            uri: $node->uri,
+            sort: $sort,
+            sortable: $sortable,
+            known: $known,
+        ))->toArray(), 422);
     }
 
     /**

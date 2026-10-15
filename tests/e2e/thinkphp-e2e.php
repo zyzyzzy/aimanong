@@ -1181,6 +1181,49 @@ if ($cbExp === null) {
     t('未声明的动作被拒', $cbBadCode === 403, "HTTP {$cbBadCode}");
 }
 
+/*
+ * ③-4 文档与实现的一致性 —— 与 Laravel 侧读同一份共享期望。
+ */
+$cc = $treeExp['contract_consistency'] ?? null;
+
+if ($cc === null) {
+    t('读得到一致性共享期望', false, 'fixtures 里缺 contract_consistency');
+} else {
+    // ② 非法排序列必须明确报错（SQLite 会静默接受 ORDER BY bogus）
+    $bad = $cc['invalid_sort'];
+    [$badCode, $badBody] = $treeReq('/admin/api/departments?sort='.urlencode((string) $bad['typo']));
+    $badJson = json_decode($badBody, true) ?: [];
+
+    t('非法排序列 → 422（不再静默忽略）', $badCode === $bad['expect_code'], "HTTP {$badCode}");
+    t(
+        '错误码是 '.$bad['expect_error'],
+        ($badJson['error'] ?? '') === $bad['expect_error'],
+        (string) ($badJson['error'] ?? '(无)')
+    );
+    t(
+        '拼错的列名给 did_you_mean',
+        ($badJson['did_you_mean'] ?? '') === $bad['typo_did_you_mean'],
+        (string) ($badJson['did_you_mean'] ?? '(无)')
+    );
+
+    [$okCode] = $treeReq('/admin/api/departments?sort=id');
+    t('合法排序列仍返回 200', $okCode === 200, "HTTP {$okCode}");
+
+    // ③ 猜错的 create 路径必须给出方向正确的提示
+    foreach ($cc['no_create_page']['paths'] as $tpl) {
+        $url = str_replace('{uri}', 'departments', $tpl);
+        [$c, $b] = $treeReq($url);
+        $j = json_decode($b, true) ?: [];
+
+        t(
+            $url.' → NO_CREATE_PAGE 提示',
+            $c === $cc['no_create_page']['expect_code']
+                && ($j['error'] ?? '') === $cc['no_create_page']['expect_error'],
+            "HTTP {$c} ".((string) ($j['error'] ?? '(无)'))
+        );
+    }
+}
+
 // ④ 非树形资源应明确报错，而不是返回空
 [$nc, $nbody] = $treeReq('/admin/api/customers/tree');
 t(

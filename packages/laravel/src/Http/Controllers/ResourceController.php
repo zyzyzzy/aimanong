@@ -8,6 +8,7 @@ use Aimanong\Aimanong;
 use Aimanong\Auth\PermissionGate;
 use Aimanong\Contracts\BatchActionHandler;
 use Aimanong\Contracts\Repository;
+use Aimanong\Exceptions\SortColumnNotDeclaredException;
 use Aimanong\Repository\EloquentRepository;
 use Aimanong\Schema\Ast\ResourceNode;
 use Aimanong\Schema\Compiler;
@@ -75,6 +76,13 @@ class ResourceController extends Controller
             }
         }
 
+        // 非法排序列必须明确报错（详见 sortColumnError 的注释）
+        $sortError = $this->sortColumnError($node, $request);
+
+        if ($sortError !== null) {
+            return $sortError;
+        }
+
         $params = [
             'keyword' => $request->query('keyword'),
             'sort' => $request->query('sort'),
@@ -110,6 +118,64 @@ class ResourceController extends Controller
         }
 
         return response()->json($response);
+    }
+
+    /**
+     * 校验 `?sort=` 指向的列真的存在。
+     *
+     * ## 为什么必须是硬错误，而不是 warning
+     *
+     * 原先 `sort` 直接透传给 `orderBy()`。列不存在时的行为**取决于数据库**：
+     *
+     *     SQLite：静默接受 `ORDER BY bogus`，返回未排序数据 → 200
+     *     MySQL ：报错 → 500
+     *
+     * SQLite 那种更糟：调用方拿到 **200 + 一坨看起来正常的数据**，
+     * 会以为自己要的排序生效了。实测中两个 AI agent 都踩到并明确报上来
+     * 「无法靠报错确认参数被接受」—— 它们只能改看 schema 输出。
+     *
+     * 这违反宪法 ③「零隐式」（优先级高于 ② 和 ①）：
+     * 请求做不到就**说做不到**，不要给一个别的顺序冒充。
+     *
+     * 注意范围：只拦「列根本不存在」。声明过的列即使没标 `sortable`
+     * 也照旧放行 —— 那种情况下排序**确实生效了**，不算欺骗。
+     */
+    protected function sortColumnError(ResourceNode $node, Request $request): ?JsonResponse
+    {
+        $sort = $request->query('sort');
+
+        if (! is_string($sort) || $sort === '') {
+            return null;
+        }
+
+        $known = [];
+
+        foreach ($node->columns as $column) {
+            $known[] = $column->name;
+        }
+
+        if (in_array($sort, $known, true)) {
+            return null;
+        }
+
+        /*
+         * 返回响应而不是抛异常：本类的异常在运行期会被 Laravel 渲染成 500，
+         * 而这应当是**4xx 的调用方错误**（与同文件里 NOT_A_TREE 的 403 同一模式）。
+         */
+        $sortable = [];
+
+        foreach ($node->columns as $column) {
+            if ($column->sortable) {
+                $sortable[] = $column->name;
+            }
+        }
+
+        return response()->json((new SortColumnNotDeclaredException(
+            uri: $node->uri,
+            sort: $sort,
+            sortable: $sortable,
+            known: $known,
+        ))->toArray(), 422);
     }
 
     /**

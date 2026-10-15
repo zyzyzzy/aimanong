@@ -307,6 +307,100 @@ if ($firstLogId === null) {
 }
 
 /*
+ * ═══ 文档与实现的一致性 ═══
+ *
+ * 三条都不缺能力，但实测中每个 agent 都多绕了几步。
+ */
+echo "\n═══ 文档与实现一致性 ═══\n";
+
+$cc = json_decode((string) @file_get_contents(__DIR__.'/fixtures/multi-app-expectations.json'), true)['contract_consistency'] ?? null;
+
+if ($cc === null) {
+    t('读得到一致性共享期望', false, 'fixtures 里缺 contract_consistency');
+} else {
+    /*
+     * ① openapi 的路径必须与真实路由一致（带 /api）。
+     *
+     * 这条以前是**绿的**，因为断言里也写的 `/admin/articles` ——
+     * 测试把 bug 锁住了。
+     */
+    $oa = json_decode((string) http("$base/__ai/openapi.json")['body'], true) ?: [];
+    $oaPaths = array_keys($oa['paths'] ?? []);
+    $withApi = 0;
+
+    foreach ($oaPaths as $op) {
+        if (str_contains($op, $cc['openapi_path_must_contain'])) {
+            $withApi++;
+        }
+    }
+
+    t(
+        'openapi 路径全部带 /api（不再是 /admin/{uri}）',
+        $oaPaths !== [] && $withApi === count($oaPaths),
+        "{$withApi}/".count($oaPaths)
+    );
+
+    // 文档里的路径必须真能返回 JSON（不是 SPA 的 HTML）
+    $sample = $oaPaths[0] ?? '';
+    $sampleBody = (string) http("$base".$sample, 'GET', [], ['Accept: application/json'])['body'];
+    t(
+        '文档里的路径真能返回 JSON',
+        json_decode($sampleBody, true) !== null,
+        $sample.' → '.substr($sampleBody, 0, 40)
+    );
+
+    /*
+     * ② 非法排序列必须明确报错，不能静默返回别的顺序。
+     *
+     * SQLite 会接受 `ORDER BY bogus` 并返回未排序数据 → 200，
+     * 调用方会以为排序生效了。
+     */
+    $bad = $cc['invalid_sort'];
+    $badRes = http("$base/admin/api/users?sort=".urlencode((string) $bad['typo']), 'GET', [], ['Accept: application/json']);
+    $badJson = json_decode((string) $badRes['body'], true) ?: [];
+
+    t(
+        '非法排序列 → 422（不再静默忽略）',
+        $badRes['code'] === $bad['expect_code'],
+        "HTTP {$badRes['code']}"
+    );
+    t(
+        '错误码是 '.$bad['expect_error'],
+        ($badJson['error'] ?? '') === $bad['expect_error'],
+        (string) ($badJson['error'] ?? '(无)')
+    );
+    t(
+        '拼错的列名给 did_you_mean',
+        ($badJson['did_you_mean'] ?? '') === $bad['typo_did_you_mean'],
+        (string) ($badJson['did_you_mean'] ?? '(无)')
+    );
+
+    // 对照：合法排序列仍然工作（别修过头）
+    $okSort = http("$base/admin/api/users?sort=id&per_page=2", 'GET', [], ['Accept: application/json']);
+    t('合法排序列仍返回 200', $okSort['code'] === 200, "HTTP {$okSort['code']}");
+
+    /*
+     * ③ 猜错的 create 路径必须给出方向正确的提示。
+     *
+     * 拦之前：/admin/api/users/create 把 create 当 id，
+     * 返回「记录不存在: App\Models\User#create」—— 指向「数据没建对」，
+     * 而真正的问题是「这个路由不存在」。
+     */
+    foreach ($cc['no_create_page']['paths'] as $tpl) {
+        $url = str_replace('{uri}', 'users', $tpl);
+        $resp = http("$base".$url, 'GET', [], ['Accept: application/json']);
+        $json = json_decode((string) $resp['body'], true) ?: [];
+
+        t(
+            $url.' → NO_CREATE_PAGE 提示',
+            $resp['code'] === $cc['no_create_page']['expect_code']
+                && ($json['error'] ?? '') === $cc['no_create_page']['expect_error'],
+            "HTTP {$resp['code']} ".((string) ($json['error'] ?? '(无)'))
+        );
+    }
+}
+
+/*
  * ═══ 可发现性：自省资料必须给全签名与 namespace ═══
  *
  * 事故：`Tree` 类的命名空间在 llms.txt / capabilities.json /

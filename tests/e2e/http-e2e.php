@@ -387,6 +387,20 @@ if ($cbExp === null) {
         implode(',', array_map(static fn ($v) => (string) $v, $cbStatuses))
     );
 
+    /*
+     * 确认弹窗的文案要按动作变。
+     *
+     * 实测：弹窗是复用的，原先对所有批量动作写死「批量删除 / 确认删除」——
+     * 自定义动作 `ship` 弹出来却是「即将删除：选中的 2 条记录」，
+     * 用户会以为数据要被删。
+     */
+    $cbBody = (string) $cbPage['body'];
+    t(
+        '确认弹窗文案按动作变（不再写死「批量删除」）',
+        str_contains($cbBody, 'confirmTitle()') && str_contains($cbBody, 'confirmButtonLabel()'),
+        str_contains($cbBody, 'confirmTitle()') ? '已接线' : '仍写死'
+    );
+
     // 未声明的动作必须被拒 —— 不做「没声明也能调」的隐式行为
     $cbBad = http("$base/admin/api/{$cbExp['resource']}/batch", 'POST', [
         'action' => 'not-declared-anywhere',
@@ -441,12 +455,71 @@ if ($btField !== null) {
     );
 
     $hasExists = false;
+    $hasNullable = false;
     foreach ($btField['rules'] ?? [] as $br) {
         if (str_starts_with((string) $br, 'exists:')) {
             $hasExists = true;
         }
+        if ($br === 'nullable') {
+            $hasNullable = true;
+        }
     }
     t('exists 规则自动带上', $hasExists, $hasExists ? '有' : '没有 —— 前端能提交任意 id');
+
+    /*
+     * 可空外键必须带 nullable。
+     *
+     * 实测事故：只有 exists 时，树形的顶级节点（parent_id = NULL）提交直接 422
+     * 「The selected parent id is invalid.」—— 而 ai:verify 全程绿灯，
+     * 声明完全合法，只有真发请求才暴露。
+     */
+    $btExpect = $btExp['nullable']['expect_rules'] ?? ['nullable'];
+    t(
+        '非必填外键带 nullable（否则存不了 NULL）',
+        $hasNullable,
+        $hasNullable ? '有' : '没有 —— 顶级节点会 422'
+    );
+
+    // 真发一次请求确认：NULL 能存、伪 id 仍被拒
+    $btCsrf = '';
+    if (preg_match('~name="csrf-token" content="([^"]+)"~', (string) $btPage['body'], $btcm)) {
+        $btCsrf = $btcm[1];
+    }
+
+    if ($btCsrf !== '') {
+        $btResource = (string) ($btExp['resource'] ?? 'departments');
+
+        $btNull = http("$base/admin/api/{$btResource}", 'POST', [
+            'name' => 'e2e-nullable-probe',
+            'parent_id' => null,
+        ], ['X-CSRF-TOKEN: '.$btCsrf]);
+
+        echo "      [debug] POST URL = "."$base/admin/api/{$treeUri}"."
+";
+        t(
+            'NULL 外键能存（顶级节点）',
+            in_array($btNull['code'], [200, 201], true),
+            "HTTP {$btNull['code']} ".substr((string) $btNull['body'], 0, 80)
+        );
+
+        $btFake = http("$base/admin/api/{$btResource}", 'POST', [
+            'name' => 'e2e-fake-parent-probe',
+            'parent_id' => 999999,
+        ], ['X-CSRF-TOKEN: '.$btCsrf]);
+
+        t(
+            '伪 id 仍被拒（加 nullable 没有削弱校验）',
+            $btFake['code'] === 422,
+            "HTTP {$btFake['code']}"
+        );
+
+        // 探针自己清理 —— 否则每跑一次 e2e 就在 demo 库里留一行垃圾
+        $btNullId = json_decode((string) $btNull['body'], true)['data']['id'] ?? null;
+
+        if ($btNullId !== null) {
+            http("$base/admin/api/{$btResource}/{$btNullId}", 'DELETE', [], ['X-CSRF-TOKEN: '.$btCsrf]);
+        }
+    }
 }
 
 /*

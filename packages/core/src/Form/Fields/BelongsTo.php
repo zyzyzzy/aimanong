@@ -99,10 +99,30 @@ class BelongsTo extends Select
         $this->props['options'] = $options;
         $this->props['relation'] = $this->resolvedRelationName();
 
-        // exists 规则自动带上 —— 少了它前端能提交任意 id
-        if (! in_array($existsRule, $this->rules, true)) {
-            $this->rules[] = $existsRule;
+        /*
+         * ⚠️ 非必填时要补 `nullable`，否则**可空外键永远存不了 null**。
+         *
+         * 实测（L3-4 复测的 agent 抓到）：树形的顶级节点 parent_id 必须为 NULL，
+         * 而自动生成的规则是 `exists:departments,id` —— 提交 NULL 直接 422
+         * 「The selected parent id is invalid.」。
+         *
+         * 而且 `ai:verify` 全程绿灯：**声明完全合法，只有真发请求才暴露**。
+         *
+         * 判据用「有没有声明 required」而不是「数据库列可不可空」——
+         * 前者是声明层的意图，后者要驱动参与；而两者的差异只在这种
+         * 「可选外键」的常见情形下才出现。
+         */
+        $rules = $this->rules;
+
+        if (! in_array('required', $rules, true) && ! in_array('nullable', $rules, true)) {
+            $rules[] = 'nullable';
         }
+
+        if (! in_array($existsRule, $rules, true)) {
+            $rules[] = $existsRule;
+        }
+
+        $this->rules = $rules;
 
         return $this;
     }

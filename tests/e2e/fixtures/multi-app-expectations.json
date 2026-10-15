@@ -109,6 +109,20 @@
         "value",
         "label"
       ]
+    },
+    "nullable": {
+      "_note": "可空外键必须能存 NULL —— 自动补的 exists 规则不能把它变成必填",
+      "_why": [
+        "事故：belongsTo 自动生成 exists:{table},{id}，缺 nullable。",
+        "树形的顶级节点 parent_id 必须为 NULL，提交直接 422",
+        "「The selected parent id is invalid.」。",
+        "而 ai:verify 全程绿灯 —— 声明完全合法，只有真发请求才暴露。",
+        "判据用「有没有声明 required」：非必填就补 nullable。"
+      ],
+      "expect_rules": [
+        "nullable",
+        "exists:"
+      ]
     }
   },
   "custom_batch_action": {

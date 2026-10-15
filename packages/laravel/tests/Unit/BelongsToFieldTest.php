@@ -94,6 +94,39 @@ class BelongsToFieldTest extends TestCase
         $this->assertContains('exists:authors,id', $field->toNode()->rules);
     }
 
+    public function test_optional_foreign_key_gets_nullable(): void
+    {
+        /*
+         * ⚠️ 可空外键必须能存 NULL。
+         *
+         * 实测：树形的顶级节点 parent_id 为 NULL，而自动生成的规则只有
+         * `exists:departments,id` —— 提交 NULL 直接 422。
+         * 而 `ai:verify` 全程绿灯：声明合法，只有真发请求才暴露。
+         */
+        $field = new BelongsTo('parent_id', '上级部门');
+        $field->applyResolved([], 'exists:departments,id');
+
+        $rules = $field->toNode()->rules;
+
+        $this->assertContains('nullable', $rules, '非必填外键必须带 nullable');
+        $this->assertContains('exists:departments,id', $rules);
+        // nullable 要在 exists 之前（顺序影响可读性，也是惯例）
+        $this->assertLessThan(
+            array_search('exists:departments,id', $rules, true),
+            array_search('nullable', $rules, true)
+        );
+    }
+
+    public function test_required_foreign_key_does_not_get_nullable(): void
+    {
+        // 声明了 required 就是必填 —— 不该被 nullable 悄悄放宽
+        $field = new BelongsTo('author_id', '作者');
+        $field->required();
+        $field->applyResolved([], 'exists:authors,id');
+
+        $this->assertNotContains('nullable', $field->toNode()->rules);
+    }
+
     public function test_apply_resolved_does_not_duplicate_exists_rule(): void
     {
         $field = new BelongsTo('author_id', '作者');

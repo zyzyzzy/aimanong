@@ -352,15 +352,18 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
         </span>
-        <span class="am-modal__title">@{{ confirmState.batch ? '批量删除' : '确认删除' }}</span>
+        {{-- 文案按动作变：自定义动作不该弹出「批量删除」 --}}
+        <span class="am-modal__title">@{{ confirmTitle() }}</span>
       </div>
       <div class="am-modal__body">
-        <p style="margin:0 0 8px">即将删除：<strong>@{{ confirmState.label }}</strong></p>
-        <p class="am-text-sm am-text-muted" style="margin:0">此操作不可撤销。</p>
+        <p style="margin:0 0 8px">@{{ confirmHint() }}</p>
+        <p class="am-text-sm am-text-muted" style="margin:0">
+          @{{ confirmState.action && confirmState.action !== 'delete' ? '该操作会修改选中的记录。' : '此操作不可撤销。' }}
+        </p>
       </div>
       <div class="am-modal__foot">
         <button class="am-btn" @click="confirmState.open = false">取消</button>
-        <button class="am-btn am-btn--danger" @click="confirmRun">确认删除</button>
+        <button class="am-btn am-btn--danger" @click="confirmRun">@{{ confirmButtonLabel() }}</button>
       </div>
     </div>
   </div>
@@ -792,6 +795,37 @@ const app = createApp({
                 batch: true,
                 action,
             };
+        }
+
+        /**
+         * 确认弹窗的标题与按钮文案。
+         *
+         * ⚠️ 弹窗是**复用**的（不另造一套）。原先它对所有批量动作都写死
+         * 「批量删除 / 确认删除」—— 实测中一个自定义动作 `ship` 弹出来
+         * 却是「即将删除：选中的 2 条记录」，用户会以为数据要被删。
+         */
+        function confirmTitle() {
+            if (confirmState.value.action && confirmState.value.action !== 'delete') {
+                return batchLabels[confirmState.value.action] || confirmState.value.action;
+            }
+
+            return '批量删除';
+        }
+
+        function confirmButtonLabel() {
+            if (confirmState.value.action && confirmState.value.action !== 'delete') {
+                return '确认执行';
+            }
+
+            return '确认删除';
+        }
+
+        function confirmHint() {
+            if (confirmState.value.action && confirmState.value.action !== 'delete') {
+                return `即将对选中的 ${selectedIds.value.length} 条记录执行「${confirmTitle()}」`;
+            }
+
+            return `即将删除：${confirmState.value.label}`;
         }
 
         /** 确认弹窗的统一入口：按是否批量分发 */
@@ -1337,7 +1371,7 @@ const app = createApp({
             isStepped, steps, currentStep, visibleFields,
             inputType, mapLabel, tagClass, formatMoney, cellValue, cellClass, normalizeCell,
             toasts, toast, dismissToast, confirmState, doDelete,
-            openCreate, goStep,
+            openCreate, goStep, confirmTitle, confirmButtonLabel, confirmHint,
             // 插件通过 pluginExports 把函数暴露给模板（与内置字段同等待遇）
             ...pluginExports,
             fieldOptions, readonly, isUploadField, uploadUrl, uploadName,

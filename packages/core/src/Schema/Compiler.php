@@ -141,6 +141,13 @@ class Compiler
                 'omitWhenEmpty' => $form->omitWhenEmptyFields(),
                 // 仅新增时必填（编辑留空表示不改，典型是密码框）
                 'requiredOnCreate' => $form->requiredOnCreateFields(),
+                /*
+                 * Resource 类名本身。
+                 *
+                 * 控制器要拿它调用**声明方覆盖的授权钩子**
+                 *（Resource::authorizeRelation）—— 没有这个字段就无从回调。
+                 */
+                'resource_class' => $resource,
             ],
         );
     }

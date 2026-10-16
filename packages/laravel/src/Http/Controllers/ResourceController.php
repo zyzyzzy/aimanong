@@ -334,12 +334,36 @@ class ResourceController extends Controller
      *
      * @param  array<string, array<int, mixed>>  $relations
      */
-    protected function syncRelations(Model $model, array $relations): void
+    protected function syncRelations(ResourceNode $node, Model $model, array $relations): void
     {
+        /** @var string|null $resourceClass */
+        $resourceClass = $node->meta['resource_class'] ?? null;
+
         foreach ($relations as $relation => $ids) {
-            if (method_exists($model, $relation)) {
-                $model->{$relation}()->sync($ids);
+            if (! method_exists($model, $relation)) {
+                continue;
             }
+
+            /*
+             * 声明方的授权钩子 —— **必须在 sync 之前**。
+             *
+             * 审计实测（2026-10-16）：多对多原先直接 sync($ids)，零校验。
+             * 一个只有 admin-users.update 的账号把 roles 提交成
+             * [超级管理员的角色 id] 就完成了自我提权（403 → 200）。
+             */
+            if ($resourceClass !== null && is_callable([$resourceClass, 'authorizeRelation'])) {
+                try {
+                    $resourceClass::authorizeRelation($relation, $ids);
+                } catch (\Throwable $e) {
+                    throw new AccessDeniedHttpException(
+                        $e->getMessage() !== ''
+                            ? $e->getMessage()
+                            : "不允许修改关联 [{$relation}]。"
+                    );
+                }
+            }
+
+            $model->{$relation}()->sync($ids);
         }
     }
 
@@ -388,7 +412,7 @@ class ResourceController extends Controller
         }
 
         if ($relations !== []) {
-            $this->syncRelations($model, $relations);
+            $this->syncRelations($node, $model, $relations);
         }
 
         return response()->json(['data' => $model], 201);
@@ -414,7 +438,7 @@ class ResourceController extends Controller
         }
 
         if ($relations !== []) {
-            $this->syncRelations($model, $relations);
+            $this->syncRelations($node, $model, $relations);
         }
 
         return response()->json(['data' => $model]);

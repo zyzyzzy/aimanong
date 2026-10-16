@@ -618,6 +618,39 @@ if (! $perm) {
     $role->permissions()->sync([$perm->id]);
 }
 
+/*
+ * 提权验证账号 —— 只有「管理员」的查看 + 编辑权限。
+ *
+ * e2e 用它断言：一个**不是超管**的人不能通过编辑自己
+ * （把 roles 提交成超级管理员的角色 id）来完成自我提权。
+ *
+ * 2026-10-16 审计实测：改前 403 → 改后 200，完全提权。
+ */
+$idxSlug = \Aimanong\Auth\PermissionGate::appSlug("admin", "admin-users", "index");
+$updSlug = \Aimanong\Auth\PermissionGate::appSlug("admin", "admin-users", "update");
+
+$editPerms = [];
+foreach ([$idxSlug, $updSlug] as $slug) {
+    $editPerms[] = Permission::firstOrCreate(
+        ["slug" => $slug],
+        ["name" => "管理员 · ".$slug, "group" => "管理员"]
+    )->id;
+}
+
+$editRole = Role::firstOrNew(["slug" => "user-editor"]);
+$editRole->name = "账号编辑员";
+$editRole->is_super = false;
+$editRole->save();
+$editRole->permissions()->sync($editPerms);
+
+$eu = Admin::firstOrNew(["username" => "editor01"]);
+$eu->password = Hash::make("editor123");
+$eu->name = "账号编辑员";
+$eu->enabled = true;
+$eu->save();
+$eu->roles()->sync([$editRole->id]);
+echo "     editor01/editor123（只有 admin-users 查看+编辑，非超管）\n";
+
 $u = Admin::firstOrNew(["username" => "viewer01"]);
 $u->password = Hash::make("viewer123");
 $u->name = "只读查看";

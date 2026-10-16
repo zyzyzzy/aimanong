@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Foundation\Resources;
 
+use Aimanong\Auth\PermissionGate;
 use Aimanong\Contracts\ApplicationResolver;
 use Aimanong\Form\Form;
 use Aimanong\Foundation\Audit\OperationLog;
@@ -130,13 +131,136 @@ class AdminUserResource extends Resource
     public static function roleOptions(): array
     {
         try {
+            $query = Role::query()->orderBy('sort')->orderBy('id');
+
+            /*
+             * 🔴 非超管**看不到**超管角色。
+             *
+             * 审计发现（2026-10-16）：下拉原先列出全部角色，
+             * 包括 is_super=1 的两个 —— 一个只有 admin-users.update
+             * 的账号可以直接在下拉里选中「超级管理员」并保存，完成自我提权。
+             *
+             * 下拉过滤只是**第一层**（不提供选项）；真正的门在
+             * authorizeRelation()（服务端拒绝）。
+             * 两层都要有：只过滤下拉等于「藏起来」，curl 一样能提交。
+             */
+            if (! self::currentUserIsSuper()) {
+                $query->where('is_super', false);
+            }
+
             /** @var array<int, string> $options */
-            $options = Role::query()->orderBy('sort')->orderBy('id')->pluck('name', 'id')->all();
+            $options = $query->pluck('name', 'id')->all();
 
             return $options;
         } catch (\Throwable) {
             // 还没跑迁移 / 表不存在：给空数组而不是让整个后台 500
             return [];
+        }
+    }
+
+    /**
+     * 当前登录用户是不是超级管理员。
+     *
+     * 没有登录上下文（CLI / 单测）时返回 false —— 保守默认，
+     * 与「越权风险宁可多拦」一致。
+     */
+    protected static function currentUserIsSuper(): bool
+    {
+        $user = PermissionGate::user();
+
+        if (! is_object($user) || ! method_exists($user, 'isSuper')) {
+            return false;
+        }
+
+        try {
+            return (bool) $user->isSuper();
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * 角色关联的授权门。
+     *
+     * 审计实测（2026-10-16）：多对多原先直接 sync()，零校验 ——
+     * 一个只有 admin-users.update 权限的账号把 roles 提交成
+     * [超级管理员角色 id] 就完成了自我提权（改前处处 403，改后处处 200）。
+     *
+     * 规则：**非超管不得授予或撤销任何超管角色**。
+     * 撤销也要拦 —— 否则可以把别的管理员踢下超管。
+     */
+    public static function authorizeRelation(string $relation, array $ids): void
+    {
+        if ($relation !== 'roles' || self::currentUserIsSuper()) {
+            return;
+        }
+
+        $superIds = Role::query()
+            ->where('is_super', true)
+            ->pluck('id')
+            ->map(static fn ($v): int => (int) $v)
+            ->all();
+
+        if ($superIds === []) {
+            return;
+        }
+
+        foreach ($ids as $id) {
+            if (in_array((int) $id, $superIds, true)) {
+                throw new \RuntimeException(
+                    '不能授予或撤销「超级管理员」角色 —— '
+                    .'只有超级管理员本人可以调整超管角色。'
+                );
+            }
+        }
+
+        /*
+         * 还要拦「把别人的超管角色**撤掉**」这一侧：
+         * 提交里不含超管 id，但目标用户当前有。
+         */
+        $target = self::pendingTarget();
+
+        if ($target === null) {
+            return;
+        }
+
+        $had = $target->roles()
+            ->where('is_super', true)
+            ->pluck('id')
+            ->map(static fn ($v): int => (int) $v)
+            ->all();
+
+        foreach ($had as $id) {
+            if (! in_array($id, array_map('intval', $ids), true)) {
+                throw new \RuntimeException(
+                    '不能撤销他人的「超级管理员」角色 —— '
+                    .'只有超级管理员本人可以调整超管角色。'
+                );
+            }
+        }
+    }
+
+    /**
+     * 本次请求正在改的那个账号（用于判断「原本有哪些超管角色」）。
+     *
+     * 新建时为 null。
+     */
+    protected static function pendingTarget(): ?Administrator
+    {
+        try {
+            /** @var mixed $id */
+            $id = request()->route('id');
+
+            if (! is_int($id) && ! is_string($id)) {
+                return null;
+            }
+
+            /** @var Administrator|null $found */
+            $found = Administrator::query()->find($id);
+
+            return $found;
+        } catch (\Throwable) {
+            return null;
         }
     }
 

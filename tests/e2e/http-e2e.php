@@ -1551,6 +1551,130 @@ if ($tsExp === null) {
     );
 }
 
+/*
+ * ═══ 多对多关联提权 ═══
+ *
+ * 详见 fixture privilege_escalation 的 _why。
+ */
+echo "\n═══ 多对多关联提权 ═══\n";
+
+$peExp = $multiAppExp['privilege_escalation'] ?? null;
+
+if ($peExp === null) {
+    t('读得到提权共享期望', false, 'fixtures 里缺 privilege_escalation');
+} else {
+    $peJar = '/tmp/e2e-lowpriv-esc.txt';
+    @unlink($peJar);
+    $lp = $peExp['low_priv'];
+
+    // 用低权限账号登录
+    $ch = curl_init("$base/admin/auth/login");
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEJAR => $peJar, CURLOPT_COOKIEFILE => $peJar]);
+    $lpForm = (string) curl_exec($ch);
+    unset($ch);
+    preg_match('/name="_token" value="([^"]+)"/', $lpForm, $lm);
+
+    $ch = curl_init("$base/admin/auth/login");
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEJAR => $peJar, CURLOPT_COOKIEFILE => $peJar,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => ['_token' => $lm[1] ?? '', 'username' => $lp['username'], 'password' => $lp['password']],
+    ]);
+    curl_exec($ch);
+    unset($ch);
+
+    // 拿 csrf + 自己的 id
+    $ch = curl_init("$base/admin/{$peExp['resource']}");
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEJAR => $peJar, CURLOPT_COOKIEFILE => $peJar]);
+    $lpPage = (string) curl_exec($ch);
+    unset($ch);
+    preg_match('/name="csrf-token" content="([^"]+)"/', $lpPage, $lc);
+    $lpCsrf = $lc[1] ?? '';
+
+    $peSelf = null;
+
+    if (preg_match('~schema\s*=\s*(\{.*?\});~s', $lpPage, $peSm)) {
+        $peSchema = json_decode($peSm[1], true) ?: [];
+
+        // 下拉里不该出现超管角色
+        foreach ($peSchema['fields'] ?? [] as $f) {
+            if (($f['name'] ?? '') === 'roles') {
+                $opts = $f['props']['options'] ?? [];
+                $leak = [];
+
+                foreach ($opts as $label) {
+                    if (str_contains((string) $label, '超级管理员')) {
+                        $leak[] = $label;
+                    }
+                }
+
+                t(
+                    '低权限账号的角色下拉不含超管角色',
+                    $leak === [],
+                    $leak === [] ? '已隐藏' : '泄露：'.implode('、', $leak)
+                );
+            }
+        }
+    }
+
+    // 找到自己的 id
+    $ch = curl_init("$base/admin/api/{$peExp['resource']}?keyword={$lp['username']}");
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEJAR => $peJar, CURLOPT_COOKIEFILE => $peJar]);
+    $peList = json_decode((string) curl_exec($ch), true);
+    unset($ch);
+
+    foreach ($peList['data'] ?? [] as $row) {
+        if (($row['username'] ?? '') === $lp['username']) {
+            $peSelf = $row['id'] ?? null;
+        }
+    }
+
+    if ($peSelf === null) {
+        t('找得到低权限账号自己', false, '搜索没命中');
+    } else {
+        // 提交超管角色
+        $pePayload = [
+            'username' => $lp['username'],
+            'name' => '账号编辑员',
+            'enabled' => true,
+            'roles' => [(int) $peExp['super_role_id']],
+        ];
+
+        $ch = curl_init("$base/admin/api/{$peExp['resource']}/{$peSelf}");
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15,
+            CURLOPT_COOKIEJAR => $peJar, CURLOPT_COOKIEFILE => $peJar,
+            CURLOPT_CUSTOMREQUEST => 'PUT',
+            CURLOPT_POSTFIELDS => json_encode($pePayload),
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'X-CSRF-TOKEN: '.$lpCsrf],
+        ]);
+        $peBody = (string) curl_exec($ch);
+        $peCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        unset($ch);
+
+        t(
+            "非超管给自己授超管角色 → {$peExp['expect_denied_status']}",
+            $peCode === (int) $peExp['expect_denied_status'],
+            "HTTP {$peCode} ".substr(preg_replace('/\s+/', ' ', strip_tags($peBody)), 0, 70)
+        );
+
+        // 复查：确实没提权（换个需要超管的接口试）
+        $ch = curl_init("$base/admin/api/{$peExp['probe_url']}");
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEJAR => $peJar, CURLOPT_COOKIEFILE => $peJar]);
+        curl_exec($ch);
+        $peProbe = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        unset($ch);
+
+        t(
+            "提权未生效（{$peExp['probe_url']} 仍 {$peExp['probe_expect_status']}）",
+            $peProbe === (int) $peExp['probe_expect_status'],
+            "HTTP {$peProbe}"
+        );
+    }
+
+    @unlink($peJar);
+}
+
 echo "\n";
 printf("通过 %d / %d\n", $pass, $pass + $fail);
 

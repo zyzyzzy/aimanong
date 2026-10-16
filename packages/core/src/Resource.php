@@ -121,6 +121,45 @@ abstract class Resource implements ResourceContract
      * public static function readonly(): bool { return true; }
      * ```
      */
+    /**
+     * 多对多关联写入前的**授权钩子**。
+     *
+     * ## 为什么需要它
+     *
+     * 多对多字段（如管理员的「角色」）走 `sync($ids)` 直接落库。
+     * 框架原先**不做任何校验** —— 于是：
+     *
+     *     一个只有 `admin-users.update` 权限的账号，
+     *     把 roles 提交成 [超级管理员的角色 id]，
+     *     就给自己加上了 super_admin。
+     *
+     * 实测（2026-10-16）：改前处处 403，改后处处 200 —— 完全提权。
+     *
+     * 权限系统管的是「你能不能进这个接口」，
+     * 管不了「你提交的**这条关联数据**合不合法」—— 后者是业务语义，
+     * 只有声明方知道。所以这里开一个默认放行的钩子给声明方覆盖。
+     *
+     * ## 用法
+     *
+     *     public static function authorizeRelation(string $relation, array $ids): void
+     *     {
+     *         if ($relation === 'roles' && ! currentUser()->isSuper()) {
+     *             throw new \RuntimeException('不能授予超级管理员角色');
+     *         }
+     *     }
+     *
+     * 抛出的异常由控制器统一转成 403。
+     *
+     * @param  string  $relation  关联方法名（如 roles）
+     * @param  array<int, mixed>  $ids  本次要同步过去的 id
+     *
+     * @throws \Throwable 声明方拒绝时抛出，控制器转成 403
+     */
+    public static function authorizeRelation(string $relation, array $ids): void
+    {
+        // 默认放行 —— 只有声明方知道自己的关联该受什么约束
+    }
+
     public static function readonly(): bool
     {
         return false;

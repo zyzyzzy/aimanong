@@ -356,5 +356,35 @@
         "out_of_scope_id": 3,
         "list_total": 2,
         "out_of_scope_status": 404
+    },
+    "privilege_escalation": {
+        "_note": "多对多关联写入不得成为提权通道",
+        "_why": [
+            "P1（2026-10-16 审计实测）：ResourceController::syncRelations() 原先",
+            "对多对多关联**零校验**，直接 sync($ids)。",
+            "",
+            "于是「管理员」编辑页成了一条提权通道：",
+            "一个只有 admin-users.index + admin-users.update 的账号（editor01），",
+            "把 roles 提交成 [超级管理员的角色 id]，就给自己加上了 super_admin。",
+            "",
+            "实测：",
+            "  改前 PUT /admin/api/admin-users/13 {\"roles\":[2]} → 200",
+            "       GET /admin/api/admin-roles                    → 200（拿到了超管）",
+            "  改后 同一请求                                     → 403",
+            "       GET /admin/api/admin-roles                    → 403",
+            "",
+            "根因是「权限系统只管接口级，管不了你提交的关联数据」。",
+            "修法：Resource::authorizeRelation() 钩子（默认放行，声明方覆盖），",
+            "AdminUserResource 用它拦住「非超管不得授予/撤销超管角色」。"
+        ],
+        "resource": "admin-users",
+        "low_priv": {
+            "username": "editor01",
+            "password": "editor123"
+        },
+        "super_role_id": 2,
+        "expect_denied_status": 403,
+        "probe_url": "admin-roles",
+        "probe_expect_status": 403
     }
 }

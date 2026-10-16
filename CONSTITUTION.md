@@ -250,7 +250,7 @@ AI 不需要「理解」，照抄即可改对。
 | 层 | 手段 |
 |---|---|
 | 声明合法性 | `php artisan ai:verify`（签名只有 `{resource?}` 与 `{--json}`） |
-| 需求达标度 | MCP 工具 `validate_declaration` 的 **`requirements` 参数** |
+| 需求达标度 | MCP 工具 `validate-declaration` 的 **`requirements` 参数** |
 | 端到端行为 | `scripts/pre-release.sh --with-e2e` |
 | 真实环境 | 在**目标环境**真跑一次（见下） |
 

@@ -38,7 +38,7 @@
 
 **首版记录误判为 1.0，原因是只看了最终产物的正确性，没有追溯过程。**
 
-AI 的诚实报告揭示：**`scaffold_resource` 生成的代码不能直接用**，有 4 处硬伤：
+AI 的诚实报告揭示：**`scaffold-resource` 生成的代码不能直接用**，有 4 处硬伤：
 
 | # | 脚手架产出 | 问题 | 谁发现的 |
 |---|---|---|---|
@@ -47,7 +47,7 @@ AI 的诚实报告揭示：**`scaffold_resource` 生成的代码不能直接用*
 | 3 | `price`/`stock` 无 `->sortable()` | 漏了需求 | AI 自己 |
 | 4 | `published` 推成 `number` + 必填 | 布尔被当成数字 | AI 自己 |
 
-**关键：这 4 处问题，`validate_declaration` 和 `run_verify` 全部报「通过」。**
+**关键：这 4 处问题，`validate-declaration` 和 `run-verify` 全部报「通过」。**
 
 验证器只检查「语法合法 / 能编译」，**不检查「是否满足需求」**。AI 若把 verify 通过当成交付标准，会交出残次品，且拿到绿灯。
 
@@ -61,7 +61,7 @@ AI 之所以最终写对，是因为它**动手前先读了框架源码**——�
 
 | # | Bug | 复现证据 | 严重度 |
 |---|---|---|---|
-| 1 | MCP `query_data` 关键词搜索**静默失效** | 传「键盘」返回全表 3 条而非 1 条 | **高**（AI 唯一调试手段被污染） |
+| 1 | MCP `query-data` 关键词搜索**静默失效** | 传「键盘」返回全表 3 条而非 1 条 | **高**（AI 唯一调试手段被污染） |
 | 2 | llms.txt 承诺的 `did_you_mean` 实际为 `null` | `context()` 无该键，`didYouMean()` 返回 NULL | **高**（文档承诺落空） |
 | 3 | `$show->field()->dateTime()` 必然致命 | `Text` 类无 `dateTime()` 方法 | **中**（照文档写必崩） |
 | 4 | llms.txt 主推示例用了实例属性 + 非静态方法 | 基类三方法全 static，无 `$model` 属性 | **高**（照抄示例跑不起来） |
@@ -114,22 +114,22 @@ public static function form(Form $form): void
 必须修的 4 项（按优先级）：
 
 1. **验证器要能查"需求达标度"** ← 最致命
-   现在 `validate_declaration` 全绿但产出缺需求。AI 会把绿灯当交付标准。
-   方向：支持传入需求描述做对齐检查；或让 `scaffold_resource` 明确输出"我漏了什么、为什么不确定"。
+   现在 `validate-declaration` 全绿但产出缺需求。AI 会把绿灯当交付标准。
+   方向：支持传入需求描述做对齐检查；或让 `scaffold-resource` 明确输出"我漏了什么、为什么不确定"。
 
 2. **文档与实现对齐**（3 处矛盾）
    - 示例改 static、去掉 `$model` 属性
    - 异常补上 `did_you_mean` 键
    - `Show` 补 `dateTime()` 等方法，或文档改正确用法
 
-3. **MCP `query_data` 搜索修复** + 静默失败改为显式报错
+3. **MCP `query-data` 搜索修复** + 静默失败改为显式报错
 
-4. **`scaffold_resource` 引用不存在的 Model 要提示**
+4. **`scaffold-resource` 引用不存在的 Model 要提示**
    它读了表结构，却不知道 `app/Models/Product.php` 不存在。
 
 ### 保留的优点（经验证成立）
 
-- ✅ `scaffold_resource` 读真实表结构，8 个字段名/类型零猜测
+- ✅ `scaffold-resource` 读真实表结构，8 个字段名/类型零猜测
 - ✅ **「一份声明、永不漂移」是真的**：`searchable()`/`sortable()` 一处声明，
   schema.json / openapi.json / TypeScript / ai-context.md / HTTP API / MCP 全部同步，`--check` 零漂移
 - ✅ `ai-context.md` 反向给 AI 读的设计有效
@@ -139,7 +139,7 @@ public static function form(Form $form): void
 
 | 问题 | 影响 | 建议 |
 |---|---|---|
-| `status` 生成为 text 而非 select | 列表显示 `on_sale` 原始值 | `scaffold_resource` 按列名语义（status/type/state）建议 select |
+| `status` 生成为 text 而非 select | 列表显示 `on_sale` 原始值 | `scaffold-resource` 按列名语义（status/type/state）建议 select |
 | `published` 布尔显示 `true/false` | 不直观 | 布尔列默认渲染为标签 |
 | 参数名写错与资源不存在返回同一错误 | 无法区分 | 缺失参数应返回 MISSING_PARAMETER |
 
@@ -170,7 +170,7 @@ public static function form(Form $form): void
 
 AI 原话：
 
-> **requirements 校验器是本次唯一救命机制。** 如果不用它，`validate_declaration` 对那份缺 3 条需求的产物会返回「✅ 语法校验通过」，我会误判成功并交付一个不合格的 Resource。
+> **requirements 校验器是本次唯一救命机制。** 如果不用它，`validate-declaration` 对那份缺 3 条需求的产物会返回「✅ 语法校验通过」，我会误判成功并交付一个不合格的 Resource。
 
 **对比第一轮（框架纠错贡献 0）→ 第二轮（贡献 50%），说明修复方向正确。**
 
@@ -418,10 +418,10 @@ AI 主动做了**三层独立验证**，且专门怀疑"校验器是不是橡皮
 
 ### 未采纳的建议（附理由）
 
-AI 建议「`scaffold_resource` 应输出需求自检提示」。
+AI 建议「`scaffold-resource` 应输出需求自检提示」。
 
 **暂不改**：脚手架无法知道用户的需求（"要哪些列可搜索"是任务信息，不是表信息）。
-正确解法是 AI 主动传 `requirements` 给 `validate_declaration` —— 这一轮它就是这么做的，
+正确解法是 AI 主动传 `requirements` 给 `validate-declaration` —— 这一轮它就是这么做的，
 并且首次即全绿。已在 `ai-collaboration.md` 中强调该流程。
 
 ### 待办
@@ -655,7 +655,7 @@ requires_sync → 新增/改动 Resource 后**必须执行** permission sync 才
 
 - [ ] `search-docs` 的召回质量仍依赖手工维护 `also_known_as`；
       可考虑从 `use_when` 自动派生同义词
-- [ ] 考虑给 `validate_declaration` 加一条：「如果你用了 `->options([...])`
+- [ ] 考虑给 `validate-declaration` 加一条：「如果你用了 `->options([...])`
       硬编码枚举，提示可以改用 `->dict()`」—— 把「找不到能力」变成「被提醒」
 
 ---

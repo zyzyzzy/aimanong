@@ -94,9 +94,14 @@ Aimind 是 AI Agent 之间的集体记忆系统。遇到框架问题时**先查�
 
 ## 字段类型 ≠ 校验规则（容易搞混）
 
-`$form->email('email')` 只决定**渲染成什么控件**，**不会**自动加邮箱格式校验。
-校验要另写：`->required()`、`->rules('email')`、`->max(10)`。
-实测：只写 `$form->email()` 时，提交非法邮箱**能过**。
+`$form->email('email')` **会**自动带上 `email` 校验规则 ——
+即只写它就够了，非法邮箱提交会被拦。
+
+实测（当前版本）：`$form->email('probe')` → schema 里 `"rules": ["email"]`。
+
+其余规则仍要另写：`->required()`、`->max(10)`、`->rules('confirmed')` 等。
+换句话说：**同名字段类型会带上同名规则**（email/tel/url/number/date…），
+但 `->required()` 这类**与类型无关**的约束不会自动加。
 
 ## HTTP 约定（容易猜错的三件事）
 
@@ -160,7 +165,7 @@ $form->belongsTo('author_id', '作者')->relation('author')->labelColumn('name')
 6. **生成后必须跑 `php artisan ai:verify`**
 
 > ⚠️ **不要凭记忆写代码。** 本框架的 API 与其它后台框架不同，
-> 请先调 `scaffold_resource`（从表结构生成）或 `describe_resource`，
+> 请先调 `scaffold-resource`（从表结构生成）或 `describe-resource`，
 > 再照抄本文件末尾的示例。历史上有 AI 因照搬训练数据里的写法而失败。
 
 ## 生成产物（M1 已实现）
@@ -201,12 +206,17 @@ $grid->batchActions(['delete', 'export']);   // 批量操作（动作须在此�
 > `Call to undefined method`）。列表页的筛选入口是
 > **搜索框 `->searchable()`**，它支持多列模糊匹配。
 >
-> `->filter()` **只作用于列**，且**当前不渲染 UI 控件** ——
-> 它会在 schema 里产出 `"filterable": true`，API 层
-> `?filters[列名]=值` 也确实生效，但页面上不会出现筛选框。
-> 需要按状态精确筛选时，请把该列设为 `->searchable()`，
-> 或把筛选值拼进请求参数。
-> **不要只声明 `->filter()` 就以为界面上能筛。**
+> `->filter()` 作用于列，且**页面上真的会渲染筛选控件** ——
+> 列表页顶部按 `->filter()` 声明生成筛选条：
+> 该列有 `->dict()` / `->map()` 时是**下拉框**，否则是**输入框**，
+> 并带「清除筛选」按钮。
+>
+> API 层 `?filters[列名]=值` 同时生效（前端就是在拼这个参数）。
+>
+> ⚠️ 只能筛**声明过的列**：未声明的列名会返回
+> `422 FILTER_COLUMN_NOT_DECLARED`（附 rejected 与可筛选清单）。
+> 这是**故意的** —— 否则 `?filters[password]=<哈希>` 会变成
+> 「这个哈希对不对」的取值预言机。
 
 ### Form（表单页）
 ```php
@@ -284,16 +294,16 @@ php artisan mcp:start aimanong
 
 | 工具 | 用途 | 何时用 |
 |---|---|---|
-| `list_resources` | 列出全部 Resource 及字段 | **第一步总是调它** |
-| `describe_resource` | 看某 Resource 完整定义 | 修改前先看字段名 |
-| `scaffold_resource` | **从数据库表生成代码** | 表已存在时首选，不会猜错字段 |
-| `create_page` | 按指定字段生成代码 | 表尚未创建时用 |
-| `validate_declaration` | 校验声明合法性 | **生成后必调** |
-| `run_verify` | 项目整体自检 | 改动多个 Resource 后调 |
-| `query_data` | 只读查询真实数据 | 调试、确认真实形态 |
-| `search_docs` | 检索框架用法 | 不确定 API 时调 |
+| `list-resources` | 列出全部 Resource 及字段 | **第一步总是调它** |
+| `describe-resource` | 看某 Resource 完整定义 | 修改前先看字段名 |
+| `scaffold-resource` | **从数据库表生成代码** | 表已存在时首选，不会猜错字段 |
+| `create-page` | 按指定字段生成代码 | 表尚未创建时用 |
+| `validate-declaration` | 校验声明合法性 | **生成后必调** |
+| `run-verify` | 项目整体自检 | 改动多个 Resource 后调 |
+| `query-data` | 只读查询真实数据 | 调试、确认真实形态 |
+| `search-docs` | 检索框架用法 | 不确定 API 时调 |
 
-**标准工作流**：`list_resources` → `scaffold_resource` → `validate_declaration` → `run_verify`
+**标准工作流**：`list-resources` → `scaffold-resource` → `validate-declaration` → `run-verify`
 
 ### 方式二：HTTP 自省接口
 
@@ -345,7 +355,7 @@ php artisan ai:verify "App\\Aimanong\\UserResource"   # 校验单个
 
 - ❌ 不要写 Vue / Blade / JS 代码（前端自动渲染）
 - ❌ 不要手动写路由（Resource 自动注册）
-- ❌ 不要猜方法名，先调 `list_resources` 或查 `/__ai/capabilities.json`
+- ❌ 不要猜方法名，先调 `list-resources` 或查 `/__ai/capabilities.json`
 - ❌ 不要用 `$request->string()` 的返回值做 `?:` 判空（返回 Stringable 对象，恒为真）
 - ❌ 不要用 Carbon 的 `diffIn*`（Laravel 12 下返回负数 float，用框架封装的时间工具）
 - ❌ 不要自己建操作日志 / 登录日志 / 数据字典表（框架已内置，重复造会分叉）

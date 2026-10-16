@@ -88,7 +88,7 @@ search-docs {"query":"分步表单"} → step() 声明分步表单的步骤，�
 
 | # | 缺陷 | 后果 |
 |---|---|---|
-| 3 | MCP `query_data` 搜索**静默失效** | 传关键词返回全表。**静默失败比报错更危险** —— AI 会以为数据本来就这样 |
+| 3 | MCP `query-data` 搜索**静默失效** | 传关键词返回全表。**静默失败比报错更危险** —— AI 会以为数据本来就这样 |
 | 4 | `did_you_mean` 实际返回 `null` | 文档承诺的字段不存在，AI 拿不到修正建议 |
 | 5 | **`did_you_mean` 在真实路径被丢弃** | 异常本身带建议，但 `Verifier` 捕获后只取 message，AI 只看到笼统的"编译失败" |
 | 6 | **未知 query 参数静默忽略** | 用 `order=desc` 代替 `direction=desc` → 不报错、返回未排序结果，而校验器仍报「可排序 ✅」 |
@@ -101,7 +101,7 @@ search-docs {"query":"分步表单"} → step() 声明分步表单的步骤，�
 | 8 | 文档示例用实例属性 + 非静态方法 | **照抄示例跑不起来**（真实基类三方法全 static） |
 | 9 | `$show->field()->dateTime()` 必然致命错误 | `Field` 基类缺该方法 |
 | 10 | `perPage()` 无任何文档 | AI 唯一查不到、只能抄参考实现的语法 |
-| 11 | `scaffold_resource` 引用不存在的 Model 却零提示 | 生成 `use App\Models\Course`，但该类不存在 |
+| 11 | `scaffold-resource` 引用不存在的 Model 却零提示 | 生成 `use App\Models\Course`，但该类不存在 |
 | 12 | 幽灵列**静默通过** | 拼错列名不报错，该列在结果中凭空消失 |
 | 13 | 未注册的 Resource 也能「全绿」 | 注释掉 Provider 注册后，两项校验仍报成功 |
 | 14 | `map()` 整数键被序列化成数组 | PHP 会把 `"0"/"1"` 转回整数，前端 `map[key]` 取值失败 |
@@ -276,7 +276,7 @@ php artisan mcp:start aimanong
 |---|---|
 | 方法名拼错（`$form->texte()`）无建议 | PHP 在调用前就抛 `Error`，走不到模糊匹配。修需 `__call` 兜底，与"零魔法"约定冲突，权衡中 |
 | `/__ai/schema/{uri}` 与 `schema.json` 结构不一致 | 前者 `grid` 是扁平数组，后者是 `{perPage, columns}` |
-| `scaffold_resource` 不知道用户需求 | 脚手架能读表结构，但"要哪些列可搜索"是任务信息。正确解法是 AI 主动传 `requirements` |
+| `scaffold-resource` 不知道用户需求 | 脚手架能读表结构，但"要哪些列可搜索"是任务信息。正确解法是 AI 主动传 `requirements` |
 
 ---
 

@@ -50,9 +50,9 @@ php artisan aimanong:install
 | Declaration-driven | One Resource → Schema / TS / OpenAPI / AI context; `--check` blocks drift | [Schema Compilation](./docs/guide/concepts.md) |
 | CRUD admin panel | List / search / sort / paginate / create / update / delete — all derived from declarations | [Resource Reference](./docs/api/resources.md) |
 | AI introspection | `/__ai/capabilities.json` + MCP Server + `ai:verify` | [AI Workflow](./docs/guide/ai-workflow.md) |
-| 30 field types | text / email / select / tree / money / image / tags … | [Field Reference](./docs/api/fields.md) |
+| 31 field types | text / email / select / money / image / tags / region … | [Field Reference](./docs/api/fields.md) |
 | Built-in foundation | Login logs / operation logs / data dictionaries / file uploads / profile / admin accounts — zero config | [Foundation](./docs/guide/foundation.md) |
-| Tree / export / stepped forms | `$grid->tree()` / `$grid->export()` / `$form->step()` | [Advanced Features](./docs/guide/concepts.md) |
+| Tree / export / stepped forms | `Resource::tree()` / `$grid->export()` / `$form->step()` | [Advanced Features](./docs/guide/concepts.md) |
 | Plugin system | Extend via Extension class; dependency checks + failure isolation | [Multi-Framework](./docs/guide/multi-framework.md) |
 | Multi-app | Independent prefix / guard / user model per app; request-level isolation | [Multi-App](./docs/guide/multi-app.md) |
 | Multi-framework | Laravel 12 + ThinkPHP 8 — same declarations, consistent behavior | [Multi-Framework](./docs/guide/multi-framework.md) |

@@ -11,7 +11,7 @@
         "mcp",
         "ai-first"
     ],
-    "homepage": "https://aimanong.com",
+    "homepage": "https://github.com/zyzyzzy/aimanong",
     "require": {
         "php": "^8.2",
         "ext-json": "*",

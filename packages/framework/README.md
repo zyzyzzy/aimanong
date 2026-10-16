@@ -89,7 +89,7 @@ composer require aimanong/region   # 中国省市区三级联动字段
 
 不装也能用，只是没有 `->region()` 这个字段类型。
 
-> ⚠️ `aimanong/region` **只内置少量演示数据**（3 个省），
+> ⚠️ `aimanong/region` **只内置少量演示数据**（5 个省），
 > 生产环境需通过 `Region::useData()` 注入完整数据集。详见该包 README。
 
 ## 用的是 ThinkPHP？

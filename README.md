@@ -50,9 +50,9 @@ php artisan aimanong:install
 | 声明驱动 | 一份 Resource → Schema / TS / OpenAPI / AI 上下文，`--check` 阻断漂移 | [Schema 编译](./docs/guide/concepts.md) |
 | CRUD 后台 | 列表 / 搜索 / 排序 / 分页 / 增删改查，全部由声明推导 | [Resource 声明](./docs/api/resources.md) |
 | AI 自省 | `/__ai/capabilities.json` + MCP Server + `ai:verify` | [AI 工作流](./docs/guide/ai-workflow.md) |
-| 30 种字段 | text / email / select / tree / money / image / tags … | [字段参考](./docs/api/fields.md) |
+| 31 种字段 | text / email / select / money / image / tags / region … | [字段参考](./docs/api/fields.md) |
 | 基座能力 | 登录日志 / 操作日志 / 数据字典 / 文件上传 / 个人中心 / 管理员账号，开箱即用 | [基座能力](./docs/guide/foundation.md) |
-| 树形 / 导出 / 分步表单 | `$grid->tree()` / `$grid->export()` / `$form->step()` | [高级功能](./docs/guide/concepts.md) |
+| 树形 / 导出 / 分步表单 | `Resource::tree()` / `$grid->export()` / `$form->step()` | [高级功能](./docs/guide/concepts.md) |
 | 插件系统 | 继承 Extension，依赖检查 + 失败隔离 | [多框架](./docs/guide/multi-framework.md) |
 | 多应用 | 独立前缀 / guard / 用户模型，请求级隔离 | [多应用](./docs/guide/multi-app.md) |
 | 多框架 | Laravel 12 + ThinkPHP 8，同一套声明两端行为一致 | [多框架](./docs/guide/multi-framework.md) |

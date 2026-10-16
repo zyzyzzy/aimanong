@@ -45,7 +45,7 @@ class UnknownFieldTypeException extends AiReadableException
             'did_you_mean' => $this->suggestion,
             'hint' => '可用字段类型: '.implode(', ', FieldType::all()),
             'example' => '$form->text(\'name\')->label(\'名称\')->required();',
-            'docs' => 'https://aimanong.com/llms/fields.txt',
+            'docs' => 'https://zyzyzzy.github.io/aimanong/api/fields.html',
         ];
     }
 

@@ -38,7 +38,7 @@ class GhostColumnException extends AiReadableException
             'available_columns' => $this->available,
             'hint' => '可用列: '.implode(', ', $this->available),
             'example' => "\$grid->column('".($this->suggest() ?? 'name')."', '...');",
-            'docs' => 'https://aimanong.com/llms/grid.txt',
+            'docs' => 'https://zyzyzzy.github.io/aimanong/api/columns.html',
         ];
     }
 

@@ -51,7 +51,7 @@ class DriverNotRegisteredException extends AiReadableException
             'did_you_mean' => null,
             'example' => "// Laravel 下由 AimanongServiceProvider 自动注册；\n"
                 .'// 自建入口请显式调用：\\Aimanong\\Support\\Drivers::registerXxx(new YourImpl);',
-            'docs' => 'https://aimanong.com/llms/drivers.txt',
+            'docs' => 'https://zyzyzzy.github.io/aimanong/guide/multi-framework.html',
         ];
     }
 

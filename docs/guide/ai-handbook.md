@@ -40,7 +40,7 @@
 
 **正确做法**：
 ```
-先调用 list_resources 和 search-docs 了解框架有什么能力，
+先调用 list-resources 和 search-docs 了解框架有什么能力，
 再开始写代码。
 ```
 
@@ -63,7 +63,7 @@
 }
 ```
 
-**为什么**：`validate_declaration` **默认只检查语法合法性**，不检查是否满足你的需求。
+**为什么**：`validate-declaration` **默认只检查语法合法性**，不检查是否满足你的需求。
 
 实测中最严重的一次事故：AI 生成的代码缺了 3 条需求，
 而校验器返回「✅ 语法校验通过」——**AI 会误判成功并交付残次品**。
@@ -75,7 +75,7 @@
 AI 容易相信"声明了就等于生效了"。要求它做**运行时验证**：
 
 ```
-不要只看 validate_declaration 的全绿。
+不要只看 validate-declaration 的全绿。
 请实际请求一次 API，确认返回的数据符合预期。
 ```
 
@@ -98,7 +98,7 @@ AI 容易相信"声明了就等于生效了"。要求它做**运行时验证**�
 
 **预防**：让它读 `llms.txt` 的「最短可用示例」并照抄，而不是凭记忆写。
 
-### 坑 2：把 `validate_declaration` 的全绿当成交付标准
+### 坑 2：把 `validate-declaration` 的全绿当成交付标准
 
 **现象**：AI 看到「✅ 语法校验通过」就认为任务完成。
 
@@ -155,7 +155,7 @@ AI 容易相信"声明了就等于生效了"。要求它做**运行时验证**�
 
 ```
 请用 php artisan aimanong:make-resource {表名} --label=中文名 --register
-生成 Resource，然后用 validate_declaration 校验。
+生成 Resource，然后用 validate-declaration 校验。
 ```
 
 生成器会**自动做语义推断**：
@@ -251,20 +251,20 @@ curl http://localhost:8000/__ai/capabilities.json
 6. 在 app/Providers/AimanongResourceProvider.php 注册
 
 重要：
-- 先用 list_resources 和 search-docs 了解框架能力，**不要凭记忆写**
-- 完成后必须调用 validate_declaration 并传 requirements 参数核对上述要求
+- 先用 list-resources 和 search-docs 了解框架能力，**不要凭记忆写**
+- 完成后必须调用 validate-declaration 并传 requirements 参数核对上述要求
 - 如果生成失败，读错误信息里的 did_you_mean 改一次再试，不要重写整个文件
 ```
 
 ### 模板 2：修改现有模块
 
 ```
-请先调用 describe_resource 确认 {uri} 的现有字段，然后：
+请先调用 describe-resource 确认 {uri} 的现有字段，然后：
 {具体修改需求}
 
 改完后：
 1. 运行 php artisan aimanong:schema 重新生成产物
-2. 调用 validate_declaration（带 requirements）
+2. 调用 validate-declaration（带 requirements）
 3. 实际请求一次 API 确认修改生效
 ```
 
@@ -299,7 +299,7 @@ curl http://localhost:8000/__ai/capabilities.json
 
 | 层 | 方法 | 能发现什么 |
 |---|---|---|
-| 1 | `validate_declaration` + `requirements` | 需求是否达标 |
+| 1 | `validate-declaration` + `requirements` | 需求是否达标 |
 | 2 | 读 `resources/aimanong/schema.json` | 声明是否真的编译进去了 |
 | 3 | **实际请求 API / 打开页面** | 是否真的生效 |
 

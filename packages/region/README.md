@@ -4,7 +4,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/zyzyzzy/aimanong/blob/main/LICENSE)
 
-## ⚠️ 先看这条：内置数据**只有 3 个省**
+## ⚠️ 先看这条：内置数据**只有 5 个省**
 
 **这个包不包含完整的中国省市区数据。**
 

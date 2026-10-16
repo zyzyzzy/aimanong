@@ -1537,7 +1537,7 @@ $form->multiSelect('permissions')->relation('permissions')->options(...);
 
 ### 最重要的发现
 
-AI 在 `validate_declaration`（含 requirements）+ `ai:verify` + 16 条隔离测试
+AI 在 `validate-declaration`（含 requirements）+ `ai:verify` + 16 条隔离测试
 **全部绿灯**的同时，发现租户名单正在被泄漏。
 
 原因：「每租户只能看自己数据」这类**安全需求**，
@@ -1808,12 +1808,12 @@ $form->mytype('field', '标签');
 #### AI 能力层（M3）
 
 - **自省接口** `/__ai/*`：capabilities / schema / openapi / context / examples / verify
-- **MCP Server**：8 个工具 —— list_resources、describe_resource、scaffold_resource、
-  create_page、validate_declaration、run_verify、query_data、search_docs
+- **MCP Server**：8 个工具 —— list-resources、describe-resource、scaffold-resource、
+  create-page、validate-declaration、run-verify、query-data、search-docs
 - **可自愈错误**：异常自带 `did_you_mean` / `example` / `hint` / `docs`
 - **模糊匹配**：字段类型与类名拼错时给出建议（编辑距离）
 - **幽灵列检测**：拼错列名立刻拦截，不再静默消失
-- **需求达标度校验**：`validate_declaration` 支持传 `requirements` 逐条核对，
+- **需求达标度校验**：`validate-declaration` 支持传 `requirements` 逐条核对，
   `per_page` 会**运行时实测**而非只读声明
 
 #### 字段与展示器（M4）

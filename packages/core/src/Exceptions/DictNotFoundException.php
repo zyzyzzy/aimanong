@@ -48,7 +48,7 @@ class DictNotFoundException extends AiReadableException
                 : '可用字典: '.implode(', ', array_slice($available, 0, 30)),
             'example' => "\$form->select('status')->dict('"
                 .($this->suggest() ?? 'order_status')."');",
-            'docs' => 'https://aimanong.com/llms/dict.txt',
+            'docs' => 'https://zyzyzzy.github.io/aimanong/guide/foundation.html',
         ];
     }
 

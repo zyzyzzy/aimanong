@@ -31,7 +31,7 @@
 1. **先查能力**：`GET /__ai/capabilities.json`（或 `php artisan aimanong:docs` 看生成的清单）
 2. **写 Resource**：放 `app/Aimanong/{Name}Resource.php`
 3. **必须校验**：`php artisan ai:verify`
-4. **跑测试**：`composer test`
+4. **跑测试**：`bash scripts/test.sh`
 5. **不得跳过第 3、4 步**
 
 ## 代码风格
@@ -66,7 +66,7 @@ Conventional Commits：`feat:` `fix:` `docs:` `refactor:` `test:` `chore:`
 
 | # | 检查项 | 不做的后果（真实发生过） |
 |---|---|---|
-| 1 | `composer test` 全绿 | — |
+| 1 | `bash scripts/test.sh` 全绿 | — |
 | 2 | `composer phpstan`（L8）无错误 | — |
 | 3 | `composer pint -- --test` 通过 | — |
 | 4 | `bash scripts/pre-release.sh --with-e2e` 全绿 | 曾有 7 项能力零覆盖而检查全绿 |
@@ -119,13 +119,13 @@ Conventional Commits：`feat:` `fix:` `docs:` `refactor:` `test:` `chore:`
 
 ```bash
 php artisan ai:verify     # 声明合法性 + 是否已注册 + 幽灵列检测
-composer test             # 单元测试
+bash scripts/test.sh      # 单元测试（monorepo 无根 composer.json，composer test 跑不了）
 php artisan serve         # 访问 /admin 人工确认
 ```
 
 ### ⚠️ 语法校验通过 ≠ 需求达标
 
-`validate_declaration` **默认只检查语法合法性**。若任务有具体要求
+`validate-declaration` **默认只检查语法合法性**。若任务有具体要求
 （某列可搜索、每页 N 条等），**必须传 `requirements` 参数**：
 
 ```json

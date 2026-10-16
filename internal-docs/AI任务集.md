@@ -7,7 +7,7 @@
 
 | 结果 | 得分 |
 |---|---|
-| 一次生成即可运行，`validate_declaration` 全绿 | **1.0** |
+| 一次生成即可运行，`validate-declaration` 全绿 | **1.0** |
 | 需 1 次修正（读错误信息后自行改对） | **0.5** |
 | 需 ≥2 次修正，或需人工介入 | **0** |
 
@@ -25,9 +25,9 @@
 
 | # | 任务 | 验收标准 |
 |---|---|---|
-| L1-1 | 为 `users` 表生成 Resource | `validate_declaration` 通过，可访问 `/admin/users` |
+| L1-1 | 为 `users` 表生成 Resource | `validate-declaration` 通过，可访问 `/admin/users` |
 | L1-2 | 给现有 Resource 增加一个 `status` 字段 | Schema 产物同步更新，`--check` 通过 |
-| L1-3 | 把 `name` 列改为可搜索 | `list_resources` 显示 name 在 searchable |
+| L1-3 | 把 `name` 列改为可搜索 | `list-resources` 显示 name 在 searchable |
 | L1-4 | 给 `email` 字段加必填校验 | 提交空 email 返回 422 |
 | L1-5 | 修改某列的中文标题 | Schema 中 label 更新 |
 
@@ -74,7 +74,7 @@
 |---|---|
 | 猜错 API 名 | 改进 `capabilities.json` 的可发现性 |
 | 拼错类型/类名 | 强化模糊匹配（已有 Levenshtein） |
-| 不知道字段类型 | 补充 `search_docs` 内容 |
+| 不知道字段类型 | 补充 `search-docs` 内容 |
 | 生成了前端代码 | 强化 llms.txt 的「不写前端」铁律 |
 | 嵌套闭包 | 在错误信息中明确禁止 |
 | 反复重写整个文件 | 优化错误信息的 `did_you_mean` 可操作性 |

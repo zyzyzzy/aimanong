@@ -278,7 +278,7 @@ $form->select('status')->label('状态')->options(ArticleStatus::options()); // 
 ### 结论二：可视化表单设计器不做 ✅ 完全同意
 
 关键区分非常精准：
-- 产出**代码**的生成器 ✅（dcat `admin:scaffold`、我们 `scaffold_resource`）
+- 产出**代码**的生成器 ✅（dcat `admin:scaffold`、我们 `scaffold-resource`）
 - 产出**数据库 JSON** 的设计器 ❌（若依表单构建、Jeecg Online 表单）
 
 后者会让"表单长什么样"变成数据库里的一坨 JSON —— **AI 读不到、git diff 看不到、无法 review**，

@@ -18,19 +18,19 @@ php artisan mcp:start aimanong
 
 | 工具 | 用途 | 何时用 |
 |---|---|---|
-| `list_resources` | 列出全部 Resource 及字段 | **第一步总是调它** |
-| `describe_resource` | 看某 Resource 完整定义 | 修改前先确认字段名 |
-| `scaffold_resource` | **从数据库表生成代码** | 表已存在时首选 |
-| `create_page` | 按指定字段生成代码 | 表尚未创建时用 |
-| `validate_declaration` | 校验声明 | **生成后必调** |
-| `run_verify` | 项目整体自检 | 改动多个 Resource 后 |
-| `query_data` | 只读查询真实数据 | 调试、确认真实形态 |
-| `search_docs` | 检索框架用法 | 不确定 API 时 |
+| `list-resources` | 列出全部 Resource 及字段 | **第一步总是调它** |
+| `describe-resource` | 看某 Resource 完整定义 | 修改前先确认字段名 |
+| `scaffold-resource` | **从数据库表生成代码** | 表已存在时首选 |
+| `create-page` | 按指定字段生成代码 | 表尚未创建时用 |
+| `validate-declaration` | 校验声明 | **生成后必调** |
+| `run-verify` | 项目整体自检 | 改动多个 Resource 后 |
+| `query-data` | 只读查询真实数据 | 调试、确认真实形态 |
+| `search-docs` | 检索框架用法 | 不确定 API 时 |
 
 **标准工作流**：
 
 ```
-list_resources → scaffold_resource → validate_declaration → run_verify
+list-resources → scaffold-resource → validate-declaration → run-verify
 ```
 
 ### 方式二：HTTP 自省接口
@@ -87,7 +87,7 @@ php artisan ai:verify "App\\Aimanong\\UserResource"   # 校验单个
 
 > ⚠️ **这一条最重要。**
 
-`validate_declaration` **默认只检查语法合法性**，不检查是否满足你的需求。
+`validate-declaration` **默认只检查语法合法性**，不检查是否满足你的需求。
 
 如果任务有具体要求，**必须传 `requirements` 参数**：
 
@@ -117,7 +117,7 @@ php artisan ai:verify "App\\Aimanong\\UserResource"   # 校验单个
 ```
 
 **为什么重要**：AI 实测中发现，如果没有这个校验器，脚手架生成的代码缺了 3 条需求，
-而 `validate_declaration` 仍返回「✅ 语法校验通过」 —— AI 会误判成功并交付残次品。
+而 `validate-declaration` 仍返回「✅ 语法校验通过」 —— AI 会误判成功并交付残次品。
 
 > 注意「**已生效（运行时实测 30 条）**」这个措辞：`per_page` 是真的跑了一次分页查询，
 > 而不是只读声明值。早期版本只读声明，导致"声明写了但功能没生效"却报绿灯。
@@ -134,7 +134,7 @@ php artisan ai:verify "App\\Aimanong\\UserResource"   # 校验单个
 3. **方法签名唯一** —— 不存在重载，不要猜第二种写法
 4. **不嵌套闭包** —— 所有配置走链式调用
 5. **字段必须是数据库真实列**（或已定义的访问器/关系）
-6. **生成后必须调 `validate_declaration`**
+6. **生成后必须调 `validate-declaration`**
 
 ## AI 实测记录
 

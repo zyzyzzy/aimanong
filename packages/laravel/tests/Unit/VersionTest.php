@@ -108,6 +108,72 @@ class VersionTest extends TestCase
     /**
      * README 的版本徽章也必须跟着走 —— 它是访客看到的第一印象。
      */
+    /**
+     * 框架版本必须来自 framework 包，不能落到 core 的版本。
+     *
+     * ## 这个 bug 只在 CI 里出现过
+     *
+     * `Aimanong::version()` 的兜底原先写死 `__DIR__.'/../../framework'`：
+     *
+     *   开发机：vendor/aimanong/core 是**软链** → 指到 monorepo → 找得到 ✅
+     *   CI/用户：是**真实目录**（Packagist 装的）→ 找不到
+     *           → 落到 core/composer.json → 返回 **core 的版本** ❌
+     *
+     * 而 core(1.6.3) 与 framework(1.11.0) 版本号不同，
+     * 于是「框架版本」静默变成了 core 的版本 —— 本地永远复现不了。
+     *
+     * 现在改为从本文件向上找 `packages/framework/composer.json`，
+     * 无论 core 是软链还是拷贝都能找到。
+     */
+    public function test_version_resolves_framework_not_core(): void
+    {
+        $frameworkVersion = json_decode(
+            (string) file_get_contents(__DIR__.'/../../../framework/composer.json'),
+            true
+        )['version'] ?? null;
+
+        $coreVersion = json_decode(
+            (string) file_get_contents(__DIR__.'/../../../core/composer.json'),
+            true
+        )['version'] ?? null;
+
+        $this->assertNotNull($frameworkVersion, 'framework/composer.json 应有 version');
+        $this->assertNotSame(
+            $frameworkVersion,
+            $coreVersion,
+            '两个包版本号相同时这条测试就失去意义了（需要更新断言）'
+        );
+
+        $this->assertSame(
+            $frameworkVersion,
+            Aimanong::version(),
+            'Aimanong::version() 必须返回 framework 的版本，不能落到 core 的版本'
+        );
+    }
+
+    public function test_find_framework_version_walks_up(): void
+    {
+        // 从很深的子目录也能向上找到（模拟 vendor/aimanong/core/src）
+        $deep = __DIR__.'/../../../core/src/Aimanong';
+
+        $method = new \ReflectionMethod(Aimanong::class, 'findFrameworkVersion');
+        $method->setAccessible(true);
+
+        $found = $method->invoke(null, $deep);
+
+        $this->assertNotNull($found, '从 core/src 任意深度都应能向上找到 packages/framework');
+        $this->assertMatchesRegularExpression('/^\d+\.\d+\.\d+/', $found);
+    }
+
+    public function test_find_framework_version_returns_null_outside_repo(): void
+    {
+        // 不在任何 monorepo 里 → null（走兜底，不假装找到）
+        $method = new \ReflectionMethod(Aimanong::class, 'findFrameworkVersion');
+        $method->setAccessible(true);
+
+        $this->assertNull($method->invoke(null, sys_get_temp_dir()));
+    }
+
     public function test_readme_badge_matches_version(): void
     {
         $readme = dirname(__DIR__, 4).'/README.md';

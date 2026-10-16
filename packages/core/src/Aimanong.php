@@ -188,10 +188,29 @@ final class Aimanong
             }
         }
 
-        // 仓库内开发：本文件在 core/src/，产品包在 packages/framework/
-        $fwComposer = __DIR__.'/../../framework/composer.json';
-
-        if (($ver = self::versionFromComposer($fwComposer)) !== null) {
+        /*
+         * 仓库内开发：向上找 `packages/framework/composer.json`。
+         *
+         * ⚠️ 不能只写死 `__DIR__.'/../../framework'`。
+         *
+         * 那个相对路径**只在 core 被软链到 monorepo 时才成立**：
+         *
+         *   开发机：vendor/aimanong/core → 软链 → monorepo/packages/core
+         *          → `../../framework` = monorepo/packages/framework ✅ 1.11.0
+         *
+         *   CI/用户：vendor/aimanong/core 是**真实目录**（从 Packagist 装的）
+         *          → `../../framework` 不存在
+         *          → 落到下一档 core/composer.json → **返回 core 的版本 1.6.3** ❌
+         *
+         * 而 core 与 framework 是**两个不同版本号的包**，
+         * 于是「框架版本」静默变成了 core 的版本 ——
+         * 一个只在 CI 里暴露、本地永远复现不了的错。
+         *
+         * 现在从本文件所在目录逐级向上找 `packages/framework/composer.json`：
+         *   · monorepo（无论 core 是软链还是拷贝）→ 找得到 ✅
+         *   · 用户安装（vendor/aimanong/core/src）→ 向上找不到 → 走兜底
+         */
+        if (($ver = self::findFrameworkVersion(__DIR__)) !== null) {
             return $cached = $ver;
         }
 
@@ -201,6 +220,75 @@ final class Aimanong
 
         return $cached = '1.0.0';
     }
+
+    /**
+     * 从给定目录向上查找 monorepo 里的 `packages/framework/composer.json`。
+     *
+     * 最多向上 8 级（够覆盖 `vendor/aimanong/core/src` → 仓库根）。
+     */
+    protected static function findFrameworkVersion(string $start): ?string
+    {
+        /*
+         * ⚠️ 先归一化再向上走。
+         *
+         * `dirname()` 把 `..` 当**普通路径段**，不做解析：
+         *     dirname("/a/b/Unit/../../../core") = "/a/b/Unit/../../.."
+         *     dirname(那个)                      = "/a/b/Unit/../.."
+         * 于是「向上 N 级」在字符串空间里数错位，永远走不到仓库根。
+         *
+         * 真实调用点传 `__DIR__`（绝对且无 `..`），线上没事 ——
+         * 但一个「向上查找」的辅助函数不该只在特定输入下正确。
+         */
+        $dir = realpath($start) ?: self::normalizePath($start);
+
+        for ($i = 0; $i < 8; $i++) {
+            $candidate = $dir.'/packages/framework/composer.json';
+
+            if (($ver = self::versionFromComposer($candidate)) !== null) {
+                return $ver;
+            }
+
+            $parent = \dirname($dir);
+
+            if ($parent === $dir) {
+                break; // 到根了
+            }
+
+            $dir = $parent;
+        }
+
+        return null;
+    }
+
+    /**
+     * 归一化路径（解析 `.` 与 `..`），不要求路径真实存在。
+     */
+    protected static function normalizePath(string $path): string
+    {
+        $isAbsolute = str_starts_with($path, '/');
+        $parts = [];
+
+        foreach (explode('/', $path) as $segment) {
+            if ($segment === '' || $segment === '.') {
+                continue;
+            }
+
+            if ($segment === '..') {
+                if ($parts !== [] && end($parts) !== '..') {
+                    array_pop($parts);
+                } elseif (! $isAbsolute) {
+                    $parts[] = '..';
+                }
+
+                continue;
+            }
+
+            $parts[] = $segment;
+        }
+
+        return ($isAbsolute ? '/' : '').implode('/', $parts);
+    }
+
 
     // ─────────────────────────────────────────────
     // 框架专属的部分（类型由驱动决定，见 FrameworkRuntime）

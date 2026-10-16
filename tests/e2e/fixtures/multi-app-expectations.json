@@ -382,10 +382,13 @@
             "username": "editor01",
             "password": "editor123"
         },
-        "super_role_id": 2,
         "expect_denied_status": 403,
-        "probe_url": "admin-roles",
-        "probe_expect_status": 403
+        "_super_role_lookup": "超管角色 id **不能写死** —— 全新 demo 的角色 id 与本地不同。e2e 以 admin 身份调 /admin/api/admin-roles，取 is_super=1 的那个。",
+        "_ci_note": "⚠️ 第一版把 super_role_id 写死成 2，本地绿、CI 红：CI 全新 demo 里 id=2 不是超管角色，于是服务端正确放行了「授予非超管角色」，断言却期望 403 —— 是**断言错了**，不是代码错了。",
+        "same_app_resource": "departments",
+        "same_app_expect_status": 403,
+        "_same_app_note": "第一版用 orders —— 那个 Resource 只存在于本地手工 demo 里，CI 的 setup-demo.sh 不建它，于是 /agent/orders 返回 404（未注册）。departments 由 setup-demo.sh 建，且归属 [admin, agent]，稳定可用。",
+        "_probe": "⚠️ 第一版用 /admin/api/admin-roles 当探针 —— 但框架包里**根本没有AdminRoleResource**，那个 Resource 只存在于我本地手工 demo。CI 上它是 404，探针失效。改成「以 admin 身份复查目标账号的角色列表」—— 不依赖任何额外资源。"
     },
     "per_page_bounds": {
         "_note": "per_page 的边界必须明确报错，不能 500 也不能静默改值",

@@ -1353,6 +1353,14 @@ $agentPage = function (string $url) {
     return ['code' => $c, 'body' => $b];
 };
 
+/*
+ * 对照资源**不能写死 orders** —— 那个 Resource 只存在于本地手工 demo，
+ * CI 的 setup-demo.sh 不建它，于是 /agent/orders 是 404（未注册），断言假红。
+ * departments 由 setup-demo.sh 建且归属 [admin, agent]，稳定可用。
+ */
+$sameAppRes = (string) ($peExp['same_app_resource'] ?? 'departments');
+$sameAppStatus = (int) ($peExp['same_app_expect_status'] ?? 403);
+
 $pageCross = $agentPage("$base/agent/admin-roles");
 t(
     "跨后台访问页面路由 /agent/admin-roles → {$expectCross}（页面也要隔离）",
@@ -1366,10 +1374,10 @@ t(
  *（不是 404 —— 它确实属于这里，只是没给权限）。
  * 否则就是「一律 404」，把归属校验做成了「什么都不给」。
  */
-$pageOwn = $agentPage("$base/agent/orders");
+$pageOwn = $agentPage("$base/agent/{$sameAppRes}");
 t(
-    '同后台未授权的 Resource 仍是 403（对照，不是一律 404）',
-    $pageOwn['code'] === 403,
+    "同后台未授权的 Resource（{$sameAppRes}）仍是 {$sameAppStatus}（对照，不是一律 404）",
+    $pageOwn['code'] === $sameAppStatus,
     "HTTP {$pageOwn['code']}"
 );
 
@@ -1683,11 +1691,45 @@ if ($peExp === null) {
         t('找得到低权限账号自己', false, '搜索没命中');
     } else {
         // 提交超管角色
+        /*
+         * ⚠️ 超管角色 id **不能写死，也不能靠另一个 Resource 去问**。
+         *
+         * 两次踩坑：
+         *   ① fixture 里写 `super_role_id: 2` → 本地绿、CI 红。
+         *      CI 是全新 demo，id=2 是 agent_role（非超管），于是服务端
+         *      **正确地**放行了「授予一个普通角色」，断言却期望 403。
+         *      **是断言错了，不是代码错了。**
+         *   ② 改成调 /admin/api/admin-roles 去查 → 又红。
+         *      因为框架包里**根本没有 AdminRoleResource**，
+         *      那个 Resource 只存在于本地手工 demo，CI 上它是 404。
+         *
+         * 最终：直接读 demo 的 SQLite（脚本本来就有 DEMO_PATH）。
+         * 不依赖任何 Resource 是否存在，稳。
+         */
+        $superRoleId = null;
+
+        try {
+            $dbPath = $demo.'/database/database.sqlite';
+
+            if (is_file($dbPath)) {
+                $pdo = new PDO('sqlite:'.$dbPath);
+                $row = $pdo->query('SELECT id FROM admin_roles WHERE is_super = 1 ORDER BY id LIMIT 1')
+                    ->fetch(PDO::FETCH_ASSOC);
+                $superRoleId = $row === false ? null : (int) $row['id'];
+                unset($pdo);
+            }
+        } catch (\Throwable) {
+            $superRoleId = null;
+        }
+
+        if ($superRoleId === null) {
+            t('找得到超管角色', false, 'admin-roles 里没有 is_super 的角色');
+        } else {
         $pePayload = [
             'username' => $lp['username'],
             'name' => '账号编辑员',
             'enabled' => true,
-            'roles' => [(int) $peExp['super_role_id']],
+            'roles' => [(int) $superRoleId],
         ];
 
         $ch = curl_init("$base/admin/api/{$peExp['resource']}/{$peSelf}");
@@ -1708,18 +1750,31 @@ if ($peExp === null) {
             "HTTP {$peCode} ".substr(preg_replace('/\s+/', ' ', strip_tags($peBody)), 0, 70)
         );
 
-        // 复查：确实没提权（换个需要超管的接口试）
-        $ch = curl_init("$base/admin/api/{$peExp['probe_url']}");
-        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEJAR => $peJar, CURLOPT_COOKIEFILE => $peJar]);
-        curl_exec($ch);
-        $peProbe = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        unset($ch);
+        /*
+         * 复查：确实没提权。
+         *
+         * ⚠️ 不用「拿另一个需要超管的接口试」当探针 —— 第一版用了
+         * `/admin/api/admin-roles`，但框架包里**根本没有 AdminRoleResource**，
+         * 那个 Resource 只存在于本地手工 demo，CI 上它是 404。
+         *
+         * 改成直接复查**目标账号自己的角色列表**（以 admin 身份读）：
+         * 不依赖任何额外资源，而且验的就是「提权到底有没有发生」这件事本身。
+         */
+        $peAfter = json_decode(
+            (string) http("$base/admin/api/{$peExp['resource']}/{$peSelf}")['body'],
+            true
+        );
+        $peRoleIds = [];
+        foreach ($peAfter['data']['roles'] ?? [] as $r) {
+            $peRoleIds[] = (int) (is_array($r) ? ($r['id'] ?? 0) : $r);
+        }
 
         t(
-            "提权未生效（{$peExp['probe_url']} 仍 {$peExp['probe_expect_status']}）",
-            $peProbe === (int) $peExp['probe_expect_status'],
-            "HTTP {$peProbe}"
+            '提权真的没生效（目标账号的角色里没有超管）',
+            ! in_array((int) $superRoleId, $peRoleIds, true),
+            'roles='.implode(',', $peRoleIds).' 超管='.$superRoleId
         );
+        }
     }
 
     @unlink($peJar);

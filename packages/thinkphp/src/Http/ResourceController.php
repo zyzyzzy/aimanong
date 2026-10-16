@@ -67,6 +67,18 @@ final class ResourceController
             }
         }
 
+        /*
+         * per_page 必须先校验再使用 —— 与 Laravel 侧同一套规则。
+         *
+         * 审计实测（2026-10-16，Laravel 侧）：-1 直接 500、
+         * 999999 无上限、0 静默变成别的值。TP 侧原先同样不校验。
+         */
+        $perPageError = $this->perPageError($request, $node);
+
+        if ($perPageError !== null) {
+            return $perPageError;
+        }
+
         // 请求未指定时回退到 Resource 声明的 perPage，
         // 否则 $grid->perPage(30) 只写进 schema.json，API 仍用 20 ——
         // 校验器说「已设置」而功能没生效。
@@ -954,6 +966,57 @@ final class ResourceController
     /**
      * @return array<int, string>
      */
+    /**
+     * 每页条数上限 —— 与 Laravel 侧保持同一个数字。
+     */
+    public const MAX_PER_PAGE = 1000;
+
+    /**
+     * 校验 per_page —— 不合法直接 422（两端同一套规则）。
+     */
+    protected function perPageError(Request $request, ResourceNode $node): ?Json
+    {
+        $raw = $request->param('per_page');
+
+        if ($raw === null) {
+            return null;
+        }
+
+        $invalid = static function (string $why) use ($node, $raw): Json {
+            return json([
+                'error' => [
+                    'code' => 'INVALID_PER_PAGE',
+                    'message' => 'per_page 不合法：'.$why,
+                    'uri' => $node->uri,
+                    'given' => $raw,
+                    'expected' => '1 到 '.self::MAX_PER_PAGE.' 之间的整数',
+                ],
+            ], 422);
+        };
+
+        if (! is_string($raw) && ! is_int($raw)) {
+            return $invalid('必须是整数');
+        }
+
+        $str = (string) $raw;
+
+        if (preg_match('/^\d+$/', $str) !== 1) {
+            return $invalid('必须是正整数（收到 "'.$str.'" ）');
+        }
+
+        $n = (int) $str;
+
+        if ($n < 1) {
+            return $invalid('最小是 1');
+        }
+
+        if ($n > self::MAX_PER_PAGE) {
+            return $invalid('最大是 '.self::MAX_PER_PAGE);
+        }
+
+        return null;
+    }
+
     /**
      * `?sort=` 指向了不存在的列 → 422。
      *

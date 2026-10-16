@@ -1725,6 +1725,45 @@ if ($peExp === null) {
     @unlink($peJar);
 }
 
+/*
+ * ═══ per_page 边界（两端同一套规则）═══
+ *
+ * 详见 fixture per_page_bounds 的 _why。
+ */
+echo "\n═══ per_page 边界 ═══\n";
+
+$ppExp = $multiAppExp['per_page_bounds'] ?? null;
+
+if ($ppExp === null) {
+    t('读得到 per_page 共享期望', false, 'fixtures 里缺 per_page_bounds');
+} else {
+    $ppBad = [];
+
+    foreach ((array) $ppExp['invalid_values'] as $bad) {
+        $r = http("$base/admin/api/{$ppExp['resource']}?per_page=".urlencode((string) $bad));
+        // 任何「不是明确 422」的都要点名（尤其 500）
+        if ($r['code'] !== (int) $ppExp['invalid_status']) {
+            $ppBad[] = "{$bad}→{$r['code']}";
+        }
+    }
+
+    t(
+        '非法 per_page 一律 422（不是 500、也不是静默改值）',
+        $ppBad === [],
+        $ppBad === [] ? '全部 422' : '这些不对：'.implode(', ', $ppBad)
+    );
+
+    // 合法值必须照常工作
+    $ppOk = http("$base/admin/api/{$ppExp['resource']}?per_page={$ppExp['valid_value']}");
+    $ppOkJson = json_decode((string) $ppOk['body'], true);
+    t(
+        "合法 per_page={$ppExp['valid_value']} → 200 且生效",
+        $ppOk['code'] === (int) $ppExp['valid_status']
+            && (string) ($ppOkJson['meta']['perPage'] ?? '') === (string) $ppExp['valid_value'],
+        "HTTP {$ppOk['code']} perPage=".($ppOkJson['meta']['perPage'] ?? '?')
+    );
+}
+
 echo "\n";
 printf("通过 %d / %d\n", $pass, $pass + $fail);
 

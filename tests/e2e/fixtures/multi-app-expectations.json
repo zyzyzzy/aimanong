@@ -386,5 +386,30 @@
         "expect_denied_status": 403,
         "probe_url": "admin-roles",
         "probe_expect_status": 403
+    },
+    "per_page_bounds": {
+        "_note": "per_page 的边界必须明确报错，不能 500 也不能静默改值",
+        "_why": [
+            "审计实测（2026-10-16，Laravel）：",
+            "",
+            "  per_page=-1       → HTTP 500（分页器直接炸）",
+            "  per_page=999999   → 接受，无上限（一条请求拉全表 → 内存/带宽打满）",
+            "  per_page=0        → **静默**变成 15（Laravel 默认），与声明的 20 不符",
+            "",
+            "按宪法 ③「零隐式」：不合法的输入要明确报错，不静默改。",
+            "与 ?sort= 的处理一致 —— AI 拿到 422 才知道该怎么改。"
+        ],
+        "resource": "departments",
+        "invalid_values": [
+            "0",
+            "-1",
+            "999999",
+            "1000000",
+            "abc",
+            "1.5"
+        ],
+        "invalid_status": 422,
+        "valid_value": "5",
+        "valid_status": 200
     }
 }

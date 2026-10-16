@@ -98,7 +98,24 @@ class Exporter
                         );
                     }
 
-                    fputcsv($out, $row);
+                    /*
+                     * 🔴 CSV 公式注入中和。
+                     *
+                     * 审计发现（2026-10-16）：原先直接 fputcsv($out, $row)，
+                     * 而 Excel / LibreOffice / Google Sheets 会把以
+                     * `=` `+` `-` `@` 开头（以及以 TAB / CR 开头）的单元格
+                     * **当公式执行**。
+                     *
+                     * 攻击路径：某个字段值写成
+                     *     =HYPERLINK("http://evil","点我")
+                     * 或老版 Excel 的 DDE：
+                     *     =cmd|'/c calc'!A0
+                     * 后台导出 → 管理员用 Excel 打开 → 公式被求值。
+                     *
+                     * 修法：给这类值前置一个单引号（Excel 的「强制文本」前缀，
+                     * 本身不显示），值不丢。
+                     */
+                    fputcsv($out, array_map([$this, 'neutralize'], $row));
                 }
 
                 if ($page >= $paginator->lastPage()) {
@@ -121,6 +138,34 @@ class Exporter
      *
      * @param  array<string, mixed>  $props
      */
+    /**
+     * CSV 公式注入中和。
+     *
+     * Excel 家族会把 `=` `+` `-` `@` 开头（以及 TAB / CR 开头）的单元格
+     * 当**公式**执行。前置一个单引号即可强制为文本
+     * （单引号本身不显示，它是「文本」前缀）。
+     *
+     * ⚠️ 只处理 string：数字与布尔必须原样输出，
+     * 否则负数金额会变成 `'-100`，导出的表就没法算了。
+     */
+    protected function neutralize(mixed $v): mixed
+    {
+        if (! is_string($v) || $v === '') {
+            return $v;
+        }
+
+        // 前导空白可能被吃掉后露出公式字符，所以看第一个非空白字符
+        $first = substr(ltrim($v, " \t"), 0, 1);
+        $raw = substr($v, 0, 1);
+
+        if (in_array($first, ['=', '+', '-', '@'], true)
+            || in_array($raw, ["\t", "\r"], true)) {
+            return "'".$v;
+        }
+
+        return $v;
+    }
+
     protected function value(mixed $item, string $name, ?string $formatter = null, array $props = []): string
     {
         $v = $this->rawValue($item, $name);

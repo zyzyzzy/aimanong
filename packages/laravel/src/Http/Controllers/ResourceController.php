@@ -52,6 +52,24 @@ class ResourceController extends Controller
             array_filter($node->columns, fn ($c): bool => $c->searchable)
         ));
 
+        /*
+         * per_page 必须先校验再使用。
+         *
+         * 审计实测（2026-10-16）三种坏输入：
+         *
+         *   per_page=-1        → HTTP 500（Laravel 分页器炸了）
+         *   per_page=999999    → 接受，无上限（一条请求拉全表 → 内存/带宽打满）
+         *   per_page=0         → **静默**变成 15（Laravel 默认），与声明的 20 不符
+         *
+         * 按宪法 ③「零隐式」：不合法的输入要**明确报错**，不静默改。
+         * 与 ?sort= 的处理一致（422 + 说明），AI 拿到错也知道该怎么改。
+         */
+        $perPageError = $this->perPageError($request, $node);
+
+        if ($perPageError !== null) {
+            return $perPageError;
+        }
+
         $perPage = $request->query('per_page');
 
         // 请求未指定时回退到 Resource 中声明的 perPage，
@@ -210,6 +228,65 @@ class ResourceController extends Controller
         }
 
         return $out;
+    }
+
+    /**
+     * 每页条数的上限。
+     *
+     * 1000 是「够用但不至于打爆内存」的折中：导出走的是独立的 chunkSize，
+     * 不受这个值影响，所以调大它只会让列表页更重，没有正当理由。
+     */
+    public const MAX_PER_PAGE = 1000;
+
+    /**
+     * 校验 per_page —— 不合法直接 422。
+     *
+     * 原先三种坏输入各自出问题（500 / 无上限 / 静默改值），
+     * 详见 index() 里的注释。
+     */
+    protected function perPageError(Request $request, ResourceNode $node): ?JsonResponse
+    {
+        $raw = $request->query('per_page');
+
+        // 没传 = 用声明值，合规
+        if ($raw === null) {
+            return null;
+        }
+
+        $invalid = static function (string $why) use ($node, $raw): JsonResponse {
+            return response()->json([
+                'error' => [
+                    'code' => 'INVALID_PER_PAGE',
+                    'message' => 'per_page 不合法：'.$why,
+                    'uri' => $node->uri,
+                    'given' => $raw,
+                    'expected' => '1 到 '.self::MAX_PER_PAGE.' 之间的整数',
+                ],
+            ], 422);
+        };
+
+        // query() 只会给 string|null；非字符串一律拒（数组/对象防御）
+        if (! is_string($raw)) {
+            return $invalid('必须是正整数');
+        }
+
+        $str = $raw;
+
+        if (preg_match('/^\d+$/', $str) !== 1) {
+            return $invalid('必须是正整数（收到 "'.$str.'" ）');
+        }
+
+        $n = (int) $str;
+
+        if ($n < 1) {
+            return $invalid('最小是 1');
+        }
+
+        if ($n > self::MAX_PER_PAGE) {
+            return $invalid('最大是 '.self::MAX_PER_PAGE);
+        }
+
+        return null;
     }
 
     /**

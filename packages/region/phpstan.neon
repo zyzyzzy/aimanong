@@ -3,6 +3,27 @@ includes:
 
 parameters:
     level: 8
+
     paths:
         - src
+
     tmpDir: .phpstan-cache
+
+    #
+    # ⚠️ 为什么 require-dev 里必须有 `laravel/framework`
+    #
+    # `RegionExtension` 里调了 `response()` —— 它是 **Foundation 助手**，
+    # 定义在 `laravel/framework/src/Illuminate/Foundation/helpers.php`。
+    #
+    # 而 `aimanong/laravel` 只依赖 `illuminate/*` 这几个组件，
+    # `response()` 不在其中。于是 CI 上第一次跑 region PHPStan 直接红：
+    #
+    #     Function response not found.    (×3，RegionExtension 77/81/85)
+    #
+    # 本地当时没发现，是因为我借用了 `packages/laravel/vendor` 跑分析 ——
+    # 那边有 `orchestra/testbench`，**它把 laravel/framework 拽进来了**。
+    # 又一次「本地绿、CI 红」，根因还是「测试环境手动补过的东西
+    # 会掩盖包真正缺的东西」（AGENTS.md 那条）。
+    #
+    # 所以把 provider 显式写进 require-dev，而不是靠间接依赖。
+    #

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Aimanong\Extend;
 
-use Illuminate\Support\Facades\Log;
 
 /**
  * 扩展管理器。
@@ -152,12 +151,10 @@ class ExtensionManager
     protected function logFailure(string $name, string $phase, \Throwable $e): void
     {
         try {
-            Log::warning(
-                "[Aimanong] 扩展 {$name} {$phase}() 失败",
-                ['exception' => $e]
-            );
+            ExtensionRuntime::current()->logFailure($name, $phase, $e);
         } catch (\Throwable) {
-            // 日志不可用时静默 —— 失败原因已记录在 $this->failed
+            // 日志/平台不可用时静默 —— 失败原因已记录在 $this->failed。
+            // 这里**不能**让管理器自身崩溃，那会破坏失败隔离。
         }
     }
 

@@ -106,6 +106,58 @@ require __DIR__.'/vendor/autoload.php';
 PHPEOF
 chmod +x "$TARGET/think"
 
+mkdir -p "$TARGET/app/Extensions"
+
+cat > "$TARGET/app/Extensions/DemoExtension.php" <<'PHPEOF'
+<?php
+
+namespace app\Extensions;
+
+use Aimanong\Extend\Extension;
+use Aimanong\Form\Fields\Text;
+
+/**
+ * TP 侧扩展机制验证用扩展。
+ *
+ * ⚠️ 这个类**故意不碰任何框架 facade**（路由体除外）——
+ * 它验证的是「框架无关的那部分机制在 TP 上能不能跑」：
+ *
+ *   · register() / boot() 时序
+ *   · field() 注入自定义字段类型（core 的 FieldType，两端共用）
+ *   · routes() 走平台（回调体里用 TP 自己的 Route facade）
+ *   · 路由挂在 /<后台前缀>/extensions/<扩展名>/ 下，并带鉴权中间件
+ *
+ * e2e 会断言 `demo_text` 出现在 capabilities 的 field_types 里、
+ * 且 /admin/extensions/demo/ping 返回 200。
+ */
+class DemoExtension extends Extension
+{
+    public function name(): string
+    {
+        return 'demo';
+    }
+
+    public function title(): string
+    {
+        return '验证用扩展';
+    }
+
+    public function register(): void
+    {
+        $this->field(Text::class, 'demo_text', 'string', 'string');
+    }
+
+    public function boot(): void
+    {
+        $this->routes(function (): void {
+            \think\facade\Route::get('ping', function () {
+                return json(['pong' => true, 'ext' => 'demo']);
+            });
+        });
+    }
+}
+PHPEOF
+
 cat > "$TARGET/app/service.php" <<'PHPEOF'
 <?php
 // ThinkPHP 的服务注册入口。
@@ -464,6 +516,14 @@ return [
     // 这是 ThinkPermissionChecker 的最小形态：列出来的即视为拥有。
     // 完整的 RBAC（角色 / 用户绑定 / 数据库）留到后续增量 ——
     // 现在这样至少**不谎报**：没配的节点就是 403。
+    /*
+     * 扩展登记 —— 必须显式写，框架不自动发现。
+     * 演示扩展用来验证扩展机制在 TP 上真的能跑（见 e2e）。
+     */
+    'extensions' => [
+        \app\Extensions\DemoExtension::class,
+    ],
+
     'permissions' => [
         'customers.index', 'customers.show',
         'customers.create', 'customers.update', 'customers.destroy',

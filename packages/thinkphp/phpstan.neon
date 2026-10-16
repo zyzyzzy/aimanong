@@ -53,7 +53,16 @@ parameters:
         # TP 的 Validate 构造函数在 stub 里是 0 参数，实际接受 (rules, messages)
         -
             message: '#Class think\\Validate constructor invoked with 2 parameters#'
+        #
+        # ⚠️ 空实现的返回值本来就「只返回 null」，PHPStan 的 bleedingEdge
+        # 会说返回类型里的 object 部分没用上。这是**刻意的** ——
+        # 它要和服务端真实 guard 的签名一致，只是当前实现恒为 null。
+        #
+        # 2026-10-16：路径从 src/NullRuntime.php 改成拆出来的三个文件
+        #（那个文件名与类名都不匹配，PSR-4 加载不到，已拆开）。
         -
             identifier: return.unusedType
             paths:
-                - src/NullRuntime.php
+                - src/NullGuard.php
+                - src/NullContext.php
+                - src/NullExtensions.php

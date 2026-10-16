@@ -12,7 +12,7 @@ use think\facade\Cookie;
 use think\facade\Session;
 
 /**
- * 会话守卫 —— `Aimanong\ThinkPHP\NullRuntime` 里那个 `NullGuard` 的真正实现。
+ * 会话守卫 —— `Aimanong\ThinkPHP\NullGuard` 的真正实现。
  *
  * ## 范围（如实说明）
  *

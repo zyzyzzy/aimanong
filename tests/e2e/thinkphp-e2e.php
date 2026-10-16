@@ -1789,6 +1789,60 @@ if ($introExp === []) {
     }
 }
 
+echo "\n═══ 扩展机制 ═══\n";
+
+/*
+ * 🔴 在此之前 TP 侧**完全没有扩展机制** ——
+ * `config/aimanong.extensions` 写了也没人读，扩展类不会被 boot。
+ *
+ * 后果不是「少个功能」：
+ *   · `capabilities.json` 的 `extension` 段一直在教 AI 怎么写扩展，
+ *     对 TP 用户是一纸空文
+ *   · 装了 `aimanong/region` 的 TP 项目**不会**得到 region 字段类型，
+ *     而且**不报错** —— 症状是 `$form->region()` 编译失败、报错指向别处
+ *
+ * demo 里登记了 `app\Extensions\DemoExtension`（由 setup-thinkphp-demo.sh 生成），
+ * 它做了两件可观测的事：注入 `demo_text` 字段类型 + 注册一条 /ping 路由。
+ */
+[$ftSt, $ftBody] = $aiGet('capabilities.json');
+$ftCaps = json_decode($ftBody, true) ?: [];
+$fieldTypes = $ftCaps['field_types'] ?? [];
+
+t(
+    '扩展注入的字段类型出现在 capabilities 里',
+    isset($fieldTypes['demo_text']),
+    isset($fieldTypes['demo_text'])
+        ? 'demo_text ✅'
+        : '缺 demo_text（现有：'.implode('、', array_slice(array_keys((array) $fieldTypes), 0, 6)).'…）'
+);
+
+/*
+ * 扩展注册的路由 —— 挂在 /<后台前缀>/extensions/<扩展名>/ 下，带鉴权。
+ *
+ * ⚠️ 这条断言盯着一个**真实踩过的坑**：扩展路由原本注册在后台兜底路由
+ * （`Route::get(':uri', ...)`）**之后**，被它当成 uri=`extensions` 吞掉 ——
+ * 路由表里明明有这条规则，请求却 404「Resource [extensions] 未注册」。
+ * 修法是「扩展路由先注册」+ 后台组开 completeMatch。
+ */
+$extCh = curl_init("http://127.0.0.1:{$port}/admin/extensions/demo/ping");
+curl_setopt_array($extCh, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT => 15,
+    CURLOPT_COOKIEJAR => $jar,
+    CURLOPT_COOKIEFILE => $jar,
+]);
+$extBody = (string) curl_exec($extCh);
+$extStatus = (int) curl_getinfo($extCh, CURLINFO_HTTP_CODE);
+unset($extCh);
+
+$extJson = json_decode($extBody, true);
+
+t(
+    '扩展注册的路由可访问且返回正确内容',
+    $extStatus === 200 && is_array($extJson) && ($extJson['pong'] ?? null) === true,
+    "HTTP {$extStatus} ".mb_substr(trim($extBody), 0, 60)
+);
+
 exec('rm -rf '.escapeshellarg($fresh));
 
 if (is_resource($proc)) {

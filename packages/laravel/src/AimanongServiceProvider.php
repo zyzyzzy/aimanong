@@ -16,6 +16,8 @@ use Aimanong\Console\PermissionCommand;
 use Aimanong\Drivers\Eloquent\EloquentIntrospector;
 use Aimanong\Drivers\Eloquent\EloquentRelationResolver;
 use Aimanong\Extend\ExtensionManager;
+use Aimanong\Extend\ExtensionRuntime;
+use Aimanong\Extend\LaravelExtensionPlatform;
 use Aimanong\Foundation\Dict\Dictionary;
 use Aimanong\Foundation\Upload\Uploader;
 use Aimanong\Support\Asset;
@@ -479,6 +481,15 @@ class AimanongServiceProvider extends ServiceProvider
      */
     protected function bootExtensions(): void
     {
+        /*
+         * 扩展平台 —— 必须在**加载任何扩展之前**注册。
+         *
+         * `Extension` 基类已在 core，它的 routes()/views()/translations()
+         * 走 `ExtensionRuntime::current()`。没注册平台时那三个方法会抛
+         * 明确的异常（而不是静默不生效、页面 404）。
+         */
+        ExtensionRuntime::use(new LaravelExtensionPlatform);
+
         /** @var ExtensionManager $manager */
         $manager = $this->app->make('aimanong.extensions');
 

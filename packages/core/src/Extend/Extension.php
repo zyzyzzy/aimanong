@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace Aimanong\Extend;
 
 use Aimanong\Aimanong;
-use Aimanong\Application\ApplicationContext;
+use Aimanong\Contracts\ApplicationContext;
 use Aimanong\Contracts\Resource;
 use Aimanong\Support\FieldType;
-use Illuminate\Support\Facades\Route;
 
 /**
  * 扩展（插件）基类。
@@ -99,10 +98,7 @@ abstract class Extension
         $context = Aimanong::context();
         $prefix = $context->prefix();
 
-        Route::middleware('admin')
-            ->prefix($prefix.'/extensions/'.$this->name())
-            ->name('aimanong.ext.'.$this->name().'.')
-            ->group($callback);
+        ExtensionRuntime::current()->routes($this, $callback, $prefix);
     }
 
     /**
@@ -220,7 +216,7 @@ abstract class Extension
     {
         $namespace ??= 'aimanong-ext-'.$this->name();
 
-        app('view')->addNamespace($namespace, $path);
+        ExtensionRuntime::current()->views($namespace, $path);
     }
 
     /**
@@ -230,7 +226,7 @@ abstract class Extension
     {
         $namespace ??= 'aimanong-ext-'.$this->name();
 
-        app('translator')->addNamespace($namespace, $path);
+        ExtensionRuntime::current()->translations($namespace, $path);
     }
 
     /**

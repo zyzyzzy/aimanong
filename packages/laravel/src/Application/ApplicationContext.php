@@ -32,7 +32,7 @@ use Illuminate\Http\Request;
  * 所有需要「当前应用的前缀 / guard / 模型」的地方，
  * 一律通过本类获取，不得直接读 config。
  */
-class ApplicationContext
+class ApplicationContext implements \Aimanong\Contracts\ApplicationContext
 {
     /**
      * 缓存的解析结果（同一请求内不变）。

@@ -308,9 +308,12 @@ final class Aimanong
     /**
      * 多应用上下文。
      */
-    public static function context(): object
+    public static function context(): \Aimanong\Contracts\ApplicationContext
     {
-        return self::runtime()->context();
+        /** @var \Aimanong\Contracts\ApplicationContext $ctx */
+        $ctx = self::runtime()->context();
+
+        return $ctx;
     }
 
     /**

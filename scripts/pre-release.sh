@@ -101,7 +101,7 @@ else
   sed 's/^/      /' /tmp/amn-ut.log | tail -15
 fi
 
-if ./vendor/bin/phpstan analyse --no-progress > /tmp/amn-st.log 2>&1; then
+if ./vendor/bin/phpstan analyse --no-progress --memory-limit=1G > /tmp/amn-st.log 2>&1; then
   ok "PHPStan Level 8"
 else
   bad "PHPStan 有错误"
@@ -148,7 +148,7 @@ fi
 #   · `think\Middleware::getGlobal()` 根本不存在（每次 boot 都重复加中间件）
 #   · 多处类型提示写错（Query vs BaseQuery）
 if [ -x "$ROOT/packages/thinkphp/vendor/bin/phpstan" ]; then
-  if (cd "$ROOT/packages/thinkphp" && vendor/bin/phpstan analyse --no-progress > /tmp/amn-tp-stan.log 2>&1); then
+  if (cd "$ROOT/packages/thinkphp" && vendor/bin/phpstan analyse --no-progress --memory-limit=1G > /tmp/amn-tp-stan.log 2>&1); then
     ok "ThinkPHP PHPStan Level 8"
   else
     bad "ThinkPHP PHPStan 未通过"
@@ -196,7 +196,7 @@ else
 fi
 
 if [ -x "$ROOT/packages/region/vendor/bin/phpstan" ]; then
-  if (cd "$ROOT/packages/region" && vendor/bin/phpstan analyse --no-progress > /tmp/amn-rg-stan.log 2>&1); then
+  if (cd "$ROOT/packages/region" && vendor/bin/phpstan analyse --no-progress --memory-limit=1G > /tmp/amn-rg-stan.log 2>&1); then
     ok "region PHPStan Level 8"
   else
     bad "region PHPStan 未通过"

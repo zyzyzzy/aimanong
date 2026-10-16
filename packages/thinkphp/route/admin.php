@@ -170,4 +170,4 @@ Route::group(function (): void {
 
     Route::get(':uri', [HomeController::class, 'resource'])
         ->pattern(['uri' => $uriPattern]);
-})->middleware(Authenticate::class);
+})->middleware(Authenticate::class)->completeMatch();

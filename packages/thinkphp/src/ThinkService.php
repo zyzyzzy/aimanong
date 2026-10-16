@@ -6,6 +6,8 @@ namespace Aimanong\ThinkPHP;
 
 use Aimanong\Ai\CapabilitiesRuntime;
 use Aimanong\Aimanong;
+use Aimanong\Extend\ExtensionManager;
+use Aimanong\Extend\ExtensionRuntime;
 use Aimanong\Support\Drivers;
 use Aimanong\ThinkPHP\Application\ThinkApplication;
 use Aimanong\ThinkPHP\Console\InstallCommand;
@@ -58,6 +60,20 @@ class ThinkService extends Service
             return;
         }
 
+        /*
+         * ⚠️ 扩展路由必须**先于**后台路由注册。
+         *
+         * TP 路由是**先注册先匹配**。`route/admin.php` 末尾有一条兜底
+         * `Route::get(':uri', [HomeController::class, 'resource'])` ——
+         * 它会把 `/admin/extensions/demo/ping` 当成 uri=`extensions` 吞掉，
+         * 于是扩展路由**注册了却永远匹配不到**，页面报
+         * 「Resource [extensions] 未注册」。
+         *
+         * 实测踩到：路由表里明明有 `admin/extensions/demo/ping`，
+         * 请求却 404。查了半天才发现是匹配顺序。
+         */
+        $this->bootExtensions();
+
         $runtime = new ThinkRuntime;
         $apps = $runtime->application();
 
@@ -105,6 +121,48 @@ class ThinkService extends Service
         ]);
 
         $this->bootAiRoutes();
+    }
+
+    /**
+     * 加载并启动扩展。
+     *
+     * 与 Laravel 侧**同一套配置键与同一套时序**：
+     * `config('aimanong.extensions')` 给类名列表 → addMany → register → boot。
+     *
+     * ## 在此之前 TP 侧完全没有这个机制
+     *
+     * 后果：`capabilities.json` 的 `extension` 段（教 AI 怎么用扩展）
+     * 在 TP 上是一纸空文；装了 `aimanong/region` 的 TP 项目
+     * **不会**得到 region 字段类型，而且**不报错** ——
+     * 症状是 `$form->region()` 编译失败，报错却指向别处。
+     *
+     * `ExtensionManager` 本身已在 core（框架无关），这里只需注入平台。
+     */
+    protected function bootExtensions(): void
+    {
+        /*
+         * 平台必须在**加载任何扩展之前**注册 ——
+         * `Extension` 基类的 routes()/views()/translations() 走它。
+         */
+        ExtensionRuntime::use(new ThinkExtensionPlatform);
+
+        $classes = config('aimanong.extensions');
+
+        if (! is_array($classes) || $classes === []) {
+            // 回退到包内默认配置（与 Laravel 侧同语义），而不是静默失效
+            $default = require __DIR__.'/../config/aimanong.php';
+            $classes = $default['extensions'] ?? [];
+        }
+
+        if (! is_array($classes) || $classes === []) {
+            return;
+        }
+
+        $manager = new ExtensionManager;
+        $manager->addMany($classes);
+        $manager->register();
+        $manager->boot();
+
     }
 
     /**

@@ -111,4 +111,29 @@ return [
     'ui' => [
         'brand' => 'Aimanong',
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | 扩展（插件）
+    |--------------------------------------------------------------------------
+    |
+    | 扩展**必须显式登记**，框架不会自动发现 —— 与 Laravel 侧同一个键、
+    | 同一套时序（addMany → register → boot）。
+    |
+    | 例：装了 aimanong/region 之后：
+    |
+    |     'extensions' => [
+    |         \Aimanong\Region\RegionExtension::class,
+    |     ],
+    |
+    | ⚠️ 不登记的话扩展根本不会 boot：
+    |   · `FieldType::fieldViewFor('region')` 是 null → 字段渲染不出来
+    |   · `$form->region()` 编译失败 —— 而报错指向别处，不好查
+    |
+    | 在此之前 TP 侧**完全没有这个机制**，而 `capabilities.json` 的
+    | `extension` 段一直在教 AI 怎么写扩展 —— 对 TP 用户是一纸空文。
+    */
+    'extensions' => [
+        // App\Aimanong\Extensions\DemoExtension::class,
+    ],
 ];

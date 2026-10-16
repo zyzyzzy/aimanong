@@ -1646,6 +1646,149 @@ t(
     "{$tpN0} → {$tpN1}"
 );
 
+echo "\n═══ AI 自省接口 /__ai/* ═══\n";
+
+/*
+ * 🔴 这一段是**新补的**（2026-10-16）。
+ *
+ * 在此之前 TP 侧**完全没有** /__ai/*。这不是「少个便利接口」：
+ *
+ *   · `llms.txt` / `capabilities.json` 是**跨驱动**的 AI 资料，
+ *     它们教 AI「先查 /__ai/capabilities.json」——
+ *     TP 用户照做拿到 404，只能回去猜 API
+ *   · 宪法①「AI 优先」在多框架下直接失效
+ *
+ * 而这类缺失**运行期看不出来**：TP 的页面、CRUD、校验全都正常，
+ * 只有真去请求那个路径才发现 404。所以要断言。
+ *
+ * 期望值来自共享 fixture（Laravel 侧有对称断言）。
+ */
+$introExp = $multiAppExp['introspection'] ?? [];
+
+$aiGet = function (string $path) use ($port, $jar): array {
+    $ch = curl_init("http://127.0.0.1:{$port}/__ai/{$path}");
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 20,
+        CURLOPT_COOKIEJAR => $jar,
+        CURLOPT_COOKIEFILE => $jar,
+    ]);
+    $body = (string) curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    unset($ch);
+
+    return [$status, $body];
+};
+
+if ($introExp === []) {
+    t('读得到自省共享期望', false, 'fixtures 里缺 introspection');
+} else {
+    $wantStatus = (int) $introExp['expected_status'];
+
+    // ① 全部端点都要在（TP 侧此前一个都没有）
+    foreach ((array) ($introExp['endpoints'] ?? []) as $ep) {
+        if (str_contains($ep, '{')) {
+            continue;
+        }
+        [$st] = $aiGet($ep);
+        t("TP 自省端点 /__ai/{$ep} 存在", $st === $wantStatus, "HTTP {$st}");
+    }
+
+    // ② POST 端点
+    $ch = curl_init("http://127.0.0.1:{$port}/__ai/verify");
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 20,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => json_encode(['resource' => 'app\\DepartmentResource']),
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_COOKIEJAR => $jar,
+        CURLOPT_COOKIEFILE => $jar,
+    ]);
+    $vBody = (string) curl_exec($ch);
+    $vStatus = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    unset($ch);
+
+    t('TP /__ai/verify 可用', $vStatus === 200, "HTTP {$vStatus}");
+    t(
+        'TP /__ai/verify 返回结构化结果',
+        is_array(json_decode($vBody, true)) && array_key_exists('valid', json_decode($vBody, true) ?? []),
+        mb_substr($vBody, 0, 80)
+    );
+
+    // ③ capabilities 含全部驱动无关键
+    [$cst, $cbody] = $aiGet('capabilities.json');
+    $caps = json_decode($cbody, true) ?: [];
+    $missing = [];
+
+    foreach ((array) ($introExp['driver_independent_capability_keys'] ?? []) as $k) {
+        if (! isset($caps[$k]) || $caps[$k] === [] || $caps[$k] === '') {
+            $missing[] = $k;
+        }
+    }
+
+    t(
+        'TP capabilities 含全部驱动无关键',
+        $cst === 200 && $missing === [],
+        $missing === [] ? count($introExp['driver_independent_capability_keys']).' 个' : '缺：'.implode('、', $missing)
+    );
+
+    // ④ 未知参数要 404
+    $wantMissing = (int) $introExp['missing_status'];
+    [$bsc] = $aiGet('schema/no-such-uri-xyz');
+    [$bex] = $aiGet('examples/no-such-pattern-xyz');
+    t("TP 未知 uri 的 schema → {$wantMissing}", $bsc === $wantMissing, "HTTP {$bsc}");
+    t("TP 未知 pattern 的 examples → {$wantMissing}", $bex === $wantMissing, "HTTP {$bex}");
+
+    /*
+     * ⑤ 跨驱动对拍：examples 的 code **内容**必须相同。
+     *
+     * ⚠️ 不比对原始字节 —— 两端 JSON 序列化不同：
+     * Laravel 的 response()->json() 把 `/` 转义成 `\/`，TP 的 json() 不转义。
+     * 同一份内容、不同的转义，比字节会**假红**。
+     * 所以解析成结构再比 code 字段。
+     *
+     * Laravel demo 跑在 8899（pre-release 会起它）。取不到就跳过并说明 ——
+     * 单独跑本脚本（没有 Laravel demo）时不该硬失败。
+     */
+    $lvBase = 'http://127.0.0.1:8899';
+    $lvUp = false;
+    $probe = curl_init("$lvBase/__ai/capabilities.json");
+    curl_setopt_array($probe, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 5]);
+    curl_exec($probe);
+    $lvUp = (int) curl_getinfo($probe, CURLINFO_HTTP_CODE) === 200;
+    unset($probe);
+
+    if (! $lvUp) {
+        echo "  ⏭  跳过「跨驱动对拍」：Laravel demo (8899) 未运行\n";
+    } else {
+        $parityBad = [];
+
+        foreach ((array) ($introExp['byte_identical_examples'] ?? []) as $pat) {
+            [$tst, $tbody] = $aiGet("examples/{$pat}");
+
+            $ch = curl_init("$lvBase/__ai/examples/{$pat}");
+            curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15]);
+            $lbody = (string) curl_exec($ch);
+            $lst = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            unset($ch);
+
+            $tc = json_decode($tbody, true)['code'] ?? null;
+            $lc = json_decode($lbody, true)['code'] ?? null;
+
+            if ($tst !== 200 || $lst !== 200 || $tc === null || $tc !== $lc) {
+                $parityBad[] = $pat;
+            }
+        }
+
+        t(
+            '跨驱动对拍：examples 内容两端一致',
+            $parityBad === [],
+            $parityBad === [] ? count($introExp['byte_identical_examples']).' 个片段' : '不一致：'.implode('、', $parityBad)
+        );
+    }
+}
+
 exec('rm -rf '.escapeshellarg($fresh));
 
 if (is_resource($proc)) {

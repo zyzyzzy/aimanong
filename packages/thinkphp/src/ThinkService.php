@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\ThinkPHP;
 
+use Aimanong\Ai\CapabilitiesRuntime;
 use Aimanong\Aimanong;
 use Aimanong\Support\Drivers;
 use Aimanong\ThinkPHP\Application\ThinkApplication;
@@ -12,6 +13,8 @@ use Aimanong\ThinkPHP\Console\PermissionCommand;
 use Aimanong\ThinkPHP\Console\SchemaCommand;
 use Aimanong\ThinkPHP\Console\VerifyCommand;
 use Aimanong\ThinkPHP\Drivers\ThinkRelationResolver;
+use Aimanong\ThinkPHP\Http\IntrospectionController;
+use think\facade\App;
 use think\facade\Route;
 use think\middleware\SessionInit;
 use think\Service;
@@ -100,6 +103,54 @@ class ThinkService extends Service
             SchemaCommand::class,
             PermissionCommand::class,
         ]);
+
+        $this->bootAiRoutes();
+    }
+
+    /**
+     * 注册 AI 自省接口 `/__ai/*`。
+     *
+     * ⚠️ **不套 admin 前缀、不套鉴权中间件** —— 与 Laravel 侧一致：
+     * 这组接口是给 AI Agent 用的，走「仅 local/debug 或 token」那套。
+     * 挂了 admin 中间件会让它变成「必须登录」，AI 用不了。
+     *
+     * 在此之前 TP 侧完全没有这些路由。`llms.txt` / `capabilities.json`
+     * 是跨驱动的资料，教 AI「先查 /__ai/capabilities.json」——
+     * TP 用户照做拿到 404，宪法①「AI 优先」在多框架下等于失效。
+     */
+    protected function bootAiRoutes(): void
+    {
+        $prefix = (string) config('aimanong.ai.route_prefix', '__ai');
+
+        /*
+         * ⚠️ `:uri` 与 `:pattern` **必须显式允许连字符**。
+         *
+         * TP 路由变量的默认匹配**不含 `-`**。实测踩到（2026-10-16）：
+         *
+         *     GET /__ai/examples/batch-handler
+         *     → 404「未知的片段: batch」   ← `-handler` 被截掉了
+         *
+         * 这正是 `route/admin.php` 里为 `:uri` 记过的同一个坑
+         *（`/api/readonly-customers` 被截成 `readonly`）。
+         * 影响面不小：`batch-handler` 是 examples 的标准片段名，
+         * 而 Resource 的 uri 带连字符是常态（`admin-users`、`shop-products`…）。
+         *
+         * 顺手也开 `completeMatch` —— 与 admin 组一致，
+         * 免得「多余的段被吞」再咬一次。
+         */
+        $uriPattern = '[\w\-]+';
+
+        Route::group($prefix, function () use ($uriPattern): void {
+            Route::get('capabilities.json', [IntrospectionController::class, 'capabilities']);
+            Route::get('openapi.json', [IntrospectionController::class, 'openapi']);
+            Route::get('context', [IntrospectionController::class, 'context']);
+            Route::get('menu', [IntrospectionController::class, 'menu']);
+            Route::get('schema/:uri', [IntrospectionController::class, 'schema'])
+                ->pattern(['uri' => $uriPattern]);
+            Route::get('examples/:pattern', [IntrospectionController::class, 'examples'])
+                ->pattern(['pattern' => $uriPattern]);
+            Route::post('verify', [IntrospectionController::class, 'verify']);
+        })->completeMatch();
     }
 
     public function register(): void
@@ -121,6 +172,28 @@ class ThinkService extends Service
 
         // 公开入口 Aimanong\Aimanong 在 core，它需要的框架设施接在这里
         Aimanong::bindRuntime(new ThinkRuntime);
+
+        /*
+         * 能力清单的驱动侧输入。
+         *
+         * `Capabilities` 本身在 core（600 多行说明文本两端完全一样），
+         * 它只通过 `CapabilitiesRuntime` 取「只有驱动才知道」的那几个值。
+         *
+         * ⚠️ 字典这里注入的是 `ThinkDictionary::all()` —— 形状与
+         * Laravel 侧 `Dictionary::all()` **逐字对齐**，否则 AI 拿到的
+         * `capabilities.json` 要按驱动分支处理。
+         */
+        CapabilitiesRuntime::provideConfigReader(
+            static fn (string $key, mixed $default = null): mixed => config($key, $default)
+        );
+
+        CapabilitiesRuntime::provideFrameworkVersion('thinkphp', App::version());
+
+        CapabilitiesRuntime::provideDictionaries((new ThinkDictionary)->all());
+
+        CapabilitiesRuntime::provideRbac(
+            (bool) config('aimanong.auth.rbac', false)
+        );
     }
 
     /**

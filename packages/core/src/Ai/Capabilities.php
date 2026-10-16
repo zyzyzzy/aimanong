@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace Aimanong\Ai;
 
 use Aimanong\Aimanong;
-use Aimanong\Auth\PermissionGate;
 use Aimanong\Form\Fields\Field;
-use Aimanong\Foundation\Dict\Dictionary;
 use Aimanong\Schema\Compiler;
 use Aimanong\Support\FieldType;
 use Aimanong\Ui\ThemeConfig;
@@ -32,11 +30,7 @@ class Capabilities
      */
     protected function configFlag(string $key, bool $default = true): bool
     {
-        try {
-            return (bool) config($key, $default);
-        } catch (\Throwable) {
-            return $default;
-        }
+        return CapabilitiesRuntime::flag($key, $default);
     }
 
     /**
@@ -77,6 +71,9 @@ class Capabilities
         ];
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return [
@@ -84,7 +81,7 @@ class Capabilities
             'framework' => [
                 'name' => 'Aimanong',
                 'label' => 'AI 码农',
-                'laravel' => app()->version(),
+                ...CapabilitiesRuntime::frameworkVersions(),
                 'php' => PHP_VERSION,
             ],
             'resources' => $this->resources(),
@@ -153,7 +150,7 @@ class Capabilities
              * 这是数据字典对 AI 最大的价值：AI 不再需要翻代码猜
              * 「状态有哪些值」，自省一次就拿到完整枚举。
              */
-            'dictionaries' => (new Dictionary)->all(),
+            'dictionaries' => CapabilitiesRuntime::dictionaryList(),
         ];
     }
 
@@ -290,7 +287,7 @@ class Capabilities
         $compiler = new Compiler;
         $out = [];
 
-        foreach (Aimanong::registry()->all() as $uri => $class) {
+        foreach (Aimanong::registry()->all() as $class) {
             $node = $compiler->compile($class);
 
             $out[] = [
@@ -454,8 +451,8 @@ class Capabilities
     public function rbacCapabilities(): array
     {
         return [
-            'enabled' => PermissionGate::enabled(),
-            'actions' => PermissionGate::ACTIONS,
+            'enabled' => CapabilitiesRuntime::rbacEnabled(),
+            'actions' => CapabilitiesRuntime::rbacActions(),
             'slug_format' => '{uri}.{action}，如 cms-authors.update',
             /*
              * ⚠️ 措辞必须准确：节点是「命名自动推导」，不是「注册即写库」。

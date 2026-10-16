@@ -41,6 +41,56 @@ class ThinkDictionary implements DictionarySource
     }
 
     /**
+     * 全部字典（形状与 Laravel 侧 `Dictionary::all()` **逐字对齐**）。
+     *
+     * `capabilities.json` 的 `dictionaries` 段直接用它 ——
+     * 两端形状不同的话，AI 拿到的自省资料就得按驱动分支处理，
+     * 「同一套声明两端一致」就断了。
+     *
+     * ⚠️ `source` 恒为 `'code'`：TP 侧目前只有代码声明这一个来源
+     *（Laravel 侧还有后台可维护的数据库字典）。这是**有意的分步**，
+     * 见类注释。真实反映现状比假装两边一样重要 ——
+     * 谎报一个还不存在的来源，AI 会据此以为「字典可以在后台改」。
+     *
+     * @return array<string, array{source: string, name: string, count: int, items: array<string, string>}>
+     */
+    public function all(): array
+    {
+        $out = [];
+
+        foreach ($this->codes() as $code) {
+            $items = [];
+
+            foreach ($this->items($code) as $item) {
+                $items[$item['value']] = $item['label'];
+            }
+
+            $out[$code] = [
+                'source' => 'code',
+                'name' => $this->name($code),
+                'count' => count($items),
+                'items' => $items,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * 字典显示名（声明里有 name 用它，否则退回 code）。
+     */
+    public function name(string $code): string
+    {
+        $decl = $this->declarations()[$code] ?? null;
+
+        if (is_array($decl) && isset($decl['name']) && is_string($decl['name'])) {
+            return $decl['name'];
+        }
+
+        return $code;
+    }
+
+    /**
      * @return array<int, string>
      */
     public function codes(): array

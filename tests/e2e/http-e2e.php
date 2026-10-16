@@ -241,6 +241,54 @@ foreach ($introspect as $path => $name) {
     t("自省 $name", $r['code'] === 200);
 }
 
+/*
+ * ═══ 自省能力面：驱动无关部分必须齐全 ═══
+ *
+ * 期望值来自**共享 fixture**（两端读同一份）——
+ * ThinkPHP 侧有一条对称的断言读同样的键。
+ *
+ * 「现场发现」的那条最有用：TP 侧原先**完全没有** /__ai/*，
+ * 而 llms.txt 教 AI「先查 /__ai/capabilities.json」——
+ * TP 用户照做拿到 404。这类缺失运行期完全看不出来。
+ */
+$introExp = $multiAppExp['introspection'] ?? [];
+
+if ($introExp === []) {
+    t('读得到自省共享期望', false, 'fixtures 里缺 introspection');
+} else {
+    // ① 全部端点都要在
+    foreach ((array) ($introExp['endpoints'] ?? []) as $ep) {
+        if (str_contains($ep, '{')) {
+            continue;   // 带参数的单独验（下面是 missing 分支）
+        }
+        $code = http("$base/__ai/{$ep}")['code'];
+        t("自省端点 /__ai/{$ep} 存在", $code === (int) $introExp['expected_status'], "HTTP {$code}");
+    }
+
+    // ② capabilities 里驱动无关的键必须齐全且非空
+    $caps = json_decode((string) http("$base/__ai/capabilities.json")['body'], true) ?: [];
+    $missingKeys = [];
+
+    foreach ((array) ($introExp['driver_independent_capability_keys'] ?? []) as $k) {
+        if (! isset($caps[$k]) || $caps[$k] === [] || $caps[$k] === '') {
+            $missingKeys[] = $k;
+        }
+    }
+
+    t(
+        'capabilities 含全部驱动无关键',
+        $missingKeys === [],
+        $missingKeys === [] ? count($introExp['driver_independent_capability_keys']).' 个' : '缺：'.implode('、', $missingKeys)
+    );
+
+    // ③ 未知参数要 404，不能说 200
+    $badSchema = http("$base/__ai/schema/no-such-uri-xyz")['code'];
+    $badExample = http("$base/__ai/examples/no-such-pattern-xyz")['code'];
+    $want = (int) $introExp['missing_status'];
+    t("未知 uri 的 schema → {$want}", $badSchema === $want, "HTTP {$badSchema}");
+    t("未知 pattern 的 examples → {$want}", $badExample === $want, "HTTP {$badExample}");
+}
+
 // M5 元数据：只在对应的 Resource 存在时才有意义
 if ($has('departments') || $has('categories')) {
     $metaUri = $has('departments') ? 'departments' : 'categories';

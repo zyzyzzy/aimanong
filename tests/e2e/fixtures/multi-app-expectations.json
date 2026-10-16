@@ -414,5 +414,71 @@
         "invalid_status": 422,
         "valid_value": "5",
         "valid_status": 200
+    },
+    "introspection": {
+        "_note": "AI 自省接口 /__ai/* —— 两端必须都提供，且驱动无关部分必须一致",
+        "_why": [
+            "在补 TP 侧之前，TP **完全没有** /__ai/*。后果不是「少个便利接口」：",
+            "",
+            "  · llms.txt / capabilities.json 是**跨驱动**的 AI 资料，",
+            "    它们教 AI「先查 /__ai/capabilities.json」——",
+            "    TP 用户照做拿到 404，只能回去猜 API",
+            "  · 宪法①「AI 优先」在多框架下直接失效",
+            "",
+            "而这类缺失**运行期看不出来**：TP 的页面、CRUD、校验全都正常，",
+            "只有真去请求那个路径才发现 404。所以要有断言。"
+        ],
+        "endpoints": [
+            "capabilities.json",
+            "openapi.json",
+            "context",
+            "menu",
+            "schema/{uri}",
+            "examples/{pattern}"
+        ],
+        "post_endpoints": [
+            "verify"
+        ],
+        "expected_status": 200,
+        "missing_status": 404,
+        "_driver_independent_capability_keys": [
+            "这些键描述的是「声明层怎么用」，与驱动无关 —— 两端必须逐字一致。",
+            "不在此列的（framework / resources / dictionaries / rbac.enabled）",
+            "本就该不同：驱动版本、项目里的 Resource、装没装扩展、开没开 RBAC。"
+        ],
+        "driver_independent_capability_keys": [
+            "field_type_vs_rule",
+            "http_conventions",
+            "cannot_verify",
+            "unwired_props",
+            "query_columns",
+            "column_options",
+            "form_options",
+            "rules",
+            "extension",
+            "menu",
+            "ui"
+        ],
+        "_not_included": [
+            "field_types 和 tree_options **不在**上面这列 ——",
+            "它们含插件注入的类型（装了 region 就多一个 region），",
+            "所以「两端不同」是真实反映，不是 bug。"
+        ],
+        "byte_identical_examples": [
+            "resource",
+            "grid",
+            "tree",
+            "batch-handler",
+            "form"
+        ],
+        "_examples_note": [
+            "examples 的 `code` 字段两端**内容必须相同**（它是纯静态文本，",
+            "给 AI 照抄的）。",
+            "",
+            "⚠️ 但**不要比对原始字节** —— 两端的 JSON 序列化不同：",
+            "Laravel 的 response()->json() 会把 / 转义成 \\\\/，",
+            "TP 的 json() 不转义。同一份内容、不同的转义，",
+            "比字节会假红。断言要**解析成结构再比**。"
+        ]
     }
 }

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Aimanong;
 
+use Aimanong\Ai\CapabilitiesRuntime;
 use Aimanong\Application\ApplicationContext;
 use Aimanong\Application\ApplicationManager;
 use Aimanong\Auth\AdminGuard;
 use Aimanong\Auth\AdminUserProvider;
+use Aimanong\Auth\PermissionGate;
 use Aimanong\Auth\PermissionGateChecker;
 use Aimanong\Console\InstallCommand;
 use Aimanong\Console\PermissionCommand;
@@ -166,7 +168,31 @@ class AimanongServiceProvider extends ServiceProvider
         $this->registerPublishing();
         $this->registerRouteMiddleware();
         $this->registerFoundationResources();
+        $this->provideCapabilitiesRuntime();
         $this->bootApplication();
+    }
+
+    /**
+     * 把「只有 Laravel 才知道」的几件事交给 core 的能力清单。
+     *
+     * `Capabilities` 本身已经在 core（600 多行说明文本两端完全一样），
+     * 它只通过 `CapabilitiesRuntime` 取那几个值。
+     *
+     * ⚠️ 这里注入的取值必须**与重构前逐字一致**，否则
+     * `/__ai/capabilities.json` 的内容会变 —— 那是喂给 AI 的主要资料，
+     * 变了要当破坏性变更对待。验证方式是抓改动前的输出做金标准比对。
+     */
+    protected function provideCapabilitiesRuntime(): void
+    {
+        CapabilitiesRuntime::provideConfigReader(
+            static fn (string $key, mixed $default = null): mixed => config($key, $default)
+        );
+
+        CapabilitiesRuntime::provideFrameworkVersion('laravel', $this->app->version());
+
+        CapabilitiesRuntime::provideDictionaries((new Dictionary)->all());
+
+        CapabilitiesRuntime::provideRbac(PermissionGate::enabled());
     }
 
     /**

@@ -823,6 +823,14 @@ if ($btField !== null) {
      * 「The selected parent id is invalid.」—— 而 ai:verify 全程绿灯，
      * 声明完全合法，只有真发请求才暴露。
      */
+    /*
+     * ⚠️ 这里原先写的是 `$btExp`，而那个变量**从未被赋值** ——
+     * `$undefined['k'] ?? $default` 在 PHP 里静默返回默认值、不报任何警告，
+     * 于是这段断言一直在用硬编码的 `['nullable']`，**根本没读共享期望文件**。
+     * 改 fixture 只有 ThinkPHP 侧会红 —— 正是 AGENTS.md 警告过的「门禁没被反例验证过」。
+     * 正确的变量是 $multiAppExp（本文件第 16 行从同一份 fixture 读的）。
+     */
+    $btExp = $multiAppExp['belongs_to_field'] ?? [];
     $btExpect = $btExp['nullable']['expect_rules'] ?? ['nullable'];
     t(
         '非必填外键带 nullable（否则存不了 NULL）',
@@ -837,31 +845,57 @@ if ($btField !== null) {
     }
 
     if ($btCsrf !== '') {
-        $btResource = (string) ($btExp['resource'] ?? 'departments');
+        /*
+         * 提交用的数据也**从共享期望文件读** —— 两端同一份 payload。
+         *
+         * 这一段锁的是 P0：ThinkPHP 驱动的规则白名单既没有 nullable 也没有 exists，
+         * 而 core 的 BelongsTo 自动补这两条 → TP 上带外键的 Resource 提交必 500。
+         */
+        $btSub = $multiAppExp['belongs_to_submit'] ?? [];
+        $btResource = (string) ($btSub['resource'] ?? $btExp['resource'] ?? 'departments');
+        $btValidIn = $btSub['valid_status_in'] ?? [200, 201];
 
-        $btNull = http("$base/admin/api/{$btResource}", 'POST', [
+        $btNull = http("$base/admin/api/{$btResource}", 'POST', (array) ($btSub['valid_payload'] ?? [
             'name' => 'e2e-nullable-probe',
             'parent_id' => null,
-        ], ['X-CSRF-TOKEN: '.$btCsrf]);
+        ]), ['X-CSRF-TOKEN: '.$btCsrf]);
 
-        echo "      [debug] POST URL = "."$base/admin/api/{$treeUri}"."
-";
         t(
             'NULL 外键能存（顶级节点）',
-            in_array($btNull['code'], [200, 201], true),
+            in_array($btNull['code'], $btValidIn, true),
             "HTTP {$btNull['code']} ".substr((string) $btNull['body'], 0, 80)
         );
 
-        $btFake = http("$base/admin/api/{$btResource}", 'POST', [
+        $btFake = http("$base/admin/api/{$btResource}", 'POST', (array) ($btSub['bogus_payload'] ?? [
             'name' => 'e2e-fake-parent-probe',
             'parent_id' => 999999,
-        ], ['X-CSRF-TOKEN: '.$btCsrf]);
+        ]), ['X-CSRF-TOKEN: '.$btCsrf]);
 
         t(
             '伪 id 仍被拒（加 nullable 没有削弱校验）',
-            $btFake['code'] === 422,
+            $btFake['code'] === (int) ($btSub['bogus_status'] ?? 422),
             "HTTP {$btFake['code']}"
         );
+
+        /*
+         * P0：**非 required** 的规则必须真的生效。
+         *
+         * ThinkPHP 的 think-validate v3 构造函数无参，驱动曾写成
+         * `new Validate($rules, $messages)` → 规则集为空 → check() 永远 true。
+         * 除手写的 require 外所有规则静默失效，而 e2e 此前只断言 required 类。
+         */
+        $nrExp = $multiAppExp['non_required_rule'] ?? [];
+
+        if ($nrExp !== []) {
+            $nrRes = (string) ($nrExp['resource'] ?? 'departments');
+            $nrTooLong = http("$base/admin/api/{$nrRes}", 'POST', (array) ($nrExp['too_long_payload'] ?? []), ['X-CSRF-TOKEN: '.$btCsrf]);
+
+            t(
+                '非 required 规则真的拦（max:'.$nrExp['max_length'].'）',
+                $nrTooLong['code'] === (int) ($nrExp['expect_status'] ?? 422),
+                "HTTP {$nrTooLong['code']} ".substr((string) $nrTooLong['body'], 0, 80)
+            );
+        }
 
         // 探针自己清理 —— 否则每跑一次 e2e 就在 demo 库里留一行垃圾
         $btNullId = json_decode((string) $btNull['body'], true)['data']['id'] ?? null;

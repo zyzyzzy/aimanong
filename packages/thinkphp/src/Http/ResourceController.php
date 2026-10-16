@@ -16,6 +16,7 @@ use think\db\exception\DbException;
 use think\db\exception\ModelNotFoundException;
 use think\db\exception\PDOException;
 use think\exception\HttpException;
+use think\facade\Db;
 use think\Model;
 use think\Request;
 use think\Response;
@@ -662,6 +663,8 @@ final class ResourceController
 
         $translated = [];
         $messages = [];
+        /** @var array<string, array{table: string, column: string}> $existsChecks */
+        $existsChecks = [];
 
         foreach ($rules as $field => $rule) {
             // ⚠️ `$form->validationRules()` 给出的值是**数组**：
@@ -672,9 +675,27 @@ final class ResourceController
             $parts = [];
 
             foreach ($list as $one) {
-                if (is_string($one) && $one !== '') {
-                    $parts[] = $one;
+                if (! is_string($one) || $one === '') {
+                    continue;
                 }
+
+                /*
+                 * `exists:table,column` 要查库，TP 的 Validate 没有这条规则，
+                 * 塞进规则串会被 translateRule 抛「尚未支持」。
+                 * 所以在这里挑出来单独判（与 require 同一套做法）。
+                 */
+                if (str_starts_with($one, 'exists:')) {
+                    $arg = substr($one, 7);
+                    [$table, $column] = array_pad(explode(',', $arg, 2), 2, 'id');
+                    $existsChecks[(string) $field] = [
+                        'table' => trim($table),
+                        'column' => trim($column) ?: 'id',
+                    ];
+
+                    continue; // 不进 TP 规则串
+                }
+
+                $parts[] = $one;
             }
 
             if ($parts === []) {
@@ -712,12 +733,66 @@ final class ResourceController
             }
         }
 
-        // 其余规则交给 TP 的 Validate（max / min / email / in …）
-        $validator = new Validate($translated, $messages);
+        /*
+         * `exists:` 也自己判 —— 见上面挑出它的原因。
+         *
+         * 语义与 Laravel 一致：值**为空就不查**（空值由 `nullable`/`require` 负责），
+         * 非空则必须能在目标表命中。
+         */
+        foreach ($existsChecks as $field => $spec) {
+            if (isset($errors[$field])) {
+                continue; // 必填已经拦了，不用重复报
+            }
+
+            $value = $data[$field] ?? null;
+
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            try {
+                $hit = Db::name($spec['table'])->where($spec['column'], $value)->count() > 0;
+            } catch (\Throwable $e) {
+                // 表/列不存在属于**声明错误**，要明确说出来，不能静默放行
+                $errors[$field] = "字段 [{$field}] 的 exists 校验无法执行："
+                    ."表 [{$spec['table']}] 或列 [{$spec['column']}] 不可用（{$e->getMessage()}）";
+
+                continue;
+            }
+
+            if (! $hit) {
+                $errors[$field] = $messages[$field.'.exists']
+                    ?? "{$field} 选中的值不存在";
+            }
+        }
+
+        /*
+         * 其余规则交给 TP 的 Validate（max / min / email / in …）。
+         *
+         * ⚠️ 必须用 `(new Validate)->rule(...)->message(...)` 链式写法。
+         *
+         * think-validate v3 的构造函数**没有参数**：
+         *     $ctor->getNumberOfParameters() === 0
+         * 原先写的 `new Validate($translated, $messages)` 不报错，
+         * 但规则集是**空的** —— `check()` 永远返回 true。
+         * 于是除手写的 require 外，max/min/email/in/date/regex… **全部失效**
+         * 且完全静默。这是本驱动最严重的一处幽灵能力。
+         *
+         * `batch(true)` 让 TP 一次报出**所有**失败字段（默认只报第一个），
+         * 与 Laravel 的 `errors: {}` 形状对齐。
+         */
+        $validator = (new Validate)
+            ->batch(true)
+            ->rule($translated)
+            ->message($messages);
 
         if (! $validator->check($data)) {
+            /*
+             * `getError(true)` 才是「字段 => 消息」的数组；
+             * `getError()` 返回的是单个字符串，`+=` 到数组上会炸。
+             */
             /** @var array<string, string> $extra */
-            $extra = $validator->getError();
+            $extra = $validator->getError(true);
 
             $errors += $extra;
         }
@@ -731,6 +806,10 @@ final class ResourceController
      * 两端规则名不同（`required` vs `require`），且 TP 没有 Laravel 的
      * `unique:table,col` 等数据库规则。不认识的**直接抛** ——
      * 静默丢掉一条校验规则，比报错危险得多。
+     *
+     * 两个例外（都在本方法里显式处理，不是「悄悄跳过」）：
+     *   · `nullable` —— TP 原生对 null 就跳过非 require 规则，语义已满足
+     *   · `exists:` —— 在调用方挑出来单独查库（TP 没有这条规则）
      */
     protected function translateRule(string $field, string $rule): string
     {
@@ -761,6 +840,20 @@ final class ResourceController
 
             $name = explode(':', $single, 2)[0];
             $args = explode(':', $single, 2)[1] ?? null;
+
+            /*
+             * `nullable` 是**修饰符**，不是一条校验规则。
+             *
+             * Laravel 语义：值为 null 时跳过该字段的其余规则。
+             * TP 原生就是这个行为 —— 实测 `max:10` / `integer` / `email`
+             * 对 null、空串、字段缺失**一律通过**，只有 `require` 会拦。
+             *
+             * 所以这里**丢掉它**不是「静默忽略」，而是「语义已由 TP 原生满足」。
+             * 与下面 exists 的处理不同：那个是真需要额外实现。
+             */
+            if ($name === 'nullable') {
+                continue;
+            }
 
             if (! isset($map[$name])) {
                 throw new \RuntimeException(

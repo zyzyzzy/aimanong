@@ -344,7 +344,15 @@ class DepartmentResource extends Resource
 
     public static function form(\Aimanong\Form\Form $form): void
     {
-        $form->text('name', '部门名称')->required();
+        /*
+         * `->max(20)` 是**非 required 规则** —— e2e 用它验证
+         * 「除 required 外其它规则真的生效」。
+         *
+         * 为什么专门为它留一条：ThinkPHP 的 think-validate v3 构造函数无参，
+         * 驱动曾写成 `new Validate($rules, $messages)` → 规则集为空 →
+         * 除手写的 required 外**所有规则静默失效**。这条断言就是为了让它复发时立刻红。
+         */
+        $form->text('name', '部门名称')->required()->max(20);
         // 外键下拉：候选自动来自 parent 关联（跨框架同一种写法）
         $form->belongsTo('parent_id', '上级部门');
     }

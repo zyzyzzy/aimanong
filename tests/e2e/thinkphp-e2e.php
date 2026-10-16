@@ -1115,6 +1115,80 @@ if ($btExp === null) {
 }
 
 /*
+ * ③-2b 可空外键**真能提交** + **非 required** 规则真生效 —— 与 Laravel 侧读同一份期望。
+ *
+ * 这两条锁的是两个 P0（2026-10-16 审计），它们此前**藏在一个全绿的基线之下**：
+ *
+ *   ① 驱动的规则白名单只有 13 条，既没有 `nullable` 也没有 `exists`，
+ *      而 core 的 BelongsTo 自动补这两条
+ *      → 任何带外键下拉的 Resource 在 TP 上提交必 500。
+ *
+ *   ② think-validate v3 的构造函数**没有参数**，而驱动写成
+ *      `new Validate($translated, $messages)` → 规则集为空 → `check()` 永远 true
+ *      → 除手写的 require 外，max / min / email / in / date / regex **全部静默失效**。
+ *
+ * 上面那段只断言了 schema 里的规则字符串，**没发过一次真实请求** ——
+ * 于是「声明里有这条规则」和「这条规则真会跑」之间的缺口一直没人看见。
+ */
+$btSubExp = $treeExp['belongs_to_submit'] ?? null;
+
+if ($btSubExp === null) {
+    t('读得到外键提交共享期望', false, 'fixtures 里缺 belongs_to_submit');
+} else {
+    $btSubRes = (string) $btSubExp['resource'];
+    $btValidIn = $btSubExp['valid_status_in'];
+
+    [$st, $r] = $api('POST', $btSubRes, (array) $btSubExp['valid_payload']);
+    t(
+        'TP：NULL 外键能提交（顶级节点）',
+        in_array($st, $btValidIn, true),
+        "HTTP {$st} ".substr(is_string($r) ? strip_tags($r) : json_encode($r, JSON_UNESCAPED_UNICODE), 0, 100)
+    );
+
+    // 探针清理：NULL 那条成功了，把它删掉，别在库里留垃圾
+    $btSubId = is_array($r) ? ($r['data']['id'] ?? null) : null;
+
+    [$st2, $r2] = $api('POST', $btSubRes, (array) $btSubExp['bogus_payload']);
+    t(
+        'TP：伪外键 id 被拒（exists 真的查库）',
+        $st2 === (int) $btSubExp['bogus_status'],
+        "HTTP {$st2} ".substr(is_string($r2) ? strip_tags($r2) : json_encode($r2, JSON_UNESCAPED_UNICODE), 0, 100)
+    );
+
+    if ($btSubId !== null) {
+        $api('DELETE', $btSubRes.'/'.$btSubId);
+    }
+}
+
+$nrExp = $treeExp['non_required_rule'] ?? null;
+
+if ($nrExp === null) {
+    t('读得到非必填规则共享期望', false, 'fixtures 里缺 non_required_rule');
+} else {
+    $nrRes = (string) $nrExp['resource'];
+    [$st, $r] = $api('POST', $nrRes, (array) $nrExp['too_long_payload']);
+    t(
+        'TP：非 required 规则真的拦（max:'.$nrExp['max_length'].'）',
+        $st === (int) $nrExp['expect_status'],
+        "HTTP {$st} ".substr(is_string($r) ? strip_tags($r) : json_encode($r, JSON_UNESCAPED_UNICODE), 0, 100)
+    );
+
+    /*
+     * ⚠️ 规则**失效时**这条请求会真的写库 —— 必须把它删掉。
+     *
+     * 踩过：第一次写完这段忘了清理，反例验证（故意回退修复）时
+     * 留下一条 21 字符的部门，把后续三条树形断言全带红了 ——
+     * 「测试污染数据，然后被自己的污染绊倒」。
+     * 所以清理要放在**断言之外**：不管断言红绿都得跑。
+     */
+    $nrId = is_array($r) ? ($r['data']['id'] ?? null) : null;
+
+    if ($nrId !== null) {
+        $api('DELETE', $nrRes.'/'.$nrId);
+    }
+}
+
+/*
  * ③-3 声明式自定义批量动作 —— 与 Laravel 侧读同一份共享期望。
  *
  * 断言四件事：动作在声明里、标签正确、调一次真的写库、未声明的动作被拒。

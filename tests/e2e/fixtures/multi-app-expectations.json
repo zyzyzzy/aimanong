@@ -1,254 +1,299 @@
 {
-  "_comment": [
-    "跨框架共同的真值 —— Laravel 与 ThinkPHP 的 e2e 都读这个文件并断言。",
-    "",
-    "## 为什么要这个文件",
-    "",
-    "项目主张「同一套声明，多框架行为一致」。但两端的驱动是两份代码，",
-    "「各自能跑」不等于「行为一样」—— 实测中两端各犯过同一类 bug：",
-    "",
-    "  · 归属校验排在权限校验之后，跨应用访问返回 403（应 404）",
-    "  · session key 不带应用维度，登录写一个 key、读取查另一个",
-    "",
-    "这些没有任何测试会发现，因为两侧的断言各写各的、期望值各写各的。",
-    "",
-    "## 怎么用",
-    "",
-    "两端的 e2e 从这里读期望值，而不是各自硬编码。",
-    "于是「行为漂移」会直接让漂移的那一侧变红。",
-    "改这里等于同时改两端的验收标准 —— 这是刻意的：",
-    "只改一侧的期望值，另一侧会立刻失败。"
-  ],
-  "slug": {
-    "single_app": "{uri}.{action}",
-    "multi_app": "{app}.{uri}.{action}",
-    "_note": "只有开启多应用时才带应用前缀；单应用必须与改动前逐字相同"
-  },
-  "belongs_to": {
-    "undeclared_means_all_apps": true,
-    "declared_limits_to_listed": true
-  },
-  "http": {
-    "cross_app_status": 404,
-    "_cross_app_note": "跨后台访问不属于本后台的 Resource：必须 404（403 会泄露「资源存在」）",
-    "unauthenticated_redirect_template": "/{app}/auth/login",
-    "_redirect_note": "未登录访问某后台，跳转目标必须是该后台自己的登录页",
-    "login_page_status": 200
-  },
-  "url": {
-    "_note": "两端产出的 URL 形状必须一致。差异会让『同一份声明产出同样的页面』这个主张失效",
-    "must_start_with_slash": true,
-    "_why": [
-      "实测事故：Laravel 的 urlPrefix() 没归一化 → Aimanong::url() 产出 admin/assets/x.css（无前导斜杠）。",
-      "这是相对路径，浏览器按当前页面的 baseURI 解析：",
-      "  页 /admin          → /admin/assets/...        ✅（base 是 /，碰巧对）",
-      "  页 /admin/articles → /admin/admin/assets/...  ❌ 全部 404",
-      "即：控制台页正常、资源页面全坏。躲过了 223 单测 + 147 条 e2e 断言 + 全面验收，",
-      "因为 e2e 只测了深度 1 的控制台页。最后是 5 个独立 AI agent 在浏览器里撞到的。",
-      "ThinkPHP 侧一直是归一化的，所以只有 Laravel 中招 —— 两端不一致本身也是问题。"
+    "_comment": [
+        "跨框架共同的真值 —— Laravel 与 ThinkPHP 的 e2e 都读这个文件并断言。",
+        "",
+        "## 为什么要这个文件",
+        "",
+        "项目主张「同一套声明，多框架行为一致」。但两端的驱动是两份代码，",
+        "「各自能跑」不等于「行为一样」—— 实测中两端各犯过同一类 bug：",
+        "",
+        "  · 归属校验排在权限校验之后，跨应用访问返回 403（应 404）",
+        "  · session key 不带应用维度，登录写一个 key、读取查另一个",
+        "",
+        "这些没有任何测试会发现，因为两侧的断言各写各的、期望值各写各的。",
+        "",
+        "## 怎么用",
+        "",
+        "两端的 e2e 从这里读期望值，而不是各自硬编码。",
+        "于是「行为漂移」会直接让漂移的那一侧变红。",
+        "改这里等于同时改两端的验收标准 —— 这是刻意的：",
+        "只改一侧的期望值，另一侧会立刻失败。"
     ],
-    "sample": {
-      "path": "assets/css/design-system.css",
-      "expect_prefix": "/"
+    "slug": {
+        "single_app": "{uri}.{action}",
+        "multi_app": "{app}.{uri}.{action}",
+        "_note": "只有开启多应用时才带应用前缀；单应用必须与改动前逐字相同"
+    },
+    "belongs_to": {
+        "undeclared_means_all_apps": true,
+        "declared_limits_to_listed": true
+    },
+    "http": {
+        "cross_app_status": 404,
+        "_cross_app_note": "跨后台访问不属于本后台的 Resource：必须 404（403 会泄露「资源存在」）",
+        "unauthenticated_redirect_template": "/{app}/auth/login",
+        "_redirect_note": "未登录访问某后台，跳转目标必须是该后台自己的登录页",
+        "login_page_status": 200
+    },
+    "url": {
+        "_note": "两端产出的 URL 形状必须一致。差异会让『同一份声明产出同样的页面』这个主张失效",
+        "must_start_with_slash": true,
+        "_why": [
+            "实测事故：Laravel 的 urlPrefix() 没归一化 → Aimanong::url() 产出 admin/assets/x.css（无前导斜杠）。",
+            "这是相对路径，浏览器按当前页面的 baseURI 解析：",
+            "  页 /admin          → /admin/assets/...        ✅（base 是 /，碰巧对）",
+            "  页 /admin/articles → /admin/admin/assets/...  ❌ 全部 404",
+            "即：控制台页正常、资源页面全坏。躲过了 223 单测 + 147 条 e2e 断言 + 全面验收，",
+            "因为 e2e 只测了深度 1 的控制台页。最后是 5 个独立 AI agent 在浏览器里撞到的。",
+            "ThinkPHP 侧一直是归一化的，所以只有 Laravel 中招 —— 两端不一致本身也是问题。"
+        ],
+        "sample": {
+            "path": "assets/css/design-system.css",
+            "expect_prefix": "/"
+        }
+    },
+    "tree": {
+        "_note": "树形：两端必须产出同一套嵌套结构，且必须有权限校验",
+        "_why": [
+            "事故一（半成品）：后端 tree() 声明、/tree 接口、flattenTree() 的 _depth、",
+            "design-system 里的 .am-tree-toggle 全都写好了 —— 但模板从头到尾没用它们，",
+            "列表仍是一条条平铺的名字。声明了 tree() 却看不出层级，且不报任何错。",
+            "事故二（越权）：Laravel 的 tree()/move() 漏了 authorize_()。实测一个对",
+            "departments 零权限的账号能 GET /tree 拿到整张表（200），并能 PUT /move",
+            "真的改掉 parent_id —— 而 /api/departments 正确返回 403。"
+        ],
+        "sample_resource": "departments",
+        "root": {
+            "name": "总部",
+            "parent_id": null,
+            "depth": 0
+        },
+        "child": {
+            "name": "研发部",
+            "parent_id": 1,
+            "depth": 1
+        },
+        "grandchild": {
+            "name": "前端组",
+            "parent_id": 2,
+            "depth": 2
+        },
+        "api": {
+            "shape": "data[].children[]",
+            "root_count": 1
+        },
+        "permission": {
+            "requires": "index",
+            "move_requires": "update",
+            "unauthorized_status": 403
+        }
+    },
+    "belongs_to_field": {
+        "_note": "外键下拉：两端必须产出同一套解析结果（候选 / relation / exists 规则）",
+        "_why": [
+            "此前做一个外键下拉要手写三件事：options(pluck(...)->all())、",
+            "rules('exists:{table},{id}')、以及模型上的关联。",
+            "三件都是易错点：忘了 ->all() 编译失败（传的是 Collection）；",
+            "忘了 exists 就能提交任意 id；表名写错不报错，一路错到运行时",
+            "（实测 categorys vs categories）。",
+            "现在框架自己从关联里读目标模型/表/主键 —— 声明方只写一行。"
+        ],
+        "resource": "departments",
+        "field": "parent_id",
+        "expect": {
+            "type": "select",
+            "relation": "parent",
+            "exists_prefix": "exists:departments,",
+            "min_options": 1,
+            "option_keys": [
+                "value",
+                "label"
+            ]
+        },
+        "nullable": {
+            "_note": "可空外键必须能存 NULL —— 自动补的 exists 规则不能把它变成必填",
+            "_why": [
+                "事故：belongsTo 自动生成 exists:{table},{id}，缺 nullable。",
+                "树形的顶级节点 parent_id 必须为 NULL，提交直接 422",
+                "「The selected parent id is invalid.」。",
+                "而 ai:verify 全程绿灯 —— 声明完全合法，只有真发请求才暴露。",
+                "判据用「有没有声明 required」：非必填就补 nullable。"
+            ],
+            "expect_rules": [
+                "nullable",
+                "exists:"
+            ]
+        }
+    },
+    "custom_batch_action": {
+        "_note": "声明式自定义批量动作：两端必须产出同一套声明，且真的能改数据",
+        "_why": [
+            "此前 batchActions() 是硬白名单 {delete, export}，声明层不收闭包（ADR-003）。",
+            "实测：一个 LLM 为做「批量改状态」，把 23 个可能的动作名逐个塞进去全被拒，",
+            "最后自己写扩展 + 注入 JS + 自建路由 —— 而它自己标出这条路丢了",
+            "权限校验与字段校验。",
+            "现在：声明里引用处理器类（数据），行为留在代码里 ——",
+            "权限节点 {uri}.{action} 自动生成，id 校验与操作日志都继承框架的。"
+        ],
+        "resource": "ship-orders",
+        "action": "ship",
+        "label": "标记为已发货",
+        "expect": {
+            "affected": 2,
+            "final_status": "shipped"
+        }
+    },
+    "discoverability": {
+        "_note": "「有这条能力」与「能照着写出来」是两件事 —— 自省资料必须给全签名与 namespace",
+        "_why": [
+            "事故：Tree 类的命名空间在 llms.txt / capabilities.json / /__ai/examples/tree（当时 404）",
+            "三处都拿不到，一个 LLM 最后靠 class_exists() 反射才命中 Aimanong\\Tree\\Tree。",
+            "同一批检查还发现：examples 只有 resource/grid/form，没有 tree 与批量处理器。"
+        ],
+        "examples_must_exist": [
+            "tree",
+            "batch-handler"
+        ],
+        "examples_must_contain": [
+            "Aimanong\\Tree\\Tree",
+            "Aimanong\\Contracts\\BatchActionHandler"
+        ],
+        "tree_options_must_have": [
+            "hook",
+            "use",
+            "example_endpoint"
+        ],
+        "tree_relation_column": {
+            "_why": "树形页只请求 /tree，原先不预加载关联 → 关联列全显示「—」，agent 只能改用访问器绕开",
+            "endpoint_suffix": "/tree",
+            "expect_child_has_parent": true
+        }
+    },
+    "contract_consistency": {
+        "_note": "三条「文档/一致性问题」—— 都不缺能力，但每个 agent 都多绕了几步",
+        "_why": [
+            "① openapi 把列表接口写成 GET /admin/users，真实路由是 GET /admin/api/{uri}",
+            "   （多个 agent 第一次 curl 拿到 SPA 的 HTML）。更糟的是断言里也写的旧路径 ——",
+            "   **测试把 bug 锁住了**，4 条断言全绿而真实路由全错。",
+            "② 非法 ?sort=不存在列 被静默忽略、返回 200 默认顺序。SQLite 会接受 ORDER BY bogus，",
+            "   MySQL 会报错 —— 行为依赖数据库。SQLite 那种让调用方以为排序生效了。",
+            "③ GET /admin/{uri}/create → 404，且 /admin/api/{uri}/create 会把 create 当成 id，",
+            "   返回「记录不存在: App\\Models\\User#create」—— 指向完全错误的方向。"
+        ],
+        "openapi_path_must_contain": "/admin/api/",
+        "invalid_sort": {
+            "expect_code": 422,
+            "expect_error": "SORT_COLUMN_NOT_DECLARED",
+            "typo": "nam",
+            "typo_did_you_mean": "name",
+            "resource_uri": "departments",
+            "_note": "typo 必须是**不存在**的列名；did_you_mean 指向真实存在且最接近的那一列",
+            "sortable_uri": "departments",
+            "sortable_column": "id"
+        },
+        "no_create_page": {
+            "expect_code": 404,
+            "expect_error": "NO_CREATE_PAGE",
+            "paths": [
+                "/admin/{uri}/create",
+                "/admin/api/{uri}/create"
+            ],
+            "resource_uri": "departments"
+        },
+        "sort_gate": {
+            "_note": "只接受**声明过** ->sortable() 的列（宪法 ②「声明唯一」）",
+            "_why": [
+                "第一版只拦「列不存在」，理由是「排序确实生效了不算欺骗」。",
+                "但两轮的 agent 都指出：openapi 的 sort enum 只列了声明过的列，",
+                "而 ?sort=name 却返回 200 —— 文档与行为仍然不一致，只是换了个方向。",
+                "且 ->sortable() 拦不住就等于没有约束力。"
+            ],
+            "declared_ok": "id",
+            "exists_but_not_declared": "name",
+            "not_exist": "bogus"
+        }
+    },
+    "enum_paths": {
+        "_note": "枚举的标签必须在三条路径上都到得了前端 —— 同一个 bug 出现过三次",
+        "_why": [
+            "① 列表列 using(Enum) —— 只写 enum: 类名，前端解析不了 PHP 类名 → 显示原始值",
+            "② 表单 options(Enum::cases()) —— 写死 label => value → 显示英文",
+            "③ 表单 using(Enum) —— 从不填 options → 下拉是空的",
+            "三次都是「声明合法 ✅ ai:verify 通过 ✅ 页面就是不对 ❌」。",
+            "取标签的规则已收敛到 Aimanong\\Support\\EnumLabel 一处。"
+        ],
+        "rules_string": {
+            "_note": "rules('a|b') 必须拆开；不拆的话整串会被当成一个规则名 → 提交 500",
+            "_why": [
+                "实测：Method Illuminate\\Validation\\Validator::validateNullable|in does not exist",
+                "而 ai:verify 当时照样报 valid=true"
+            ]
+        },
+        "_covered_by": "EnumLabelTest（12 条单测，覆盖三条路径 + rules 拆分）"
+    },
+    "search_and_field_fixes": {
+        "_note": "搜索 LIKE 转义 + email 字段自动规则",
+        "like_escape": {
+            "keyword_percent": {
+                "expect_total": 0,
+                "_why": "% 是字面量，不应匹配全部"
+            },
+            "keyword_underscore": {
+                "expect_total": 0,
+                "_why": "_ 是字面量，不应匹配任意字符"
+            },
+            "keyword_normal": {
+                "expect_min": 1,
+                "_why": "正常搜索不受影响"
+            }
+        },
+        "email_auto_rule": {
+            "_why": "$form->email() 应自动带 email 校验规则"
+        }
+    },
+    "belongs_to_submit": {
+        "_note": "可空外键必须**真能提交**（两端读同一份期望）",
+        "_why": [
+            "P0（2026-10-16 审计）：ThinkPHP 驱动的 translateRule 白名单只有 13 条，",
+            "既没有 nullable 也没有 exists —— 而 core 的 BelongsTo 自动补这两条。",
+            "于是**任何带外键下拉的 Resource 在 TP 上新增/编辑必 500**：",
+            "「字段 [parent_id] 的校验规则 [nullable] 尚未在 ThinkPHP 驱动上支持。」",
+            "而 ai:verify 绿灯、thinkphp-e2e 166/166 全绿、Laravel 端也正常 ——",
+            "只有真发一次请求才暴露。",
+            "这条期望同时锁 nullable（可空外键能存 NULL）与 exists（伪 id 必须被拒）。"
+        ],
+        "resource": "departments",
+        "valid_payload": {
+            "name": "外键提交探针",
+            "parent_id": null
+        },
+        "valid_status_in": [
+            200,
+            201
+        ],
+        "bogus_payload": {
+            "name": "外键提交探针-伪",
+            "parent_id": 999999
+        },
+        "bogus_status": 422
+    },
+    "non_required_rule": {
+        "_note": "**非 required** 的校验规则必须真的生效（两端读同一份期望）",
+        "_why": [
+            "P0（2026-10-16 审计）：think-validate v3 的构造函数**没有参数**",
+            "（Reflection: getNumberOfParameters() === 0），",
+            "而驱动写成 new Validate($translated, $messages) —— 不报错，",
+            "但规则集是空的，check() 永远返回 true。",
+            "于是除手写的 require 外，max / min / email / in / date / regex… **全部静默失效**。",
+            "thinkphp-e2e 此前只断言 required 类，所以这条一直没被发现。",
+            "demo 的 departments.name 带 ->required()->max(20)：提交 21 字符必须 422。"
+        ],
+        "resource": "departments",
+        "field": "name",
+        "max_length": 20,
+        "too_long_payload": {
+            "name": "AAAAAAAAAAAAAAAAAAAAA"
+        },
+        "expect_status": 422
     }
-  },
-  "tree": {
-    "_note": "树形：两端必须产出同一套嵌套结构，且必须有权限校验",
-    "_why": [
-      "事故一（半成品）：后端 tree() 声明、/tree 接口、flattenTree() 的 _depth、",
-      "design-system 里的 .am-tree-toggle 全都写好了 —— 但模板从头到尾没用它们，",
-      "列表仍是一条条平铺的名字。声明了 tree() 却看不出层级，且不报任何错。",
-      "事故二（越权）：Laravel 的 tree()/move() 漏了 authorize_()。实测一个对",
-      "departments 零权限的账号能 GET /tree 拿到整张表（200），并能 PUT /move",
-      "真的改掉 parent_id —— 而 /api/departments 正确返回 403。"
-    ],
-    "sample_resource": "departments",
-    "root": {
-      "name": "总部",
-      "parent_id": null,
-      "depth": 0
-    },
-    "child": {
-      "name": "研发部",
-      "parent_id": 1,
-      "depth": 1
-    },
-    "grandchild": {
-      "name": "前端组",
-      "parent_id": 2,
-      "depth": 2
-    },
-    "api": {
-      "shape": "data[].children[]",
-      "root_count": 1
-    },
-    "permission": {
-      "requires": "index",
-      "move_requires": "update",
-      "unauthorized_status": 403
-    }
-  },
-  "belongs_to_field": {
-    "_note": "外键下拉：两端必须产出同一套解析结果（候选 / relation / exists 规则）",
-    "_why": [
-      "此前做一个外键下拉要手写三件事：options(pluck(...)->all())、",
-      "rules('exists:{table},{id}')、以及模型上的关联。",
-      "三件都是易错点：忘了 ->all() 编译失败（传的是 Collection）；",
-      "忘了 exists 就能提交任意 id；表名写错不报错，一路错到运行时",
-      "（实测 categorys vs categories）。",
-      "现在框架自己从关联里读目标模型/表/主键 —— 声明方只写一行。"
-    ],
-    "resource": "departments",
-    "field": "parent_id",
-    "expect": {
-      "type": "select",
-      "relation": "parent",
-      "exists_prefix": "exists:departments,",
-      "min_options": 1,
-      "option_keys": [
-        "value",
-        "label"
-      ]
-    },
-    "nullable": {
-      "_note": "可空外键必须能存 NULL —— 自动补的 exists 规则不能把它变成必填",
-      "_why": [
-        "事故：belongsTo 自动生成 exists:{table},{id}，缺 nullable。",
-        "树形的顶级节点 parent_id 必须为 NULL，提交直接 422",
-        "「The selected parent id is invalid.」。",
-        "而 ai:verify 全程绿灯 —— 声明完全合法，只有真发请求才暴露。",
-        "判据用「有没有声明 required」：非必填就补 nullable。"
-      ],
-      "expect_rules": [
-        "nullable",
-        "exists:"
-      ]
-    }
-  },
-  "custom_batch_action": {
-    "_note": "声明式自定义批量动作：两端必须产出同一套声明，且真的能改数据",
-    "_why": [
-      "此前 batchActions() 是硬白名单 {delete, export}，声明层不收闭包（ADR-003）。",
-      "实测：一个 LLM 为做「批量改状态」，把 23 个可能的动作名逐个塞进去全被拒，",
-      "最后自己写扩展 + 注入 JS + 自建路由 —— 而它自己标出这条路丢了",
-      "权限校验与字段校验。",
-      "现在：声明里引用处理器类（数据），行为留在代码里 ——",
-      "权限节点 {uri}.{action} 自动生成，id 校验与操作日志都继承框架的。"
-    ],
-    "resource": "ship-orders",
-    "action": "ship",
-    "label": "标记为已发货",
-    "expect": {
-      "affected": 2,
-      "final_status": "shipped"
-    }
-  },
-  "discoverability": {
-    "_note": "「有这条能力」与「能照着写出来」是两件事 —— 自省资料必须给全签名与 namespace",
-    "_why": [
-      "事故：Tree 类的命名空间在 llms.txt / capabilities.json / /__ai/examples/tree（当时 404）",
-      "三处都拿不到，一个 LLM 最后靠 class_exists() 反射才命中 Aimanong\\Tree\\Tree。",
-      "同一批检查还发现：examples 只有 resource/grid/form，没有 tree 与批量处理器。"
-    ],
-    "examples_must_exist": [
-      "tree",
-      "batch-handler"
-    ],
-    "examples_must_contain": [
-      "Aimanong\\Tree\\Tree",
-      "Aimanong\\Contracts\\BatchActionHandler"
-    ],
-    "tree_options_must_have": [
-      "hook",
-      "use",
-      "example_endpoint"
-    ],
-    "tree_relation_column": {
-      "_why": "树形页只请求 /tree，原先不预加载关联 → 关联列全显示「—」，agent 只能改用访问器绕开",
-      "endpoint_suffix": "/tree",
-      "expect_child_has_parent": true
-    }
-  },
-  "contract_consistency": {
-    "_note": "三条「文档/一致性问题」—— 都不缺能力，但每个 agent 都多绕了几步",
-    "_why": [
-      "① openapi 把列表接口写成 GET /admin/users，真实路由是 GET /admin/api/{uri}",
-      "   （多个 agent 第一次 curl 拿到 SPA 的 HTML）。更糟的是断言里也写的旧路径 ——",
-      "   **测试把 bug 锁住了**，4 条断言全绿而真实路由全错。",
-      "② 非法 ?sort=不存在列 被静默忽略、返回 200 默认顺序。SQLite 会接受 ORDER BY bogus，",
-      "   MySQL 会报错 —— 行为依赖数据库。SQLite 那种让调用方以为排序生效了。",
-      "③ GET /admin/{uri}/create → 404，且 /admin/api/{uri}/create 会把 create 当成 id，",
-      "   返回「记录不存在: App\\Models\\User#create」—— 指向完全错误的方向。"
-    ],
-    "openapi_path_must_contain": "/admin/api/",
-    "invalid_sort": {
-      "expect_code": 422,
-      "expect_error": "SORT_COLUMN_NOT_DECLARED",
-      "typo": "nam",
-      "typo_did_you_mean": "name",
-      "resource_uri": "departments",
-      "_note": "typo 必须是**不存在**的列名；did_you_mean 指向真实存在且最接近的那一列",
-      "sortable_uri": "departments",
-      "sortable_column": "id"
-    },
-    "no_create_page": {
-      "expect_code": 404,
-      "expect_error": "NO_CREATE_PAGE",
-      "paths": [
-        "/admin/{uri}/create",
-        "/admin/api/{uri}/create"
-      ],
-      "resource_uri": "departments"
-    },
-    "sort_gate": {
-      "_note": "只接受**声明过** ->sortable() 的列（宪法 ②「声明唯一」）",
-      "_why": [
-        "第一版只拦「列不存在」，理由是「排序确实生效了不算欺骗」。",
-        "但两轮的 agent 都指出：openapi 的 sort enum 只列了声明过的列，",
-        "而 ?sort=name 却返回 200 —— 文档与行为仍然不一致，只是换了个方向。",
-        "且 ->sortable() 拦不住就等于没有约束力。"
-      ],
-      "declared_ok": "id",
-      "exists_but_not_declared": "name",
-      "not_exist": "bogus"
-    }
-  },
-  "enum_paths": {
-    "_note": "枚举的标签必须在三条路径上都到得了前端 —— 同一个 bug 出现过三次",
-    "_why": [
-      "① 列表列 using(Enum) —— 只写 enum: 类名，前端解析不了 PHP 类名 → 显示原始值",
-      "② 表单 options(Enum::cases()) —— 写死 label => value → 显示英文",
-      "③ 表单 using(Enum) —— 从不填 options → 下拉是空的",
-      "三次都是「声明合法 ✅ ai:verify 通过 ✅ 页面就是不对 ❌」。",
-      "取标签的规则已收敛到 Aimanong\\Support\\EnumLabel 一处。"
-    ],
-    "rules_string": {
-      "_note": "rules('a|b') 必须拆开；不拆的话整串会被当成一个规则名 → 提交 500",
-      "_why": [
-        "实测：Method Illuminate\\Validation\\Validator::validateNullable|in does not exist",
-        "而 ai:verify 当时照样报 valid=true"
-      ]
-    },
-    "_covered_by": "EnumLabelTest（12 条单测，覆盖三条路径 + rules 拆分）"
-  },
-  "search_and_field_fixes": {
-    "_note": "搜索 LIKE 转义 + email 字段自动规则",
-    "like_escape": {
-      "keyword_percent": {
-        "expect_total": 0,
-        "_why": "% 是字面量，不应匹配全部"
-      },
-      "keyword_underscore": {
-        "expect_total": 0,
-        "_why": "_ 是字面量，不应匹配任意字符"
-      },
-      "keyword_normal": {
-        "expect_min": 1,
-        "_why": "正常搜索不受影响"
-      }
-    },
-    "email_auto_rule": {
-      "_why": "$form->email() 应自动带 email 校验规则"
-    }
-  }
 }

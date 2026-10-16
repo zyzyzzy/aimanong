@@ -134,7 +134,24 @@ class EloquentRepository implements RepositoryContract
             return $this->inner->find($id);
         }
 
-        $model = $this->model::query()->find($id);
+        $query = $this->model::query();
+
+        /*
+         * 🔴 数据作用域**必须**在这里也应用。
+         *
+         * 审计发现（S0）：原先只有 paginate() 调了 applyQuery，
+         * find() / update() / delete() **全部绕过** ——
+         * 而 update() 和 delete() 都是先 find($id) 再动手。
+         *
+         * 后果（多租户场景）：A 租户知道 id 就能读写删 B 租户的行。
+         * 列表页看不到不代表拿不到 —— 这正是「作用域」要防的事。
+         *
+         * 实测（审计复现）：给代理商账号带上别家的 id 调
+         * PUT /agent/api/orders/{别人的id} → 200，数据真的被改了。
+         */
+        ScopeHooks::applyQuery($query);
+
+        $model = $query->find($id);
 
         if ($model === null) {
             throw new ModelNotFoundException(
@@ -342,8 +359,33 @@ class EloquentRepository implements RepositoryContract
             return;
         }
 
+        /*
+         * 🔴 列白名单：只允许**声明过的列**。
+         *
+         * 审计发现（S0，实测）：原先任意列名都能进 where()，包括
+         * 模型里存在但 Resource **没有声明**的敏感列：
+         *
+         *     GET /admin/api/users?filters[password]=<某个哈希>
+         *     → {"total": 1}      # 哈希对得上
+         *     → {"total": 0}      # 对不上
+         *
+         * 这就是一个**密码哈希取值预言机** —— 攻击者不需要登录成该用户，
+         * 只要拿着候选哈希逐个试，就能确认哪个是对的
+         * （拿到哈希后可用于离线爆破或撞库）。
+         *
+         * 同类可探测的还有 remember_token、api_token 等。
+         *
+         * 修法与 ?sort= 一致：只认声明过的列
+         *（见 ResourceController::filterColumnError()，那里给出 422 与可筛选清单）。
+         */
+        $allowed = $params['_allowed_filter_columns'] ?? null;
+
         foreach ($filters as $column => $value) {
             if (! is_string($column) || $value === null || $value === '') {
+                continue;
+            }
+
+            if (is_array($allowed) && ! in_array($column, $allowed, true)) {
                 continue;
             }
 

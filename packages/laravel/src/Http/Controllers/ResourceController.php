@@ -83,6 +83,21 @@ class ResourceController extends Controller
             return $sortError;
         }
 
+        /*
+         * 非法筛选列必须明确报错 —— 与 ?sort= 同一套纪律。
+         *
+         * 审计发现（S0，实测）：原先 filters 的列名**完全不校验**，
+         * `?filters[password]=<哈希>` 会被直接拼进 where()，
+         * 于是 total=1/0 变成了「这个哈希对不对」的预言机。
+         */
+        $filterColumns = $this->filterableColumns($node);
+
+        $filterError = $this->filterColumnError($node, $request, $filterColumns);
+
+        if ($filterError !== null) {
+            return $filterError;
+        }
+
         $params = [
             'keyword' => $request->query('keyword'),
             'sort' => $request->query('sort'),
@@ -91,6 +106,15 @@ class ResourceController extends Controller
             'searchable' => $searchable,
             'filters' => $request->query('filters'),
             'relations' => $relations,
+            /*
+             * 传给 Repository 的**列白名单**。
+             *
+             * Repository 是对外可替换的契约（app->bind(Repository::class, ...)），
+             * 所以校验要在这里做（有 422 + 可筛选清单），
+             * 同时把白名单带下去 —— 自定义 Repository 若忘了校验，
+             * 默认实现这一层仍然拦得住（纵深）。
+             */
+            '_allowed_filter_columns' => $filterColumns,
         ];
 
         $paginator = $this->repository($node)->paginate(
@@ -170,6 +194,77 @@ class ResourceController extends Controller
             sortable: $sortable,
             known: $known,
         ))->toArray(), 422);
+    }
+
+    /**
+     * 可用于筛选的列名清单。
+     *
+     * @return array<int, string>
+     */
+    protected function filterableColumns(ResourceNode $node): array
+    {
+        $out = [];
+
+        foreach ($node->columns as $column) {
+            $out[] = $column->name;
+        }
+
+        return $out;
+    }
+
+    /**
+     * 校验 ?filters[列] —— 未声明的列直接 422。
+     *
+     * ## 为什么要拦
+     *
+     * 审计实测：`GET /admin/api/users?filters[password]=<某个哈希>`
+     * 返回 `{"total": 1}`（命中）或 `{"total": 0}`（未命中）——
+     * **密码哈希取值预言机**。Resource 没声明 password 列，
+     * 但 filters 原先不校验，任意列名都能进 where()。
+     *
+     * 同类可探测：remember_token / api_token / 其它敏感列。
+     *
+     * 与 sortColumnError 的区别：那边要求列**声明过 ->sortable()**，
+     * 这边只要**声明过列**就放行 —— 筛选行为本身不欺骗
+     *（用户确实看到被筛选的结果），问题只在于「不该能筛没声明的列」。
+     */
+    protected function filterColumnError(
+        ResourceNode $node,
+        Request $request,
+        array $allowed
+    ): ?JsonResponse {
+        $filters = $request->query('filters');
+
+        if (! is_array($filters)) {
+            return null;
+        }
+
+        $bad = [];
+
+        foreach (array_keys($filters) as $column) {
+            if (! is_string($column)) {
+                continue;
+            }
+
+            if (! in_array($column, $allowed, true)) {
+                $bad[] = $column;
+            }
+        }
+
+        if ($bad === []) {
+            return null;
+        }
+
+        return response()->json([
+            'error' => [
+                'code' => 'FILTER_COLUMN_NOT_DECLARED',
+                'message' => '筛选字段未在 Resource 中声明：'.implode('、', $bad)
+                    .'。只能筛选声明过的列。',
+                'uri' => $node->uri,
+                'rejected' => $bad,
+                'filterable' => $allowed,
+            ],
+        ], 422);
     }
 
     /**

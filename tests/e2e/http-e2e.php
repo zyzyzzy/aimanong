@@ -1454,6 +1454,103 @@ if ($upExp === null) {
     @unlink($lpJar);
 }
 
+/*
+ * ═══ 筛选列白名单（密码哈希预言机）═══
+ *
+ * 审计实测：`?filters[password]=<某哈希>` 直接进 where()，
+ * total=1/0 就成了「这个哈希对不对」的预言机。
+ * 修法：只允许筛选**声明过的列**（未声明 → 422 FILTER_COLUMN_NOT_DECLARED）。
+ */
+echo "\n═══ 筛选列白名单 ═══\n";
+
+if ($has('admin-users')) {
+    // password 是模型上真实存在、但 Resource **没声明**的敏感列
+    $fo = http("$base/admin/api/admin-users?filters[password]=x");
+    t(
+        '未声明列 filters[password] → 422（哈希预言机被堵）',
+        $fo['code'] === 422 && str_contains((string) $fo['body'], 'FILTER_COLUMN_NOT_DECLARED'),
+        "HTTP {$fo['code']}"
+    );
+
+    // 已声明的列必须照常工作 —— 别把正常筛选误伤
+    $fok = http("$base/admin/api/admin-users?filters[username]=admin");
+    t(
+        '已声明列 filters[username] → 200（筛选没被误伤）',
+        $fok['code'] === 200,
+        "HTTP {$fok['code']}"
+    );
+}
+
+/*
+ * ═══ 数据作用域四条路径（ScopeHooks）═══
+ *
+ * 详见 fixture tenant_scope 的 _why。
+ */
+echo "\n═══ 数据作用域（ScopeHooks）═══\n";
+
+$tsExp = $multiAppExp['tenant_scope'] ?? null;
+
+if ($tsExp === null) {
+    t('读得到作用域共享期望', false, 'fixtures 里缺 tenant_scope');
+} else {
+    $tsRes = (string) $tsExp['resource'];
+    $tsList = http("$base/admin/api/{$tsRes}");
+    $tsJson = json_decode((string) $tsList['body'], true);
+
+    t(
+        "列表只含本租户（total={$tsExp['list_total']}）",
+        $tsList['code'] === 200 && ($tsJson['meta']['total'] ?? null) === $tsExp['list_total'],
+        "HTTP {$tsList['code']} total=".($tsJson['meta']['total'] ?? '?')
+    );
+
+    // 范围内的必须能读
+    $inId = (int) ((array) $tsExp['in_scope_ids'])[0];
+    $tsIn = http("$base/admin/api/{$tsRes}/{$inId}");
+    t(
+        "范围内 #{$inId} 详情 → 200",
+        $tsIn['code'] === 200,
+        "HTTP {$tsIn['code']}"
+    );
+
+    // 范围外的三条路径都必须 404
+    $outId = (int) $tsExp['out_of_scope_id'];
+    $expect = (int) $tsExp['out_of_scope_status'];
+
+    $tsDetail = http("$base/admin/api/{$tsRes}/{$outId}");
+    t(
+        "范围外 #{$outId} 详情 → {$expect}",
+        $tsDetail['code'] === $expect,
+        "HTTP {$tsDetail['code']}"
+    );
+
+    $tsUpdate = http("$base/admin/api/{$tsRes}/{$outId}", 'PUT', ['title' => 'SCOPE-E2E-不该改成功'], ['X-CSRF-TOKEN: '.$csrf]);
+    t(
+        "范围外 #{$outId} 更新 → {$expect}",
+        $tsUpdate['code'] === $expect,
+        "HTTP {$tsUpdate['code']}"
+    );
+
+    $tsDelete = http("$base/admin/api/{$tsRes}/{$outId}", 'DELETE', [], ['X-CSRF-TOKEN: '.$csrf]);
+    t(
+        "范围外 #{$outId} 删除 → {$expect}",
+        $tsDelete['code'] === $expect,
+        "HTTP {$tsDelete['code']}"
+    );
+
+    /*
+     * 光看状态码不够 —— 上一轮的反例验证里，回退修复后
+     * PUT 返回 200 且**数据库真的被改了**、DELETE 返回 204 且**行真的没了**。
+     * 所以这里直接再查一次列表，确认范围外那行还在。
+     */
+    $tsAfter = http("$base/admin/api/{$tsRes}");
+    $tsAfterJson = json_decode((string) $tsAfter['body'], true);
+    t(
+        '范围外的行还在（更新/删除真的没生效）',
+        ($tsAfterJson['meta']['total'] ?? null) === $tsExp['list_total'],
+        'total='.($tsAfterJson['meta']['total'] ?? '?')
+    );
+}
+
 echo "\n";
 printf("通过 %d / %d\n", $pass, $pass + $fail);
 

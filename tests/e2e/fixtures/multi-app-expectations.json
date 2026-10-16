@@ -330,5 +330,31 @@
             "password": "viewer123",
             "expect_status": 403
         }
+    },
+    "tenant_scope": {
+        "_note": "ScopeHooks 注册的数据作用域必须在**四条路径**上都生效",
+        "_why": [
+            "S0（2026-10-16 审计实测）：ScopeHooks::applyQuery() 原先只挂在 paginate()，",
+            "find() / update() / delete() 全部绕过 —— 而 update/delete 都是先 find 再动手。",
+            "",
+            "实测后果（多租户）：",
+            "  列表 total=1（只看到自己的）",
+            "  但 GET   /admin/api/departments/2  → 200（看到别人的）",
+            "       PUT   /admin/api/departments/2  → 200，库里真的被改",
+            "       DELETE /admin/api/departments/2 → 204，库里真的没了",
+            "",
+            "「列表里看不到」不等于「碰不到」—— 这正是作用域要防的事。",
+            "",
+            "demo 的 scoped_notes 有 3 行：id 1,2 属于 tenant 1，id 3 属于 tenant 2。",
+            "AppServiceProvider::boot() 注册了 ScopeHooks::query(\"demo-tenant\") 只看 tenant_id=1。"
+        ],
+        "resource": "scoped-notes",
+        "in_scope_ids": [
+            1,
+            2
+        ],
+        "out_of_scope_id": 3,
+        "list_total": 2,
+        "out_of_scope_status": 404
     }
 }

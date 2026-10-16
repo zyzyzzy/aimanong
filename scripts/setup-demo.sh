@@ -148,7 +148,10 @@ $pdo->exec("INSERT INTO departments VALUES (1,\"总部\",NULL,1),(2,\"研发部\
 $pdo->exec("DROP TABLE IF EXISTS ship_orders");
 $pdo->exec("CREATE TABLE ship_orders (id INTEGER PRIMARY KEY, order_no TEXT, amount REAL, status TEXT)");
 $pdo->exec("INSERT INTO ship_orders VALUES (1,\"SO-001\",100.5,\"paid\"),(2,\"SO-002\",20.0,\"pending\")");
-echo "     departments + ship_orders 表就绪\n";
+$pdo->exec("DROP TABLE IF EXISTS scoped_notes");
+$pdo->exec("CREATE TABLE scoped_notes (id INTEGER PRIMARY KEY, tenant_id INTEGER, title TEXT)");
+$pdo->exec("INSERT INTO scoped_notes VALUES (1,1,\"甲租户-1\"),(2,1,\"甲租户-2\"),(3,2,\"乙租户-1\")");
+echo "     departments + ship_orders + scoped_notes 表就绪\n";
 '
 cat > app/Models/Department.php <<'PHPEOF'
 <?php
@@ -170,6 +173,65 @@ class Department extends Model
     }
 }
 PHPEOF
+cat > app/Models/ScopedNote.php <<'PHPEOF'
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+/**
+ * 多租户隔离演示用的模型。
+ *
+ * 隔离由 app/Providers/TenantScopeProvider.php 注册的 ScopeHooks 提供 ——
+ * 模型自己**不**写 global scope（框架的官方拦截点是 ScopeHooks）。
+ */
+class ScopedNote extends Model
+{
+    protected $table = 'scoped_notes';
+    public $timestamps = false;
+    protected $guarded = [];
+}
+PHPEOF
+
+cat > app/Aimanong/ScopedNoteResource.php <<'PHPEOF'
+<?php
+
+namespace App\Aimanong;
+
+use Aimanong\Resource;
+use App\Models\ScopedNote;
+
+/**
+ * 多租户隔离的真机验证资源。
+ *
+ * e2e 用它断言：ScopeHooks 注册的数据作用域**必须**在
+ * 列表 / 详情 / 更新 / 删除四条路径上都生效。
+ *
+ * 历史教训（2026-10-16 审计 S0）：作用域原先只挂在列表查询上，
+ * find/update/delete 全部绕过 —— 列表里看不到的行，
+ * 知道 id 就能读、能改、能删（实测改库成功、删库成功）。
+ */
+class ScopedNoteResource extends Resource
+{
+    public static function model(): string { return ScopedNote::class; }
+    public static function label(): string { return '租户笔记'; }
+    public static function uri(): string { return 'scoped-notes'; }
+
+    public static function grid(\Aimanong\Grid\Grid $grid): void
+    {
+        $grid->column('id', 'ID');
+        $grid->column('tenant_id', '租户');
+        $grid->column('title', '标题');
+    }
+
+    public static function form(\Aimanong\Form\Form $form): void
+    {
+        $form->text('title', '标题')->required();
+    }
+}
+PHPEOF
+
 mkdir -p app/Aimanong/Actions
 
 cat > app/Aimanong/Actions/ShipOrders.php <<'PHPEOF'
@@ -311,7 +373,7 @@ $s = file_get_contents($f);
  * 只看 DepartmentResource 的话，后加的 ShipOrderResource 永远进不来
  * （重跑脚本时被守卫提前 exit）。实测踩到。
  */
-$needed = ["DepartmentResource", "ShipOrderResource"];
+$needed = ["DepartmentResource", "ShipOrderResource", "ScopedNoteResource"];
 $missing = array_values(array_filter($needed, fn ($c) => ! str_contains($s, $c)));
 
 if ($missing === []) {
@@ -328,7 +390,7 @@ if ($missing === []) {
  * `App\\Providers\\ShipOrderResource`（不存在）—— **静默失败**：
  * provider 文件里明明有那一行，注册表里没有，页面 404，极难定位。
  */
-foreach (["use Aimanong\\Aimanong;", "use App\\Aimanong\\DepartmentResource;", "use App\\Aimanong\\ShipOrderResource;"] as $useLine) {
+foreach (["use Aimanong\\Aimanong;", "use App\\Aimanong\\DepartmentResource;", "use App\\Aimanong\\ShipOrderResource;", "use App\\Aimanong\\ScopedNoteResource;"] as $useLine) {
     if (! str_contains($s, $useLine)) {
         $s = preg_replace("/^use /m", $useLine."\nuse ", $s, 1);
     }
@@ -336,7 +398,7 @@ foreach (["use Aimanong\\Aimanong;", "use App\\Aimanong\\DepartmentResource;", "
 
 // 把注册写进 register() —— 已注册的不重复插（重跑脚本否则插出重复行）
 $body = "";
-foreach (["DepartmentResource", "ShipOrderResource"] as $cls) {
+foreach (["DepartmentResource", "ShipOrderResource", "ScopedNoteResource"] as $cls) {
     if (! str_contains($s, "register({$cls}::class)")) {
         $body .= "\n        Aimanong::registry()->register({$cls}::class);";
     }
@@ -350,6 +412,57 @@ if ($body !== "" && preg_match("/(public function register\\(\\): void\\s*\\{)/"
 }
 file_put_contents($f, $s);
 '
+  
+  # ── 多租户隔离作用域（e2e 要用它验证 ScopeHooks 四条路径都生效）──
+  #
+  # ⚠️ 这一段**必须独立于上面的注册守卫**：上面那个 `php -r` 在
+  #    「Resource 都注册过了」时会 `exit(0)` 提前退出，把这里也跳过。
+  #    所以单独一块，幂等只看自己。
+  echo "  → 注册多租户数据作用域（ScopeHooks）"
+  php -r '
+  $f = "app/Providers/AppServiceProvider.php";
+  $s = file_get_contents($f);
+  
+  if (str_contains($s, "ScopeHooks::query")) {
+      echo "     作用域已注册\n";
+      exit(0);
+  }
+  
+  if (! str_contains($s, "use Aimanong\\Ai\\ScopeHooks;")) {
+      $s = preg_replace("/^use /m", "use Aimanong\\Ai\\ScopeHooks;\nuse ", $s, 1);
+  }
+  
+  /*
+   * 作用域：只看得到 tenant_id = 1 的行。
+   *
+   * scoped_notes 里 id=3 属于乙租户 —— e2e 断言的就是
+   * 「列表看不到它，且详情/更新/删除也碰不到它」。
+   */
+  /*
+   * ⚠️ ScopeHooks 是**全局**的（对所有 Resource 查询生效），
+   *    回调里必须自己判断模型 —— 否则会把别的表也加上 tenant_id 条件，
+   *    那些表根本没这列，表现是「查询莫名返回 0 行」。
+   *
+   * 实测踩到：第一版直接 `$query->where("tenant_id", 1)`，
+   * 结果 ship_orders / admin_login_logs 全变成 0 行，
+   * e2e 里 7 条毫不相关的断言一起红 —— 极难定位。
+   */
+  $body = "\n        ScopeHooks::query(\"demo-tenant\", static function (\$query): void {\n"
+      ."            if (\$query->getModel() instanceof \\App\\Models\\ScopedNote) {\n"
+      ."                \$query->where(\"tenant_id\", 1);\n"
+      ."            }\n"
+      ."        });\n";
+  
+  if (! preg_match("/(public function boot\(\): void\s*\{)/", $s)) {
+      fwrite(STDERR, "     ⚠️ 没找到 boot()，需人工处理\n");
+      exit(1);
+  }
+  
+  $s = preg_replace("/(public function boot\(\): void\s*\{)/", "$1".$body, $s, 1);
+  file_put_contents($f, $s);
+  echo "     AppServiceProvider::boot() 已加 ScopeHooks::query(\"demo-tenant\")\n";
+  ' 2>&1 | sed "s/^/  /"
+  
 
 # ── 多应用（三后台）──
 #

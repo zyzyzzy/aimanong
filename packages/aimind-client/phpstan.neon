@@ -1,0 +1,14 @@
+includes:
+    - vendor/phpstan/phpstan/conf/bleedingEdge.neon
+
+parameters:
+    level: 8
+    paths:
+        - src
+    tmpDir: .phpstan-cache
+    reportUnmatchedIgnoredErrors: false
+
+    ignoreErrors:
+        # Laravel 的动态特性（容器解析、Facade 调用）在静态分析下无法完全推断
+        - '#Call to an undefined static method Illuminate\\#'
+        - '#Call to an undefined method Illuminate\\#'

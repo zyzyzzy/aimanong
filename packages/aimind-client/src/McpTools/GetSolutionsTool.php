@@ -47,7 +47,7 @@ class GetSolutionsTool extends Tool
             };
 
             $lines[] = "{$icon} [{$ans['answer_id']}] conf={$ans['confidence']} {$ans['verification_status']}";
-            $lines[] = '   ' . mb_substr((string) $ans['content'], 0, 200);
+            $lines[] = '   '.mb_substr((string) $ans['content'], 0, 200);
         }
 
         return Response::text(implode("\n", $lines));

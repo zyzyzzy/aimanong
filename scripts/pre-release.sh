@@ -212,6 +212,50 @@ else
 fi
 
 #
+# packages/aimind-client —— Aimind 平台的客户端 + 8 个 MCP 工具。
+#
+# ⚠️ 它此前 **0 单测 / 0 PHPStan / 0 Pint**，而且 `require` 里
+# **漏了 `laravel/mcp`** —— 8 个工具类都 `extends Laravel\Mcp\Server\Tool`。
+# 从 Packagist 装到用户项目里，MCP server 构造时会 Class not found。
+#
+# 之所以一直没暴露：monorepo 里别的包 require 了 laravel/mcp，
+# 于是「恰好有」。又一次「测试环境手动补过的东西掩盖了包真正缺的东西」。
+#
+if [ -x "$ROOT/packages/aimind-client/vendor/bin/phpunit" ]; then
+  if (cd "$ROOT/packages/aimind-client" && vendor/bin/phpunit > /tmp/amn-ac-ut.log 2>&1); then
+    AC_LINE=$(grep -oE 'OK \([0-9]+ tests, [0-9]+ assertions\)' /tmp/amn-ac-ut.log | head -1)
+    ok "aimind-client PHPUnit ${AC_LINE:-(通过)}"
+  else
+    bad "aimind-client PHPUnit 失败"
+    tail -20 /tmp/amn-ac-ut.log | sed 's/^/      /'
+  fi
+else
+  warn "packages/aimind-client 未装 phpunit，跳过其单测（CI 会跑）"
+fi
+
+if [ -x "$ROOT/packages/aimind-client/vendor/bin/phpstan" ]; then
+  if (cd "$ROOT/packages/aimind-client" && vendor/bin/phpstan analyse --no-progress --memory-limit=1G > /tmp/amn-ac-stan.log 2>&1); then
+    ok "aimind-client PHPStan Level 8"
+  else
+    bad "aimind-client PHPStan 未通过"
+    tail -12 /tmp/amn-ac-stan.log | sed 's/^/      /'
+  fi
+else
+  warn "packages/aimind-client 未装 phpstan，跳过其静态分析（CI 会跑）"
+fi
+
+if [ -x "$ROOT/packages/aimind-client/vendor/bin/pint" ]; then
+  if (cd "$ROOT/packages/aimind-client" && vendor/bin/pint --test > /tmp/amn-ac-pint.log 2>&1); then
+    ok "aimind-client Pint 代码风格"
+  else
+    bad "aimind-client Pint 未通过"
+    tail -6 /tmp/amn-ac-pint.log | sed 's/^/      /'
+  fi
+else
+  warn "packages/aimind-client 未装 pint，跳过其代码风格（CI 会跑）"
+fi
+
+#
 # 官方扩展 region —— 它已经发布到 Packagist（v1.0.1），
 # 但此前 **0 单测 / 0 PHPStan / 0 CI**：改坏了没人知道。
 #

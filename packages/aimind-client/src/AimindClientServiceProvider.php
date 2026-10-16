@@ -12,13 +12,14 @@ use Aimanong\AimindClient\McpTools\RateAnswerTool;
 use Aimanong\AimindClient\McpTools\ReportBugTool;
 use Aimanong\AimindClient\McpTools\SearchKnowledgeTool;
 use Aimanong\AimindClient\McpTools\ShareExperienceTool;
+use Aimanong\Mcp\ToolRegistry;
 use Illuminate\Support\ServiceProvider;
 
 class AimindClientServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__ . '/../config/aimind.php', 'aimind');
+        $this->mergeConfigFrom(__DIR__.'/../config/aimind.php', 'aimind');
 
         $this->app->singleton(AimindClient::class, function () {
             return new AimindClient(
@@ -36,7 +37,7 @@ class AimindClientServiceProvider extends ServiceProvider
         }
 
         $this->publishes([
-            __DIR__ . '/../config/aimind.php' => config_path('aimind.php'),
+            __DIR__.'/../config/aimind.php' => config_path('aimind.php'),
         ], 'aimind-config');
 
         /*
@@ -49,8 +50,8 @@ class AimindClientServiceProvider extends ServiceProvider
          *
          * 现在用 Aimanong 自己的 ToolRegistry，AimanongServer 构造时合并。
          */
-        if (class_exists(\Aimanong\Mcp\ToolRegistry::class)) {
-            \Aimanong\Mcp\ToolRegistry::register(
+        if (class_exists(ToolRegistry::class)) {
+            ToolRegistry::register(
                 SearchKnowledgeTool::class,
                 AskPeerTool::class,
                 ShareExperienceTool::class,

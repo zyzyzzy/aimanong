@@ -104,6 +104,44 @@ jobs:
         run: composer test
 
   #
+  # Aimind 客户端 aimanong/aimind-client。
+  #
+  # ⚠️ 此前 **0 单测 / 0 PHPStan / 0 Pint**，而且 `require` 里
+  # **漏了 `laravel/mcp`** —— 8 个工具类都 `extends Laravel\Mcp\Server\Tool`。
+  # 从 Packagist 装会 Class not found，而 monorepo 里因为别的包 require 了它
+  # 所以「恰好能跑」。
+  #
+  aimind-client:
+    name: Aimind 客户端门禁
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: packages/aimind-client
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, json
+          coverage: none
+
+      - name: 安装依赖
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Pint 代码风格
+        run: composer pint -- --test
+
+      - name: PHPStan Level 8
+        run: composer phpstan
+
+      - name: PHPUnit
+        run: composer test
+
+  #
   # 官方扩展 aimanong/region 的质量门禁。
   #
   # ⚠️ 为什么单独开一个 job：这个包此前 **0 单测 / 0 phpstan / 0 CI**，

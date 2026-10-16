@@ -61,6 +61,7 @@ echo "═══ 单元测试 ═══"
 run laravel  "$ROOT/packages/laravel"
 run thinkphp "$ROOT/packages/thinkphp"
 run core     "$ROOT/packages/core"
+run aimind   "$ROOT/packages/aimind-client"
 run region   "$ROOT/packages/region"
 
 echo

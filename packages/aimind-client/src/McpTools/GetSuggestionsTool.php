@@ -47,9 +47,9 @@ class GetSuggestionsTool extends Tool
 
         foreach ($result['suggestions'] as $s) {
             $lines[] = "【{$s['priority']}】{$s['suggestion_id']} ({$s['status']})";
-            $lines[] = '  标签: ' . implode(', ', $s['tags'] ?? []);
+            $lines[] = '  标签: '.implode(', ', $s['tags'] ?? []);
             $lines[] = "  独立会话 {$s['independent_sessions']} 个 / 共出现 {$s['occurrences']} 次";
-            $lines[] = '  建议: ' . mb_substr((string) $s['suggested_fix'], 0, 150);
+            $lines[] = '  建议: '.mb_substr((string) $s['suggested_fix'], 0, 150);
             $lines[] = '';
         }
 

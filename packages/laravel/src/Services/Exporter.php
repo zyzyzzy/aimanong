@@ -200,14 +200,48 @@ class Exporter
                 : (string) ($props['falseLabel'] ?? '否');
         }
 
+        /*
+         * 金额：与列表页**同一套规则**。
+         *
+         * ⚠️ 2026-10-17：此前这里写死 `number_format($v, 2)`，而列表页
+         * 也写死两位 —— 两边"恰好一致"。接通 `->decimals()` 时如果只改
+         * 列表不改这里，就会**制造**一个两端分叉（导出 2 位、界面 4 位）。
+         *
+         * 符号同理：老代码读 symbol，列表页不读 —— 修之前同一字段
+         * 在 CSV 里有 ¥、在界面里没有。现在两边都读。
+         *
+         * 空值返回空串（不是 ¥0.00）：导出里「没数据」和「零元」必须能区分。
+         */
         if ($formatter === 'money') {
-            return ($props['symbol'] ?? '').number_format((float) $v, 2, '.', '');
+            if ($v === null || $v === '') {
+                return '';
+            }
+
+            if (! is_numeric($v)) {
+                // 与前端一致：非数字原样返回，**不是** ¥0.00
+                return (string) $v;
+            }
+
+            $places = $props['decimals'] ?? 2;
+            $places = is_int($places) && $places >= 0 ? $places : 2;
+
+            /*
+             * ⚠️ 千分位分隔符是 `,` —— 之前这里传的是空串，
+             * 于是导出 `1234567.89` 而界面 `1,234,567.89`。
+             * 对齐前端（前端一直有逗号）。
+             */
+            return ($props['symbol'] ?? '').number_format((float) $v, $places, '.', ',');
         }
 
+        /*
+         * 日期：同样按声明的 format 渲染。
+         *
+         * 不支持 PHP 的完整 date() 记号 —— 只实现与前端 formatDate()
+         * **同一组**（Y y m n d j H i s）。两边支持的范围必须一样，
+         * 否则「同一个声明在界面和 CSV 里长得不同」会再次出现。
+         */
         if ($formatter === 'datetime') {
-            if ($v instanceof \DateTimeInterface) {
-                return $v->format('Y-m-d H:i:s');
-            }
+            return $this->formatDateValue($v, $props['format'] ?? 'Y-m-d H:i:s');
         }
 
         if ($v === null) {
@@ -267,6 +301,59 @@ class Exporter
         }
 
         return $v;
+    }
+
+    /**
+     * 按声明的格式渲染日期 —— **与前端 `formatDate()` 行为一致**。
+     *
+     * ## 为什么不用 Carbon / `$v->format($fmt)`
+     *
+     * 那会让导出支持**完整**的 PHP `date()` 记号，而前端只实现了子集
+     * （它没有 moment/date-fns，零构建）。于是 `->dateTime('D, d M Y')`
+     * 在 CSV 里是 `Mon, 05 Jan 2026`、在界面里是原样的 `D, 05 M 2026` ——
+     * **又一处两端分叉**，而且是那种"只有对照着看才发现"的。
+     *
+     * 宁可两边都只支持一小撮记号，也不要一边强一边弱：
+     * 声明写错了，两边错得一样，用户一眼能看出来。
+     *
+     * 记号集合与前端 `formatDate()` 严格一致：Y y m n d j H i s。
+     */
+    protected function formatDateValue(mixed $v, string $format): string
+    {
+        if ($v === null || $v === '') {
+            return '';
+        }
+
+        // 非日期对象先转成字符串再解析 —— 与前端拿到的形态对齐
+        $raw = $v instanceof \DateTimeInterface
+            ? $v->format('Y-m-d H:i:s')
+            : str_replace('T', ' ', (string) $v);
+
+        if ($format === 'Y-m-d H:i:s') {
+            return substr($raw, 0, 19);
+        }
+
+        if (! preg_match('/^(\d{4})-(\d{2})-(\d{2})(?:[ ](\d{2}):(\d{2}):(\d{2}))?/', $raw, $m)) {
+            return $raw;
+        }
+
+        $parts = [
+            'Y' => $m[1],
+            'y' => substr($m[1], 2),
+            'm' => $m[2],
+            'n' => (string) (int) $m[2],
+            'd' => $m[3],
+            'j' => (string) (int) $m[3],
+            'H' => $m[4] ?? '00',
+            'i' => $m[5] ?? '00',
+            's' => $m[6] ?? '00',
+        ];
+
+        return (string) preg_replace_callback(
+            '/[YymdHisjn]/',
+            static fn (array $c): string => $parts[$c[0]] ?? $c[0],
+            $format
+        );
     }
 
     /**

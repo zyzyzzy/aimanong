@@ -121,13 +121,23 @@
                      :aria-label="'选择 ' + rowLabel(row)">
             </td>
             {/* :data-l 供窄屏卡片化时生成字段标签（见 design-system 的 --stack 规则）*/}
+            {/*
+              ⚠️ 列宽接线（2026-10-17）：原先 `->width(120)` 下发了但没人读。
+              用 style 而不是 width 属性 —— 窄屏卡片化（--stack）时
+              表格会变成块布局，固定 width 会把卡片撑坏；
+              max-width 在两种布局下都安全。
+            */}
             <td v-for="col in columns" :key="col.name"
                 :data-l="col.label"
+                :style="col.props.width ? {maxWidth: col.props.width + 'px'} : null"
                 :class="[cellClass(col, row), {'am-num': isNumeric(col)}]">
               <template v-if="col.formatter === 'datetime'">
-                <span class="am-nowrap">{{ formatDate(cellValue(col, row)) }}</span>
+                <span class="am-nowrap">{{ formatDate(cellValue(col, row), col) }}</span>
               </template>
-              <template v-else-if="col.formatter === 'money'">{{ formatMoney(cellValue(col, row), col) }}</template>
+              <template v-else-if="col.formatter === 'money'">
+                <template v-if="formatMoney(cellValue(col, row), col) !== ''">{{ formatMoney(cellValue(col, row), col) }}</template>
+                <span v-else class="am-text-muted">—</span>
+              </template>
               <template v-else-if="col.formatter === 'bool'">
                 <span class="am-badge" :class="cellValue(col, row) ? 'am-badge--success' : 'am-badge--muted'">
                   <i style="width:5px;height:5px;border-radius:50%;background:currentColor;display:inline-block"></i>{{ cellValue(col, row) ? (col.props.trueLabel || '是') : (col.props.falseLabel || '否') }}
@@ -136,8 +146,11 @@
               <template v-else-if="col.formatter === 'badge' || col.formatter === 'map' || col.formatter === 'enum'">
                 <span class="am-badge" :class="tagClass(col, row)">{{ mapLabel(col, cellValue(col, row)) }}</span>
               </template>
+              {/* ⚠️ 图片高度接线（2026-10-17）：原先写死 am-avatar--sm（32px），->image(48) 不生效 */}
               <template v-else-if="col.formatter === 'image'">
-                <img v-if="cellValue(col, row)" :src="uploadUrl(cellValue(col, row))" class="am-avatar am-avatar--sm" style="border-radius:6px">
+                <img v-if="cellValue(col, row)" :src="uploadUrl(cellValue(col, row))"
+                     class="am-avatar am-avatar--sm"
+                     :style="col.props.height ? {width: col.props.height + 'px', height: col.props.height + 'px', borderRadius: '6px'} : {borderRadius: '6px'}">
                 <span v-else class="am-text-muted">—</span>
               </template>
               <template v-else-if="col.formatter === 'file'">
@@ -145,8 +158,9 @@
                    target="_blank" rel="noopener" class="am-text-brand">{{ uploadName(cellValue(col, row)) }}</a>
                 <span v-else class="am-text-muted">—</span>
               </template>
+              {/* ⚠️ 链接文案接线（2026-10-17）：原先写死「打开 ↗」，->link('查看') 不生效 */}
               <template v-else-if="col.formatter === 'link'">
-                <a v-if="cellValue(col, row)" :href="cellValue(col, row)" target="_blank" class="am-text-brand">打开 ↗</a>
+                <a v-if="cellValue(col, row)" :href="cellValue(col, row)" target="_blank" class="am-text-brand">{{ col.props.text || '打开 ↗' }}</a>
                 <span v-else class="am-text-muted">—</span>
               </template>
               <template v-else-if="col.formatter === 'progress'">
@@ -300,10 +314,14 @@
             <input type="date" v-model="form[f.props.endColumn || (f.name + '_end')]" class="am-input">
           </div>
 
-          <textarea v-else-if="f.type === 'textarea'" v-model="form[f.name]" class="am-textarea" :rows="f.props.rows || 4"></textarea>
+          {/* ⚠️ placeholder 接线（2026-10-17）：原先声明了但没有任何分支读它 */}
+          <textarea v-else-if="f.type === 'textarea'" v-model="form[f.name]" class="am-textarea"
+                    :rows="f.props.rows || 4" :placeholder="f.props.placeholder || ''"></textarea>
           <input v-else-if="f.type === 'date'" type="date" v-model="form[f.name]" class="am-input">
           <input v-else-if="f.type === 'datetime'" type="datetime-local" v-model="form[f.name]" class="am-input">
-          <input v-else :type="inputType(f)" v-model="form[f.name]" class="am-input">
+          <input v-else :type="inputType(f)" v-model="form[f.name]" class="am-input"
+                 :placeholder="f.props.placeholder || ''"
+                 :min="f.props.min !== undefined ? f.props.min : null">
 
           <div v-if="f.props.help" class="am-field__help">{{ f.props.help }}</div>
         </div>
@@ -924,9 +942,35 @@ const app = createApp({
             load(1);
         }
 
-        function formatDate(v) {
+        /**
+         * 日期格式化。
+         *
+         * ⚠️ 原先写死 `slice(0, 19)` —— 于是列上写 `->dateTime('Y-m-d')`
+         * 声明了也没用（照样显示到秒）。2026-10-17 接线：按列下发的
+         * `props.format` 渲染；缺省仍是 `Y-m-d H:i:s`（与旧行为逐字一致）。
+         *
+         * 记号与 PHP 的 date() 同形，**只实现常用的一组** ——
+         * 每多一个记号就多一个出错面，而列表页日期格式的需求就那么几种。
+         */
+        function formatDate(v, col) {
             if (!v) return '';
-            return String(v).replace('T', ' ').slice(0, 19);
+
+            const s = String(v).replace('T', ' ');
+            const fmt = (col && col.props && col.props.format) || 'Y-m-d H:i:s';
+
+            // 缺省格式：保持与原实现逐字一致（含时区/毫秒被截断的行为）
+            if (fmt === 'Y-m-d H:i:s') return s.slice(0, 19);
+
+            const m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}):(\d{2}))?/);
+            if (!m) return s;
+
+            const parts = {
+                Y: m[1], y: m[1].slice(2), n: String(Number(m[2])), m: m[2],
+                j: String(Number(m[3])), d: m[3],
+                H: m[4] || '00', i: m[5] || '00', s: m[6] || '00',
+            };
+
+            return fmt.replace(/[YymdHisjn]/g, ch => (parts[ch] !== undefined ? parts[ch] : ch));
         }
 
         /**
@@ -1110,11 +1154,48 @@ const app = createApp({
             return 'am-badge--brand';
         }
 
-        /** 金额格式化：保留两位小数，千分位分隔 */
-        function formatMoney(v) {
+        /**
+         * 金额格式化：千分位分隔 + 按列声明的符号与小数位。
+         *
+         * ⚠️ 原先写死两位小数、不显示符号 —— 于是 `->money('¥')` 与
+         * `->decimals(4)` 声明了都不生效，而**导出侧却读了 symbol**
+         * （见 Exporter::value()），同一个字段在列表和 CSV 里长得不一样。
+         *
+         * 2026-10-17 接线：列表与导出用同一套规则（导出侧同样按 decimals 渲染）。
+         *
+         * 两处**故意**保留的老行为：
+         *   ① 列上不写 `->money()` 时**不加符号** —— 否则全站金额突然都冒出 ¥
+         *   ② 空值返回 `—` 而不是 `¥0.00` —— 「没数据」不该显示成「零元」
+         *
+         * @param {*} v    单元格原值
+         * @param {object} col 列定义（可选；缺失时退化为纯数字格式化）
+         */
+        function formatMoney(v, col) {
+            // 空值：交给调用方的「—」分支，别渲染成 ¥0.00
+            if (v === null || v === undefined || v === '') return '';
+
             const n = Number(v);
-            if (!isFinite(n)) return v ?? '';
-            return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            if (!isFinite(n)) return v;
+
+            const props = (col && col.props) || {};
+            const places = Number.isInteger(props.decimals) && props.decimals >= 0 ? props.decimals : 2;
+
+            /*
+             * ⚠️ 千分位只加在**整数部分**。
+             *
+             * 第一版写成 `toFixed(places).replace(/\B(?=(\d{3})+(?!\d))/g, ',')`
+             * —— 那个正则对小数位 > 3 会在**小数部分里也插逗号**：
+             *   decimals(4) → "¥1,234,567.8,910"   ✗
+             * 实测自检时抓到的。现在先切分再格式化整数部分。
+             */
+            const fixed = n.toFixed(places);
+            const dot = fixed.indexOf('.');
+            const intPart = dot === -1 ? fixed : fixed.slice(0, dot);
+            const decPart = dot === -1 ? '' : fixed.slice(dot);
+
+            const body = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + decPart;
+
+            return props.symbol ? props.symbol + body : body;
         }
 
         /**

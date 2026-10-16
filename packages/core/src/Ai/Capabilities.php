@@ -39,35 +39,144 @@ class Capabilities
      * @return array<string, mixed>
      */
     /**
-     * 「声明了但前端不消费」的 prop 清单。
+     * 「声明了但前端不消费」的 prop 清单 —— **按位置区分**。
      *
-     * ## 为什么这份清单是常量而不是扫出来的
+     * ## 为什么必须带位置（2026-10-17 批 1 修正）
      *
-     * 「有没有消费方」只有**静态扫前端**才知道 —— 运行期看不见。
-     * 所以真相在 `tests/Unit/PropConsumerTest.php` 里：
-     * 那边扫 `props.X` 读法，并用这个清单做差集。
+     * 第一版清单只按 **prop 名** 登记，于是 `relation` 被笼统地标成「死」。
+     * 实测立刻暴露误报：同一时刻
      *
-     * ⚠️ 两处必须**完全一致**（`PropConsumerTest::test_known_unwired_list_is_exposed`
-     * 会断言 key 相同）。两处各写一遍必然漂移 —— 所以要有一个测试钉住。
+     *   - `$grid->column('customer.name')->relation('customer.name')` → 前端确实不读
+     *   - `$form->multiSelect('tags')->relation('tags')` → **真的接通了**
+     *     （Compiler 收进 `meta.relationFields`，ResourceController 拿它 sync 中间表）
      *
-     * @return array<string, string> prop 名 => 它对用户是什么体验
+     * 也就是说：**同一个 prop 名，在列上是死的，在字段上是活的**。
+     * 不分位置就会对完全正常的写法报错 —— 而误报会让 AI 很快学会忽略这条校验，
+     * 比没有校验更糟。
+     *
+     * ## 返回形状
+     *
+     * ```
+     * [
+     *     'column' => ['width' => '它对用户是什么体验', ...],
+     *     'field'  => [...],
+     * ]
+     * ```
+     *
+     * 键 `column` / `field` 与 Verifier 扫的两侧一一对应。
+     *
+     * @return array<string, array<string, string>>
      */
     public static function unwiredProps(): array
     {
         return [
-            'allowHalf' => '->rate()->allowHalf()：界面只画整星，半星选择无效',
-            'decimals' => '->money()->decimals(n)：界面固定两位小数；导出侧也写死 2',
-            'disk' => '->disk(盘名)：上传盘只取 config，不读字段声明',
-            'display' => '->display()：前端未按此渲染只读展示（走的是字段 type 分支）',
-            'format' => '->dateTime(格式)：时间格式写死 slice(0,19)',
-            'height' => '->image(n)：图片高度未接到样式绑定',
-            'min' => '->number()->min(n)：最小值未下发到 input 的 min 属性',
-            'placeholder' => '->placeholder()：文案未接到 input 的 placeholder',
-            'relation' => '->relation(关联路径)：前端只认列名里的点号；显式声明是空操作',
-            'separator' => '->tags()->separator()：分隔符未接线',
-            'symbol' => '->money(符号)：界面不显示货币符号（导出侧读了）',
-            'text' => '->link(文案)：链接文案写死「打开 ↗」',
-            'width' => '->width(n)：列宽未接到样式绑定',
+            'column' => [
+                'relation' => '->relation(关联路径)：列上只认列名里的点号，显式声明是空操作',
+            ],
+            'field' => [
+                'allowHalf' => '->rate()->allowHalf()：界面只画整星，半星选择无效',
+                'disk' => '->disk(盘名)：上传盘只取 config，不读字段声明',
+                'display' => '->display()：只读展示不按此渲染（前端走的是字段 type 分支）',
+                'separator' => '->tags()->separator()：分隔符未接线（且 tags 本身无渲染分支）',
+            ],
+        ];
+    }
+
+    /**
+     * 死 prop 的**替代写法** —— 让 AI 拿到明确的下一步，而不是只有一句「不生效」。
+     *
+     * 形状与 `unwiredProps()` 完全一致（同为 column/field 两段），
+     * 且**键必须一一对应**（有测试钉住）。
+     *
+     * @return array<string, array<string, string>>
+     */
+    public static function unwiredPropReplacements(): array
+    {
+        return [
+            'column' => [
+                'relation' => '用列名里的点号：$grid->column(\'category.name\', \'分类\')。'
+                    .'点号写法是已接通的（注意：去掉 ->relation() 即可，点号本身已经在生效）',
+            ],
+            'field' => [
+                'allowHalf' => '暂无替代：现在只支持整星。需要半星评分请在扩展里用 fieldView() 自定义 rate 渲染',
+                'disk' => '把盘写在配置里：config/aimanong.php 的 foundation.upload.disk（字段级 ->disk() 不生效）',
+                'display' => '列表展示用列的 ->dateTime() / ->dateFormat()（那两个已接通）；'
+                    .'表单字段的 display 不影响渲染，可以删掉',
+                'separator' => '暂无替代 —— 而且要注意：**tags 字段本身前端就没有渲染分支**，'
+                    .'它现在退化成普通文本输入（不是标签 UI）。'
+                    .'需要标签交互请用扩展注册字段渲染，或改用 multiselect',
+            ],
+        ];
+    }
+
+    /**
+     * **词表表达不了什么** —— 前端表达力的边界 + 逃生口。
+     *
+     * ## 与 `cannot_verify` 的分工
+     *
+     * - `cannot_verify`：讲**后端安全**（多租户 / 行级权限 / 限流）—— 校验器管不了
+     * - `cannot_express`：讲**前端表达力** —— 声明词表管不了，你必须写前端代码
+     *
+     * 两件事都让 AI「知道自己的边界」，但边界的位置完全不同。
+     *
+     * ## 为什么这一节是必需的
+     *
+     * 在这之前，AI 遇到「要一个富文本编辑器」时只有两条路：
+     *   ① 翻遍自省资料，确认到底有没有（**查无此能力**也是一种答案，但它查不到）
+     *   ② 反射框架类去猜（实测有一次反射了 142 个类，最后自己写了个扩展）
+     *
+     * 把边界**明说出来**，AI 就能一次判断「这个需求要写扩展」，
+     * 而不是在「框架是不是有我没找到的写法」上反复试错。
+     *
+     * @return array<string, string>
+     */
+    public function cannotExpress(): array
+    {
+        return [
+            /*
+             * 逃生口放在最前面 —— AI 读到「做不到」之后，
+             * 下一个问题必然是「那我该怎么做」。
+             */
+            '逃生口（怎么做到）' => '词表做不到的，用**扩展**：'
+                .'① php artisan aimanong:make-extension {Name} 生成骨架；'
+                .'② 在 register() 里 $this->field(YourField::class, \'type\', \'jsonType\', \'label\') 注册字段类型；'
+                .'③ $this->fieldView(\'type\', \'vendor::field\') 指定它长什么样、'
+                .'$this->fieldScript(\'vendor::script\') 指定逻辑怎么算。'
+                .'代价：这个字段的渲染不进 schema 自省，属于「你必须自己保证对」的部分。',
+
+            '富文本 / HTML 内容' => '**没有**富文本字段类型。'
+                .'textarea 是纯文本。CMS 正文这类需求要么用 textarea（放弃富文本），'
+                .'要么按上面的逃生口接一个编辑器扩展。',
+
+            '图表 / 数据可视化' => '**没有**图表字段类型，也没有声明式仪表盘。'
+                .'列表里的 ->progress() 是唯一的数据可视化。'
+                .'要做图表请在扩展里注册一个字段类型，或在自定义页面里处理。',
+
+            '主子表（一单多行明细）' => '**没有**嵌套表单 / 可编辑子表格。'
+                .'典型场景「订单 + N 行商品明细」目前只能用两次独立操作（先建订单再建明细），'
+                .'或写扩展。',
+
+            '地图选点 / 代码编辑器 / 拖拽排序' => '**都没有**声明方式。'
+                .'（树形页的 draggable 是空的 —— 见 tree_options.draggable）',
+
+            '自定义仪表盘 / 自定义页面' => '**没有**声明式的页面机制。'
+                .'Resource 的心智模型是「一张表 = 一组页面（列表 + 弹窗表单）」。'
+                .'首页的统计卡片是框架自己的 Blade 模板，不是声明出来的 —— '
+                .'要改它只能改视图，或用扩展注册路由自己渲染。',
+
+            '详情页' => '⚠️ `Show` 类**存在但没有任何渲染方** —— '
+                .'`Show::fields([...])` 会进 schema，但页面上不会出现只读详情页。'
+                .'这是已知缺口（与 unwired_props 同类）。'
+                .'当下要看明细请用列表页的列，或扩展里自己渲染。',
+
+            '条件表达式' => '`visibleWhen(字段, 值|数组)` **只支持等值 / 包含**，'
+                .'不是任意表达式（不支持 > < && 之类的运算）。'
+                .'更复杂的联动要么拆成多个字段组合判断，要么写扩展。',
+
+            '列表展示形态' => '列表**只有表格一种形态**（没有卡片 / 列表模式的声明）。'
+                .'窄屏时框架会按 --stack 规则把表格转成卡片，那是响应式行为，不是可选形态。',
+
+            '权限的字段级粒度' => '同一行记录里「某字段对某人只读」**做不到声明**，见 cannot_verify。',
         ];
     }
 
@@ -114,20 +223,30 @@ class Capabilities
             ],
             'cannot_verify' => $this->cannotVerify(),
             /*
-             * ⚠️ **下发了但前端不消费的 prop**。
+             * ⚠️ **下发了但前端不消费的 prop**（按 column / field 分段）。
              *
-             * 2026-10-16 审计发现 13 个这样的 API（->width() / ->money()->symbol() /
-             * ->placeholder() / ->rate()->allowHalf() …）：声明能写、schema 里也有、
+             * 2026-10-16 审计发现 13 个这样的 API：声明能写、schema 里也有、
              * `ai:verify` 报 valid:true，但前端一次都没读过 —— 既不生效也不报错。
+             * 2026-10-17 批 1 接通了 8 个，剩 5 个（且按位置分开）。
              *
              * AI 读到 column_options / form_options 会以为这些都可用，
              * 于是写出「看起来配了、实际没效果」的代码。这一节就是把这个坑明说出来。
              *
-             * 「为什么不用 ai:verify 拦」：verify 校验的是**声明本身合法**，
-             * 它看不见有没有消费方。真正拦得住的是单测
-             * （tests/Unit/PropConsumerTest.php）：新增未接线的 prop 会让它红。
+             * 两道防线（**都已就位**）：
+             *   ① `ai:verify` **事前拦截** —— 用到就报 UNWIRED_PROP 并给出替代写法
+             *   ② 单测 `PropConsumerTest` —— 新增未接线的 prop 会让它红
+             *
+             * 之所以两道都要：① 让 AI 当场知道，② 防止有人**新加**死 prop 而没人发现。
              */
             'unwired_props' => self::unwiredProps(),
+            /*
+             * ⚠️ **词表做不到什么**（前端表达力的边界）。
+             *
+             * 与 cannot_verify 分工：那条讲后端安全，这条讲前端表达力。
+             * 有了它，AI 遇到「要富文本」这类需求可以一次判断「要写扩展」，
+             * 而不必反射框架类去猜有没有隐藏写法（实测有过反射 142 个类的事故）。
+             */
+            'cannot_express' => $this->cannotExpress(),
             'scope_hooks' => ScopeHooks::introspect(),
             'rbac' => $this->rbacCapabilities(),
             'ui' => ThemeConfig::introspect(),

@@ -109,6 +109,7 @@ class Verifier
             }
 
             $issues = array_merge($issues, $this->checkRules($node));
+            $issues = array_merge($issues, $this->checkUnwiredProps($node));
         } catch (\Throwable $e) {
             $issue = [
                 'code' => 'COMPILE_FAILED',
@@ -250,6 +251,96 @@ class Verifier
         }
 
         return $score >= 65.0 ? $best : null;
+    }
+
+    /**
+     * 拦截「声明了但前端不消费」的 prop。
+     *
+     * ## 为什么这条校验是本项目最值钱的一条
+     *
+     * 框架的核心承诺是「声明即界面」——AI 写一句声明，界面就该变。
+     * 但有 13 个 prop 是**静默失效**的：能写、schema 里有、
+     * `ai:verify` 报 `valid: true`，前端一次没读过 —— 既不生效也不报错。
+     *
+     * 实测复现：`$form->text('name')->placeholder('请输入部门名称')`
+     * → schema 里确实下发了 `props.placeholder`
+     * → 页面 HTML 里搜这句话，**出现 0 次**。
+     *
+     * 后果不是「少个功能」，而是**AI 必须自己记住哪 13 个是坑** ——
+     * 这正是「AI 不得不关心前端实现细节」的来源。
+     *
+     * ## 做法：把「AI 必须知道」变成「AI 会被告诉你」
+     *
+     * 用到死 prop → 直接报一条 issue，带上：
+     *   - `did_you_mean`：**当下就能用的替代写法**（不是「不生效」四个字）
+     *   - `hint`：它对用户到底是什么体验
+     *
+     * 单一真值在 `Capabilities::unwiredProps()` ——
+     * 那边与 `PropConsumerTest` 的债务清单由测试钉住（不许漂移）。
+     * 所以「接通了某个 prop」会自动让两边同时停止拦截，不需要改这里。
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function checkUnwiredProps(ResourceNode $node): array
+    {
+        /** @var array<string, array<string, string>> $dead */
+        $dead = Capabilities::unwiredProps();
+        $replacements = Capabilities::unwiredPropReplacements();
+
+        $issues = [];
+
+        /*
+         * 列与字段**分开查**。
+         *
+         * ⚠️ 这不是为了消息好看，而是**正确性要求**：
+         * 同一个 prop 名在两侧命运可能完全不同 ——
+         * `relation` 在列上确实没人读，但在字段上是**接通**的
+         * （Compiler 收进 meta.relationFields，Controller 拿它 sync 中间表）。
+         *
+         * 第一版不分位置，于是对 `$form->multiSelect(..)->relation(..)`
+         * 这种完全正常的写法误报 —— 实测在 demo 上立刻炸出 4 个假阳性。
+         */
+        $targets = [
+            ['kind' => '列表列', 'scope' => 'column', 'items' => $node->columns],
+            ['kind' => '表单字段', 'scope' => 'field', 'items' => $node->fields],
+        ];
+
+        foreach ($targets as $target) {
+            $scopeDead = $dead[$target['scope']] ?? [];
+            $scopeAdvice = $replacements[$target['scope']] ?? [];
+
+            if ($scopeDead === []) {
+                continue;
+            }
+
+            foreach ($target['items'] as $item) {
+                foreach (array_keys($item->props) as $prop) {
+                    $prop = (string) $prop;
+
+                    if (! isset($scopeDead[$prop])) {
+                        continue;
+                    }
+
+                    $issues[] = [
+                        'code' => 'UNWIRED_PROP',
+                        'message' => "{$target['kind']} [{$item->name}] 用了 '{$prop}'，"
+                            .'但这个 prop 前端**从不读取** —— 声明了不会生效，也不会报错',
+                        'did_you_mean' => $scopeAdvice[$prop] ?? null,
+                        'hint' => $scopeDead[$prop],
+                        /*
+                         * ⚠️ 示例必须**与位置匹配** ——
+                         * 列上报错却给一个 `$form->text(...)` 的示例，
+                         * 等于教 AI 去改错的地方（第一版就是这么写的）。
+                         */
+                        'example' => $target['scope'] === 'column'
+                            ? "\$grid->column('{$item->name}', '标题');  // ← 去掉那个 prop 即可"
+                            : "\$form->text('{$item->name}')->help('提示文案');  // ← help 是已接通的写法",
+                    ];
+                }
+            }
+        }
+
+        return $issues;
     }
 
     /**

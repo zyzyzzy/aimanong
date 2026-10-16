@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Foundation\Upload;
 
+use Aimanong\Auth\PermissionGate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -11,6 +12,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 /**
  * 上传接口与文件读取。
@@ -34,6 +36,27 @@ class UploadController extends Controller
     public function __construct(protected Uploader $uploader) {}
 
     /**
+     * 上传授权。
+     *
+     * ⚠️ 审计发现：这个控制器原先**一处权限检查都没有**，只能靠「登录」
+     * 这一道门。实测一个只有「部门列表」权限的账号可以上传任意文件（201）。
+     *
+     * 与 ResourceController 一样：RBAC 关闭时放行，开启时必须命中节点。
+     */
+    protected function authorizeUpload(): void
+    {
+        if (! PermissionGate::enabled()) {
+            return;
+        }
+
+        if (! PermissionGate::check(PermissionGate::UPLOAD_SLUG)) {
+            throw new AccessDeniedHttpException(
+                '没有权限上传文件。请让管理员分配「文件上传 · 上传文件」权限。'
+            );
+        }
+    }
+
+    /**
      * 接收上传。
      *
      * 请求参数：
@@ -47,6 +70,8 @@ class UploadController extends Controller
         if (! config('aimanong.foundation.upload.enable', true)) {
             abort(403, '文件上传已被配置关闭（aimanong.foundation.upload.enable）。');
         }
+
+        $this->authorizeUpload();
 
         /** @var mixed $kindInput */
         $kindInput = $request->input('kind', 'file');

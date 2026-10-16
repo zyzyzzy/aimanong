@@ -100,21 +100,92 @@ class UploadTest extends TestCase
 
     /**
      * 字段上的 ->accept() 是**收窄**白名单，不是放开。
+     *
+     * ## ⚠️ 这个用例原先在**锁住一个 RCE 漏洞**（2026-10-16 审计发现）
+     *
+     * 原文的注释是：
+     *
+     *      // 写 php 不会真的允许 php —— 这是它自己的白名单，与框架无关；
+     *      // 框架白名单仍由 allowedExtensions 把关
+     *      $this->assertSame(['php'], $uploader->extensionsFor('file', 'php'));
+     *
+     * 这个推理是**错的**：`extensionsFor()` 的返回值**就是**最终白名单 ——
+     * 控制器把它直接拼进 `'mimes:'.implode(',', $extensions)`。
+     * 所以 `extensionsFor('file','php') === ['php']` 不等于「无影响」，
+     * 而是等于「php 通过了校验」。
+     *
+     * 何况 `accept` 来自**请求参数**，不是声明方写死的：
+     *
+     *     -F "accept=php,gif" → mimes:php,gif
+     *     → 实测落盘 uploads/.../xxx.php，并可被 Web 服务器执行
+     *
+     * 顺带：`mimes:...,php,...` 还会让 Laravel 的 shouldBlockPhpUpload()
+     * 直接 return false —— 它是来挡 PHP 的，被请求参数缴了械。
+     *
+     * 同一个用例里 `['png']` 那条（accept=image/png 对 kind=file）
+     * 也是同一个毛病：png 不在 file 白名单里，却被放行了。
      */
     public function test_accept_narrows_the_whitelist(): void
     {
         $uploader = new Uploader;
 
+        // 在白名单内的，正常收窄
         $this->assertSame(['pdf', 'docx'], $uploader->extensionsFor('file', 'pdf,docx'));
         $this->assertSame(['pdf'], $uploader->extensionsFor('file', '.pdf'));
-        $this->assertSame(['png'], $uploader->extensionsFor('file', 'image/png'));
 
-        // 写 php 不会真的允许 php —— 这是它自己的白名单，与框架无关；
-        // 框架白名单仍由 allowedExtensions 把关（见上一个用例）
-        $this->assertSame(['php'], $uploader->extensionsFor('file', 'php'));
+        /*
+         * 不在服务端白名单里的一律被丢掉 —— 这就是漏洞的修复点。
+         *
+         * 客户端**只能收窄，不能扩宽**。
+         */
+        $this->assertSame(
+            $uploader->allowedExtensions('file'),
+            $uploader->extensionsFor('file', 'php'),
+            'accept=php 不能把 php 引入白名单'
+        );
+
+        // png 属于 image 白名单，不属于 file —— kind=file 时不该被放行
+        $this->assertSame(
+            $uploader->allowedExtensions('file'),
+            $uploader->extensionsFor('file', 'image/png')
+        );
+
+        // 危险 accept 进了白名单的话，答案会更糟 —— 显式再钉一遍
+        $this->assertNotContains('php', $uploader->extensionsFor('file', 'php,gif'));
+        $this->assertNotContains('gif', $uploader->extensionsFor('file', 'php,gif'));
+
+        // 部分合法时只保留合法的那些
+        $this->assertSame(['pdf'], $uploader->extensionsFor('file', 'pdf,gif,php'));
 
         // 乱写时退回默认白名单，而不是放开成任意文件
         $this->assertSame($uploader->allowedExtensions('file'), $uploader->extensionsFor('file', '???,!!!'));
+    }
+
+    /**
+     * 危险扩展名有一份**硬编码黑名单**，不依赖 config。
+     *
+     * ⚠️ 这里是纯 PHPUnit（没有 Laravel 容器），所以测不了「config 里写 php」那条路径 ——
+     * `allowedExtensions()` 读 config 要用 `config()`。
+     * 「config 里写了也会被剔除」这个行为由 Uploader::allowedExtensions() 里的
+     * 无条件 array_filter 保证，并由 e2e（tests/e2e/http-e2e.php 的上传安全段）覆盖。
+     */
+    public function test_forbidden_extensions_are_never_allowed(): void
+    {
+        $uploader = new Uploader;
+
+        $this->assertContains('php', Uploader::forbiddenExtensions());
+        $this->assertContains('phtml', Uploader::forbiddenExtensions());
+        $this->assertContains('phar', Uploader::forbiddenExtensions());
+
+        foreach (['file', 'image'] as $kind) {
+            foreach (Uploader::forbiddenExtensions() as $bad) {
+                $this->assertNotContains(
+                    $bad,
+                    $uploader->allowedExtensions($kind),
+                    "{$kind} 白名单不该含 {$bad}"
+                );
+            }
+        }
     }
 
     public function test_directory_is_normalized(): void

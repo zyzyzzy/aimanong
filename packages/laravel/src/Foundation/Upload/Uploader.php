@@ -345,10 +345,25 @@ class Uploader implements UploadSpec
             return [];
         }
 
-        return array_values(array_filter(array_map(
+        /*
+         * 🔴 危险扩展名**一律剔除**，不管 config 里写没写。
+         *
+         * `mimes:...,php,...` 会同时让 Laravel 的 shouldBlockPhpUpload() 失效 ——
+         * 与其指望每个项目的配置都写对，不如在这里硬挡一道。
+         * 剔除后若是空列表，调用方的「白名单为空」检查会给出明确报错。
+         */
+        $dangerous = self::forbiddenExtensions();
+
+        $list = array_values(array_filter(array_map(
             fn (mixed $v): string => is_string($v) ? strtolower(trim($v, '.')) : '',
             $value
         )));
+
+        // $list 上面已经滤掉空串，这里只滤危险扩展名
+        return array_values(array_filter(
+            $list,
+            fn (string $ext): bool => ! in_array($ext, $dangerous, true)
+        ));
     }
 
     /**
@@ -393,8 +408,55 @@ class Uploader implements UploadSpec
             $out[] = $token;
         }
 
-        // accept 里全是不认识的写法时，退回默认白名单（不能放开成任意文件）
-        return $out === [] ? $this->allowedExtensions($kind) : $out;
+        /*
+         * 🔴 关键：客户端给的 accept **只能收窄**，绝不能扩宽。
+         *
+         * ## 原先的写法是 RCE 级漏洞（2026-10-16 审计实测复现）
+         *
+         * `accept` 来自请求参数，而这个方法把它**原样**当成白名单用：
+         *
+         *     POST /admin/api/upload
+         *       -F "file=@x.php;type=image/gif"   # 内容以 GIF89a 开头骗过 finfo
+         *       -F "kind=file" -F "accept=php,gif"
+         *     → 201 {"path":"uploads/.../xxx.php"}   # 落盘的是可执行 PHP
+         *
+         * 而且 `accept=php` 还有连带伤害：Laravel 的 shouldBlockPhpUpload()
+         * 一旦发现规则里出现 `php` 就直接 return false ——
+         * **它是来挡 PHP 的，结果被请求参数缴了械**。
+         *
+         * 所以：候选扩展名必须**同时**出现在服务端的 kind 白名单里。
+         */
+        $server = $this->allowedExtensions($kind);
+        $narrowed = [];
+
+        foreach ($out as $token) {
+            if (in_array($token, $server, true)) {
+                $narrowed[] = $token;
+            }
+        }
+
+        // accept 里全是服务端不认的类型时，退回默认白名单（不能放开成任意文件）
+        return $narrowed === [] ? $server : array_values(array_unique($narrowed));
+    }
+
+    /**
+     * 永远不允许的扩展名 —— 即使有人在 config 里写了也拒绝。
+     *
+     * 这些扩展名一旦落到能被 Web 服务器解析的目录就是 RCE。
+     * 框架自己推荐过 `storage:link` / `serve=url`（都是文档化选项），
+     * 所以「storage 不会被解析」这个前提**不成立**。
+     *
+     * @return array<int, string>
+     */
+    public static function forbiddenExtensions(): array
+    {
+        return [
+            // PHP 家族
+            'php', 'php3', 'php4', 'php5', 'php7', 'php8', 'phps', 'phtml', 'pht', 'phar',
+            // 其它常见可执行 / 可被服务器解析
+            'cgi', 'pl', 'py', 'rb', 'jsp', 'jspx', 'asp', 'aspx', 'ashx', 'shtml',
+            'htaccess', 'htpasswd',
+        ];
     }
 
     /**
@@ -474,17 +536,47 @@ class Uploader implements UploadSpec
     }
 
     /**
-     * 取安全的扩展名。
+     * 取安全的扩展名 —— 以**文件内容判定**为准，客户端文件名只作兜底。
      *
-     * 以**客户端 MIME + 扩展名双白名单**已在控制器层校验过；
-     * 这里只负责把扩展名规整成不会有歧义的形式。
+     * ## 为什么不能信 getClientOriginalExtension()
+     *
+     * 那个值完全来自客户端。审计实测：
+     *
+     *     -F "file=@x.php;type=image/gif"   # 内容 "GIF89a<?php system($_GET['c']); ?>"
+     *     → 落盘 uploads/.../xxx.php        # 扩展名照抄客户端文件名
+     *
+     * 即使 MIME 校验放行（内容确实是 image/gif），落盘也不该叫 `.php`。
+     * 用 `guessExtension()`（Laravel 按真实内容嗅探）就得到 `gif` ——
+     * 文件依旧是那张图，但**不会被任何 Web 服务器当脚本执行**。
+     *
+     * ⚠️ 客户端 MIME + 扩展名双白名单已在控制器层校验过；这里只负责
+     * 让落盘名不产生歧义。内容判定拿不到时才退回客户端扩展名（仍会被
+     * 危险扩展名黑名单挡一道）。
      */
     protected function safeExtension(UploadedFile $file): string
     {
-        $ext = strtolower((string) $file->getClientOriginalExtension());
+        $fromContent = $this->normalizeExtension((string) $file->guessExtension());
+        $fromName = $this->normalizeExtension((string) $file->getClientOriginalExtension());
 
-        // 只留字母数字，挡掉 php.jpg 之外的 "php\x00.jpg" 这类花活
-        $ext = preg_replace('/[^a-z0-9]/', '', $ext) ?? '';
+        $dangerous = self::forbiddenExtensions();
+        $candidates = [$fromContent, $fromName];
+
+        foreach ($candidates as $ext) {
+            if ($ext !== '' && ! in_array($ext, $dangerous, true)) {
+                return $ext;
+            }
+        }
+
+        // 两个来源都拿不到安全扩展名 —— 用 bin，绝不回落到客户端给的
+        return 'bin';
+    }
+
+    /**
+     * 只留字母数字，挡掉 "php\x00.jpg" 这类花活。
+     */
+    protected function normalizeExtension(string $ext): string
+    {
+        $ext = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $ext) ?? '');
 
         return substr($ext, 0, 12);
     }

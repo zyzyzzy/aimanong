@@ -1326,6 +1326,134 @@ t(
 t("admin 后台含「登录日志」（对照）", str_contains($adBody, '登录日志'));
 t("admin 后台含「管理员」菜单（对照）", str_contains($adBody, '管理员'));
 
+/*
+ * ═══ 上传安全 ═══
+ *
+ * 锁两个 P0（2026-10-16 安全审计实测复现）：
+ *   ① 白名单来自请求参数 `accept` → 可落盘可执行 .php（RCE 链）
+ *   ② 上传端点**没有任何权限检查** → 零权限账号也能上传
+ *
+ * 期望值读共享 fixture，两端同一份。
+ */
+echo "\n═══ 上传安全 ═══\n";
+
+$upExp = $multiAppExp['upload_security'] ?? null;
+
+if ($upExp === null) {
+    t('读得到上传安全共享期望', false, 'fixtures 里缺 upload_security');
+} else {
+    // 造一个「GIF89a + PHP 代码」的多态文件 —— 内容像图，扩展名像脚本
+    $polyPath = sys_get_temp_dir().'/amn-e2e-poly-'.getmypid().'.php';
+    file_put_contents($polyPath, 'GIF89a<?php system($_GET["c"]); ?>');
+
+    $blockedAll = true;
+    $notBlocked = [];
+
+    foreach ((array) $upExp['dangerous_accepts'] as $badAccept) {
+        $ch = curl_init("$base/admin/api/".$upExp['endpoint']);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 15,
+            CURLOPT_COOKIEJAR => '/tmp/e2e-cookie.txt',
+            CURLOPT_COOKIEFILE => '/tmp/e2e-cookie.txt',
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => [
+                'file' => new CURLFile($polyPath, 'image/gif', (string) $upExp['payload_filename']),
+                'kind' => 'file',
+                'accept' => $badAccept,
+            ],
+            CURLOPT_HTTPHEADER => ['X-CSRF-TOKEN: '.$csrf],
+        ]);
+        $b = (string) curl_exec($ch);
+        $c = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        unset($ch);
+
+        if (in_array($c, (array) $upExp['dangerous_status_must_not_be'], true)) {
+            $blockedAll = false;
+            $notBlocked[] = "accept={$badAccept}→{$c}";
+        }
+    }
+
+    t(
+        '危险 accept（php 等）不能上传成功',
+        $blockedAll,
+        $blockedAll ? '全部被拒' : '这些放行了：'.implode(', ', $notBlocked)
+    );
+
+    /*
+     * 光看 HTTP 码不够 —— 万一它换了条路落盘呢。
+     * 直接查磁盘上有没有 .php/.phtml。
+     */
+    $storage = dirname(__DIR__, 2).'/demo-app/storage/app/public';
+    $found = [];
+
+    foreach (['php', 'phtml', 'phar'] as $ext) {
+        $hits = glob($storage.'/**/*.'.$ext) ?: [];
+        foreach ($hits as $h) {
+            $found[] = $h;
+        }
+    }
+
+    t(
+        'storage 里没有可执行脚本落盘',
+        $found === [],
+        $found === [] ? '干净' : '发现：'.implode(', ', array_slice($found, 0, 3))
+    );
+
+    @unlink($polyPath);
+
+    // ② 低权限账号不能上传
+    $lp = $upExp['low_priv'];
+    $lpJar = '/tmp/e2e-lowpriv-cookie.txt';
+    @unlink($lpJar);
+
+    $ch = curl_init("$base/admin/auth/login");
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEJAR => $lpJar, CURLOPT_COOKIEFILE => $lpJar]);
+    $lpForm = (string) curl_exec($ch);
+    unset($ch);
+    preg_match('/name="_token" value="([^"]+)"/', $lpForm, $lm);
+
+    $ch = curl_init("$base/admin/auth/login");
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEJAR => $lpJar, CURLOPT_COOKIEFILE => $lpJar,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => ['_token' => $lm[1] ?? '', 'username' => $lp['username'], 'password' => $lp['password']],
+    ]);
+    curl_exec($ch);
+    unset($ch);
+
+    $ch = curl_init("$base/admin/departments");
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEJAR => $lpJar, CURLOPT_COOKIEFILE => $lpJar]);
+    $lpPage = (string) curl_exec($ch);
+    unset($ch);
+    preg_match('/name="csrf-token" content="([^"]+)"/', $lpPage, $lc);
+    $lpCsrf = $lc[1] ?? '';
+
+    $plainPath = sys_get_temp_dir().'/amn-e2e-plain-'.getmypid().'.txt';
+    file_put_contents($plainPath, 'hello');
+
+    $ch = curl_init("$base/admin/api/".$upExp['endpoint']);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15,
+        CURLOPT_COOKIEJAR => $lpJar, CURLOPT_COOKIEFILE => $lpJar,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => ['file' => new CURLFile($plainPath, 'text/plain', 'probe.txt'), 'kind' => 'file'],
+        CURLOPT_HTTPHEADER => ['X-CSRF-TOKEN: '.$lpCsrf],
+    ]);
+    $b = (string) curl_exec($ch);
+    $lpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    unset($ch);
+
+    t(
+        "低权限账号（{$lp['username']}）上传 → {$lp['expect_status']}",
+        $lpCode === (int) $lp['expect_status'],
+        "HTTP {$lpCode}"
+    );
+
+    @unlink($plainPath);
+    @unlink($lpJar);
+}
+
 echo "\n";
 printf("通过 %d / %d\n", $pass, $pass + $fail);
 

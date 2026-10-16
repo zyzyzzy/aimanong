@@ -50,6 +50,14 @@ class PermissionGate
     /**
      * 是否启用 RBAC。未启用时一律放行。
      */
+    /**
+     * 上传能力的权限节点 slug。
+     *
+     * 上传不属于任何 Resource，所以不走 `slug($uri, $action)` 那套命名。
+     * 单独一个常量，避免控制器与 sync() 各写一遍字面量写歪。
+     */
+    public const UPLOAD_SLUG = 'upload.create';
+
     public static function enabled(): bool
     {
         /*
@@ -268,6 +276,31 @@ class PermissionGate
                     $created++;
                 }
             }
+        }
+
+        /*
+         * 上传是**框架级**能力，不属于任何 Resource —— 但它同样需要授权。
+         *
+         * 审计发现：`POST /admin/api/upload` 原先**没有任何权限检查**
+         * （对比 ResourceController 每个动作都有 authorize_）。
+         * 实测：一个只有「部门列表」权限的账号能直接上传文件，HTTP 201。
+         *
+         * 上传是写操作，必须能按角色关掉 —— 尤其它和「落盘 + 可能被解析」
+         * 这条链在一起，是最该收紧的入口之一。
+         */
+        $uploadSlug = self::UPLOAD_SLUG;
+        $expected[$uploadSlug] = true;
+
+        if (Permission::query()->where('slug', $uploadSlug)->exists()) {
+            $existing++;
+        } else {
+            Permission::query()->create([
+                'slug' => $uploadSlug,
+                'name' => '文件上传 · 上传文件',
+                'group' => '基座能力',
+            ]);
+
+            $created++;
         }
 
         $orphaned = Permission::query()

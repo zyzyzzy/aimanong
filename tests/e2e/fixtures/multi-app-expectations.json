@@ -295,5 +295,40 @@
             "name": "AAAAAAAAAAAAAAAAAAAAA"
         },
         "expect_status": 422
+    },
+    "upload_security": {
+        "_note": "上传白名单只能被客户端**收窄**；且上传是独立权限",
+        "_why": [
+            "P0（2026-10-16 安全审计实测复现）：`accept` 来自请求参数，",
+            "而 Uploader::extensionsFor() 把它**原样**当成白名单用：",
+            "",
+            "    POST /admin/api/upload",
+            "      -F \"file=@x.php;type=image/gif\"   # 内容 GIF89a 开头骗过 finfo",
+            "      -F \"kind=file\" -F \"accept=php,gif\"",
+            "    → 201，落盘 uploads/.../xxx.php（可执行）",
+            "",
+            "`accept=php` 还有连带伤害：Laravel 的 shouldBlockPhpUpload()",
+            "一见规则里出现 php 就 return false —— 它是来挡 PHP 的，被请求参数缴了械。",
+            "",
+            "另有：落盘扩展名取自客户端文件名（getClientOriginalExtension），",
+            "以及 POST /admin/api/upload **没有任何权限检查**",
+            "（零权限账号实测 201）。三处都在这一组断言里。"
+        ],
+        "endpoint": "upload",
+        "dangerous_accepts": [
+            "php,gif",
+            "php",
+            "phtml,php"
+        ],
+        "payload_filename": "x.php",
+        "dangerous_status_must_not_be": [
+            200,
+            201
+        ],
+        "low_priv": {
+            "username": "viewer01",
+            "password": "viewer123",
+            "expect_status": 403
+        }
     }
 }

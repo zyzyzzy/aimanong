@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Aimanong\Support;
 
-use Aimanong\Contracts\RelationResolver;
 use Aimanong\Contracts\ApplicationResolver;
 use Aimanong\Contracts\DictionarySource;
 use Aimanong\Contracts\PermissionChecker;
+use Aimanong\Contracts\RelationResolver;
 use Aimanong\Contracts\SchemaIntrospector;
 use Aimanong\Contracts\UploadSpec;
 use Aimanong\Exceptions\DriverNotRegisteredException;

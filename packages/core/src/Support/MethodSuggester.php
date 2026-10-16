@@ -32,8 +32,8 @@ namespace Aimanong\Support;
 final class MethodSuggester
 {
     /**
-     * @param  array<int, string>  $extra        类方法表之外、但也算「可用名称」的清单
-     *                                          （如 Form 的字段类型不在方法表里）
+     * @param  array<int, string>  $extra  类方法表之外、但也算「可用名称」的清单
+     *                                     （如 Form 的字段类型不在方法表里）
      * @param  string  $extraLabel  $extra 的展示标签
      */
     public static function message(
@@ -41,8 +41,7 @@ final class MethodSuggester
         string $method,
         array $extra = [],
         string $extraLabel = '其他可用名称'
-    ): string
-    {
+    ): string {
         $available = array_values(array_filter(
             get_class_methods($class),
             static fn (string $m): bool => ! str_starts_with($m, '__')

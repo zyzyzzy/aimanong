@@ -1,0 +1,39 @@
+O:23:"PHPStan\Cache\CacheItem":2:{s:11:"variableKey";s:83:"v2-6.73.0.5-8.2.29-4e5e8679f1838263eac4b3da917d5eda571b5b12874110e2808576c85e07e31e";s:4:"data";a:22:{s:13:"locatedSource";a:2:{s:5:"class";s:60:"PHPStan\BetterReflection\SourceLocator\Located\LocatedSource";s:4:"data";a:2:{s:4:"name";s:23:"Aimanong\Ui\ThemeConfig";s:8:"filename";s:74:"/Users/zhangyang/dsh_work/01/aimanong/packages/core/src/Ui/ThemeConfig.php";}}s:9:"namespace";s:11:"Aimanong\Ui";s:4:"name";s:23:"Aimanong\Ui\ThemeConfig";s:9:"shortName";s:11:"ThemeConfig";s:11:"isInterface";b:0;s:7:"isTrait";b:0;s:6:"isEnum";b:0;s:12:"isBackedEnum";b:0;s:9:"modifiers";i:0;s:10:"docComment";s:683:"/**
+ * 界面配置声明 —— **单一数据源**。
+ *
+ * ## 设计
+ *
+ * 所有可配置项的**声明**都在这里（键名、类型、可选值、默认值、中文标签）。
+ * 三个消费者共享它：
+ *   1. 配置面板 UI（渲染表单项）
+ *   2. 服务端渲染（把用户偏好注入 `<html>` 属性）
+ *   3. AI 自省（`/__ai/ui` 与 capabilities）
+ *
+ * 新增一个配置项只改这里 —— 不需要同时改前端和文档。
+ *
+ * ## 为什么不用数据库存"有哪些配置项"
+ *
+ * 那会变成"代码一份 + 数据库一份"，正是本项目禁止的分叉。
+ * 数据库只存**用户选了哪个值**，不存"有哪些选项"。
+ */";s:10:"attributes";a:0:{}s:9:"startLine";i:25;s:7:"endLine";i:214;s:11:"startColumn";i:1;s:9:"endColumn";i:1;s:15:"parentClassName";N;s:20:"implementsClassNames";a:0:{}s:15:"traitClassNames";a:0:{}s:18:"immediateConstants";a:0:{}s:19:"immediateProperties";a:0:{}s:16:"immediateMethods";a:5:{s:7:"options";a:20:{s:4:"name";s:7:"options";s:10:"parameters";a:0:{}s:16:"returnsReference";b:0;s:10:"returnType";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:5:"array";s:12:"isIdentifier";b:1;}}s:10:"attributes";a:0:{}s:10:"docComment";s:82:"/**
+ * 全部可配置项。
+ *
+ * @return array<string, array<string, mixed>>
+ */";s:9:"startLine";i:32;s:7:"endLine";i:117;s:11:"startColumn";i:5;s:9:"endColumn";i:5;s:10:"couldThrow";b:0;s:9:"isClosure";b:0;s:11:"isGenerator";b:0;s:10:"isVariadic";b:0;s:9:"modifiers";i:17;s:9:"namespace";s:11:"Aimanong\Ui";s:18:"declaringClassName";s:23:"Aimanong\Ui\ThemeConfig";s:21:"implementingClassName";s:23:"Aimanong\Ui\ThemeConfig";s:16:"currentClassName";s:23:"Aimanong\Ui\ThemeConfig";s:9:"aliasName";N;}s:8:"defaults";a:20:{s:4:"name";s:8:"defaults";s:10:"parameters";a:0:{}s:16:"returnsReference";b:0;s:10:"returnType";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:5:"array";s:12:"isIdentifier";b:1;}}s:10:"attributes";a:0:{}s:10:"docComment";s:64:"/**
+ * 默认值集合。
+ *
+ * @return array<string, mixed>
+ */";s:9:"startLine";i:124;s:7:"endLine";i:133;s:11:"startColumn";i:5;s:9:"endColumn";i:5;s:10:"couldThrow";b:0;s:9:"isClosure";b:0;s:11:"isGenerator";b:0;s:10:"isVariadic";b:0;s:9:"modifiers";i:17;s:9:"namespace";s:11:"Aimanong\Ui";s:18:"declaringClassName";s:23:"Aimanong\Ui\ThemeConfig";s:21:"implementingClassName";s:23:"Aimanong\Ui\ThemeConfig";s:16:"currentClassName";s:23:"Aimanong\Ui\ThemeConfig";s:9:"aliasName";N;}s:9:"normalize";a:20:{s:4:"name";s:9:"normalize";s:10:"parameters";a:1:{s:5:"input";a:13:{s:4:"name";s:5:"input";s:7:"default";N;s:4:"type";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:5:"array";s:12:"isIdentifier";b:1;}}s:10:"isVariadic";b:0;s:5:"byRef";b:0;s:10:"isPromoted";b:0;s:10:"attributes";a:0:{}s:9:"startLine";i:143;s:7:"endLine";i:143;s:11:"startColumn";i:38;s:9:"endColumn";i:49;s:14:"parameterIndex";i:0;s:10:"isOptional";b:0;}}s:16:"returnsReference";b:0;s:10:"returnType";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:5:"array";s:12:"isIdentifier";b:1;}}s:10:"attributes";a:0:{}s:10:"docComment";s:236:"/**
+ * 校验并规范化用户提交的偏好。
+ *
+ * 非法值一律回退到默认值 —— 不抛异常，避免用户改坏配置后进不去后台。
+ *
+ * @param  array<string, mixed>  $input
+ * @return array<string, mixed>
+ */";s:9:"startLine";i:143;s:7:"endLine";i:171;s:11:"startColumn";i:5;s:9:"endColumn";i:5;s:10:"couldThrow";b:0;s:9:"isClosure";b:0;s:11:"isGenerator";b:0;s:10:"isVariadic";b:0;s:9:"modifiers";i:17;s:9:"namespace";s:11:"Aimanong\Ui";s:18:"declaringClassName";s:23:"Aimanong\Ui\ThemeConfig";s:21:"implementingClassName";s:23:"Aimanong\Ui\ThemeConfig";s:16:"currentClassName";s:23:"Aimanong\Ui\ThemeConfig";s:9:"aliasName";N;}s:14:"normalizeColor";a:20:{s:4:"name";s:14:"normalizeColor";s:10:"parameters";a:1:{s:5:"value";a:13:{s:4:"name";s:5:"value";s:7:"default";N;s:4:"type";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:5:"mixed";s:12:"isIdentifier";b:1;}}s:10:"isVariadic";b:0;s:5:"byRef";b:0;s:10:"isPromoted";b:0;s:10:"attributes";a:0:{}s:9:"startLine";i:176;s:7:"endLine";i:176;s:11:"startColumn";i:46;s:9:"endColumn";i:57;s:14:"parameterIndex";i:0;s:10:"isOptional";b:0;}}s:16:"returnsReference";b:0;s:10:"returnType";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:6:"string";s:12:"isIdentifier";b:1;}}s:10:"attributes";a:0:{}s:10:"docComment";s:83:"/**
+ * 规范化颜色值。非法值返回空（表示用风格默认色）。
+ */";s:9:"startLine";i:176;s:7:"endLine";i:184;s:11:"startColumn";i:5;s:9:"endColumn";i:5;s:10:"couldThrow";b:0;s:9:"isClosure";b:0;s:11:"isGenerator";b:0;s:10:"isVariadic";b:0;s:9:"modifiers";i:18;s:9:"namespace";s:11:"Aimanong\Ui";s:18:"declaringClassName";s:23:"Aimanong\Ui\ThemeConfig";s:21:"implementingClassName";s:23:"Aimanong\Ui\ThemeConfig";s:16:"currentClassName";s:23:"Aimanong\Ui\ThemeConfig";s:9:"aliasName";N;}s:10:"introspect";a:20:{s:4:"name";s:10:"introspect";s:10:"parameters";a:0:{}s:16:"returnsReference";b:0;s:10:"returnType";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:5:"array";s:12:"isIdentifier";b:1;}}s:10:"attributes";a:0:{}s:10:"docComment";s:89:"/**
+ * 供 AI 自省：配置项清单 + 用法。
+ *
+ * @return array<string, mixed>
+ */";s:9:"startLine";i:191;s:7:"endLine";i:213;s:11:"startColumn";i:5;s:9:"endColumn";i:5;s:10:"couldThrow";b:0;s:9:"isClosure";b:0;s:11:"isGenerator";b:0;s:10:"isVariadic";b:0;s:9:"modifiers";i:17;s:9:"namespace";s:11:"Aimanong\Ui";s:18:"declaringClassName";s:23:"Aimanong\Ui\ThemeConfig";s:21:"implementingClassName";s:23:"Aimanong\Ui\ThemeConfig";s:16:"currentClassName";s:23:"Aimanong\Ui\ThemeConfig";s:9:"aliasName";N;}}s:10:"traitsData";a:4:{s:7:"aliases";a:0:{}s:9:"modifiers";a:0:{}s:11:"precedences";a:0:{}s:6:"hashes";a:0:{}}}}

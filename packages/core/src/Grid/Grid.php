@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Aimanong\Grid;
 
+use Aimanong\Contracts\BatchActionHandler;
 use Aimanong\Grid\Actions\BatchAction;
-use Aimanong\Support\SuggestsMethods;
 use Aimanong\Grid\Concerns\CanExport;
 use Aimanong\Schema\Ast\ColumnNode;
+use Aimanong\Support\SuggestsMethods;
 
 /**
  * 列表页定义。
@@ -16,9 +17,8 @@ use Aimanong\Schema\Ast\ColumnNode;
  */
 class Grid
 {
-    use SuggestsMethods;
-
     use CanExport;
+    use SuggestsMethods;
 
     /**
      * @var array<string, Column>
@@ -192,8 +192,8 @@ class Grid
             if ($action->getHandler() === null) {
                 throw new \InvalidArgumentException(
                     "自定义批量动作 [{$action->getName()}] 没有指定处理器。"
-                    ."用 ->handler(SomeHandler::class) 指定 —— 它需要实现 "
-                    .\Aimanong\Contracts\BatchActionHandler::class
+                    .'用 ->handler(SomeHandler::class) 指定 —— 它需要实现 '
+                    .BatchActionHandler::class
                 );
             }
 

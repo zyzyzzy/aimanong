@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Aimanong\Schema;
 
-use Aimanong\Support\Drivers;
 use Aimanong\Contracts\Resource as ResourceContract;
 use Aimanong\Contracts\SchemaIntrospector;
 use Aimanong\Exceptions\GhostColumnException;
@@ -18,6 +17,8 @@ use Aimanong\Schema\Ast\ResourceNode;
 use Aimanong\Schema\Introspector\IntrospectorResolver;
 use Aimanong\Show\Show;
 use Aimanong\Support\ColumnResolver;
+use Aimanong\Support\Drivers;
+use Aimanong\Support\Str;
 use Aimanong\Tree\Tree;
 
 /**
@@ -264,7 +265,7 @@ class Compiler
         }
 
         throw new InvalidQueryColumnException(
-            class_basename($resource),
+            Str::classBasename($resource),
             $issues
         );
     }
@@ -374,7 +375,7 @@ class Compiler
         throw new GhostColumnException(
             sprintf(
                 '%s 声明了不存在的列/字段: %s',
-                class_basename($resource),
+                Str::classBasename($resource),
                 implode(', ', $ghosts)
             ),
             $ghosts,

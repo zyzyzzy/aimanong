@@ -387,7 +387,7 @@ public static function form(Form $form): void
     $form->switch('enabled')->label('启用');
 }
 PHP,
-        ];;
+        ];
 
         if (! isset($examples[$pattern])) {
             return ['status' => 404, 'body' => [

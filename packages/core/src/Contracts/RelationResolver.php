@@ -34,14 +34,13 @@ interface RelationResolver
     /**
      * 解析一个关联，返回下拉所需的一切。
      *
-     * @param  string  $model       持有该关联的模型类名（如 App\Models\Article）
-     * @param  string  $relation    关联方法名（如 author）
+     * @param  string  $model  持有该关联的模型类名（如 App\Models\Article）
+     * @param  string  $relation  关联方法名（如 author）
      * @param  string|null  $labelColumn  候选显示用哪一列；null = 自动挑
-     *
      * @return array{options: array<int, array{value: mixed, label: string}>, exists: string, labelColumn: string}|null
-     *                                                                                                                解析不了时返回 null（不抛异常）——
-     *                                                                                                                编译期会遇到「模型还没建」「表还没迁」这类正常中间态，
-     *                                                                                                                让整个 Resource 编译失败比降级更难排查
+     *                                                                                                                  解析不了时返回 null（不抛异常）——
+     *                                                                                                                  编译期会遇到「模型还没建」「表还没迁」这类正常中间态，
+     *                                                                                                                  让整个 Resource 编译失败比降级更难排查
      */
     public function resolve(string $model, string $relation, ?string $labelColumn = null): ?array;
 }

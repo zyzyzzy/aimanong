@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Aimanong\Grid;
 
-use Aimanong\Support\SuggestsMethods;
 use Aimanong\Exceptions\DictNotFoundException;
 use Aimanong\Schema\Ast\ColumnNode;
 use Aimanong\Support\Drivers;
+use Aimanong\Support\EnumLabel;
+use Aimanong\Support\SuggestsMethods;
 
 /**
  * 表格列。
@@ -455,6 +456,6 @@ class Column
      */
     protected static function labelOf(\UnitEnum $case): string
     {
-        return \Aimanong\Support\EnumLabel::of($case);
+        return EnumLabel::of($case);
     }
 }

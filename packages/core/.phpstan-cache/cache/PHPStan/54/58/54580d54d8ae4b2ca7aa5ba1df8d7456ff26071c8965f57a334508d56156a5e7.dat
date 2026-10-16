@@ -1,0 +1,30 @@
+O:23:"PHPStan\Cache\CacheItem":2:{s:11:"variableKey";s:83:"v2-6.73.0.5-8.2.29-08e925d4ceab750c231bcc3f1cf5b3ca8c7ac17d4244431a92ec6016098e02b3";s:4:"data";a:22:{s:13:"locatedSource";a:2:{s:5:"class";s:60:"PHPStan\BetterReflection\SourceLocator\Located\LocatedSource";s:4:"data";a:2:{s:4:"name";s:20:"Aimanong\Support\Str";s:8:"filename";s:71:"/Users/zhangyang/dsh_work/01/aimanong/packages/core/src/Support/Str.php";}}s:9:"namespace";s:16:"Aimanong\Support";s:4:"name";s:20:"Aimanong\Support\Str";s:9:"shortName";s:3:"Str";s:11:"isInterface";b:0;s:7:"isTrait";b:0;s:6:"isEnum";b:0;s:12:"isBackedEnum";b:0;s:9:"modifiers";i:32;s:10:"docComment";s:1199:"/**
+ * core 自己的字符串工具 —— **不依赖任何框架助手函数**。
+ *
+ * ## 为什么必须有这个类
+ *
+ * `packages/core` 是发布到 Packagist 的**独立包**，README 里明确说它是
+ * 「框架无关内核」。但在此之前它有 5 处调用了 `class_basename()` ——
+ * 那是 **Laravel 的全局助手**（定义在 `illuminate/support/helpers.php`）。
+ *
+ * 之所以一直没炸：ThinkPHP 通过 `topthink/think-helper` **也**定义了
+ * 同名函数。也就是说「恰好两边都有」，而不是「core 自己能站住」。
+ *
+ * 真出事的情形：
+ *   · 有人把 `aimanong/core` 单独装进一个非 Laravel/TP 的项目
+ *   · 依赖顺序变化导致助手文件未被加载
+ *   → `Call to undefined function class_basename()`，致命错误
+ *
+ * ## 为什么纯度门禁没拦住
+ *
+ * `scripts/check-core-purity.sh` 原先只查 `use Illuminate\...` 与
+ * 全限定名 —— **查不到全局助手函数**。已补上这一类（并做了反例验证）。
+ *
+ * 教训：「框架无关」不能只查 import。全局函数是**隐式**依赖 ——
+ * 没有 use、没有 FQN，但一样把 core 钉在某个框架上。
+ */";s:10:"attributes";a:0:{}s:9:"startLine";i:32;s:7:"endLine";i:46;s:11:"startColumn";i:1;s:9:"endColumn";i:1;s:15:"parentClassName";N;s:20:"implementsClassNames";a:0:{}s:15:"traitClassNames";a:0:{}s:18:"immediateConstants";a:0:{}s:19:"immediateProperties";a:0:{}s:16:"immediateMethods";a:1:{s:13:"classBasename";a:20:{s:4:"name";s:13:"classBasename";s:10:"parameters";a:1:{s:5:"class";a:13:{s:4:"name";s:5:"class";s:7:"default";N;s:4:"type";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:6:"string";s:12:"isIdentifier";b:1;}}s:10:"isVariadic";b:0;s:5:"byRef";b:0;s:10:"isPromoted";b:0;s:10:"attributes";a:0:{}s:9:"startLine";i:40;s:7:"endLine";i:40;s:11:"startColumn";i:42;s:9:"endColumn";i:54;s:14:"parameterIndex";i:0;s:10:"isOptional";b:0;}}s:16:"returnsReference";b:0;s:10:"returnType";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:6:"string";s:12:"isIdentifier";b:1;}}s:10:"attributes";a:0:{}s:10:"docComment";s:193:"/**
+ * 取类名（不含命名空间），等价于 Laravel / TP 的 `class_basename()`。
+ *
+ * `class_basename('App\\Models\\User')` → `'User'`
+ * `class_basename('User')` → `'User'`
+ */";s:9:"startLine";i:40;s:7:"endLine";i:45;s:11:"startColumn";i:5;s:9:"endColumn";i:5;s:10:"couldThrow";b:0;s:9:"isClosure";b:0;s:11:"isGenerator";b:0;s:10:"isVariadic";b:0;s:9:"modifiers";i:17;s:9:"namespace";s:16:"Aimanong\Support";s:18:"declaringClassName";s:20:"Aimanong\Support\Str";s:21:"implementingClassName";s:20:"Aimanong\Support\Str";s:16:"currentClassName";s:20:"Aimanong\Support\Str";s:9:"aliasName";N;}}s:10:"traitsData";a:4:{s:7:"aliases";a:0:{}s:9:"modifiers";a:0:{}s:11:"precedences";a:0:{}s:6:"hashes";a:0:{}}}}

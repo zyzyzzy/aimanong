@@ -1,0 +1,29 @@
+O:23:"PHPStan\Cache\CacheItem":2:{s:11:"variableKey";s:83:"v2-6.73.0.5-8.2.29-b35ec9359998404c47b372481a89f7d70d9b7bb9b23663e145e967d1010912db";s:4:"data";a:22:{s:13:"locatedSource";a:2:{s:5:"class";s:60:"PHPStan\BetterReflection\SourceLocator\Located\LocatedSource";s:4:"data";a:2:{s:4:"name";s:37:"Aimanong\Contracts\BatchActionHandler";s:8:"filename";s:88:"/Users/zhangyang/dsh_work/01/aimanong/packages/core/src/Contracts/BatchActionHandler.php";}}s:9:"namespace";s:18:"Aimanong\Contracts";s:4:"name";s:37:"Aimanong\Contracts\BatchActionHandler";s:9:"shortName";s:18:"BatchActionHandler";s:11:"isInterface";b:1;s:7:"isTrait";b:0;s:6:"isEnum";b:0;s:12:"isBackedEnum";b:0;s:9:"modifiers";i:0;s:10:"docComment";s:1031:"/**
+ * 自定义批量动作的处理器。
+ *
+ * ## 为什么是「引用一个类」而不是「传一个闭包」
+ *
+ * ADR-003 定的是：**声明层只放数据，不放行为**。理由是声明要被
+ * 序列化、被自省、被 AI 阅读、被跨框架执行 —— 闭包这四件都做不到。
+ *
+ * 但「声明层不收闭包」不等于「不能有自定义批量动作」——
+ * 中间那条路是**引用**：声明里放类名（数据），框架按名实例化并调用。
+ * 这样既守住了 ADR-003，又让动作可声明。
+ *
+ * ## 实现方拿到什么
+ *
+ * 只有模型类名与被选中的 id。**不传请求对象、不传 Resource** ——
+ * 处理器是应用代码，框架不该把内部结构泄进去，否则框架一改它就碎。
+ * 需要请求上下文时自己从容器取。
+ *
+ * ## 权限
+ *
+ * 框架会先校验 `{uri}.{动作名}` 权限节点（与内置动作同一套机制），
+ * 通过后才调用 `handle()`。所以处理器里**不需要**再判一次权限。
+ */";s:10:"attributes";a:0:{}s:9:"startLine";i:30;s:7:"endLine";i:40;s:11:"startColumn";i:1;s:9:"endColumn";i:1;s:15:"parentClassName";N;s:20:"implementsClassNames";a:0:{}s:15:"traitClassNames";a:0:{}s:18:"immediateConstants";a:0:{}s:19:"immediateProperties";a:0:{}s:16:"immediateMethods";a:1:{s:6:"handle";a:20:{s:4:"name";s:6:"handle";s:10:"parameters";a:2:{s:5:"model";a:13:{s:4:"name";s:5:"model";s:7:"default";N;s:4:"type";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:6:"string";s:12:"isIdentifier";b:1;}}s:10:"isVariadic";b:0;s:5:"byRef";b:0;s:10:"isPromoted";b:0;s:10:"attributes";a:0:{}s:9:"startLine";i:39;s:7:"endLine";i:39;s:11:"startColumn";i:28;s:9:"endColumn";i:40;s:14:"parameterIndex";i:0;s:10:"isOptional";b:0;}s:3:"ids";a:13:{s:4:"name";s:3:"ids";s:7:"default";N;s:4:"type";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:5:"array";s:12:"isIdentifier";b:1;}}s:10:"isVariadic";b:0;s:5:"byRef";b:0;s:10:"isPromoted";b:0;s:10:"attributes";a:0:{}s:9:"startLine";i:39;s:7:"endLine";i:39;s:11:"startColumn";i:43;s:9:"endColumn";i:52;s:14:"parameterIndex";i:1;s:10:"isOptional";b:0;}}s:16:"returnsReference";b:0;s:10:"returnType";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:3:"int";s:12:"isIdentifier";b:1;}}s:10:"attributes";a:0:{}s:10:"docComment";s:210:"/**
+ * 执行批量动作。
+ *
+ * @param  string  $model  当前 Resource 的模型类名
+ * @param  array<int, mixed>  $ids  被选中的主键
+ * @return int 受影响的行数（回给前端做提示）
+ */";s:9:"startLine";i:39;s:7:"endLine";i:39;s:11:"startColumn";i:5;s:9:"endColumn";i:59;s:10:"couldThrow";b:0;s:9:"isClosure";b:0;s:11:"isGenerator";b:0;s:10:"isVariadic";b:0;s:9:"modifiers";i:1;s:9:"namespace";s:18:"Aimanong\Contracts";s:18:"declaringClassName";s:37:"Aimanong\Contracts\BatchActionHandler";s:21:"implementingClassName";s:37:"Aimanong\Contracts\BatchActionHandler";s:16:"currentClassName";s:37:"Aimanong\Contracts\BatchActionHandler";s:9:"aliasName";N;}}s:10:"traitsData";a:4:{s:7:"aliases";a:0:{}s:9:"modifiers";a:0:{}s:11:"precedences";a:0:{}s:6:"hashes";a:0:{}}}}

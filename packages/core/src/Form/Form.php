@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace Aimanong\Form;
 
-use Aimanong\Form\Fields\BelongsTo;
-use Aimanong\Support\MethodSuggester;
 use Aimanong\Form\Concerns\HasSteps;
+use Aimanong\Form\Fields\BelongsTo;
 use Aimanong\Form\Fields\Checkbox;
 use Aimanong\Form\Fields\Color;
 use Aimanong\Form\Fields\Date;
@@ -36,6 +35,7 @@ use Aimanong\Form\Fields\Time;
 use Aimanong\Form\Fields\Url;
 use Aimanong\Schema\Ast\FieldNode;
 use Aimanong\Support\FieldType;
+use Aimanong\Support\MethodSuggester;
 
 /**
  * 表单定义。

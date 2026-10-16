@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong;
 
+use Aimanong\Contracts\ApplicationContext;
 use Aimanong\Contracts\FrameworkRuntime;
 use Aimanong\Exceptions\DriverNotRegisteredException;
 use Aimanong\Support\Asset;
@@ -289,7 +290,6 @@ final class Aimanong
         return ($isAbsolute ? '/' : '').implode('/', $parts);
     }
 
-
     // ─────────────────────────────────────────────
     // 框架专属的部分（类型由驱动决定，见 FrameworkRuntime）
     // ─────────────────────────────────────────────
@@ -308,9 +308,9 @@ final class Aimanong
     /**
      * 多应用上下文。
      */
-    public static function context(): \Aimanong\Contracts\ApplicationContext
+    public static function context(): ApplicationContext
     {
-        /** @var \Aimanong\Contracts\ApplicationContext $ctx */
+        /** @var ApplicationContext $ctx */
         $ctx = self::runtime()->context();
 
         return $ctx;

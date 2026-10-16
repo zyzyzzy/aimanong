@@ -34,8 +34,7 @@ interface BatchActionHandler
      *
      * @param  string  $model  当前 Resource 的模型类名
      * @param  array<int, mixed>  $ids  被选中的主键
-     *
-     * @return int  受影响的行数（回给前端做提示）
+     * @return int 受影响的行数（回给前端做提示）
      */
     public function handle(string $model, array $ids): int;
 }

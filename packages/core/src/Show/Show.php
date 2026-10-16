@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Aimanong\Show;
 
-use Aimanong\Support\SuggestsMethods;
 use Aimanong\Form\Fields\Field;
 use Aimanong\Form\Fields\Text;
 use Aimanong\Schema\Ast\FieldNode;
+use Aimanong\Support\SuggestsMethods;
 
 /**
  * 详情页定义。

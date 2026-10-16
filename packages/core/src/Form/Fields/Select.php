@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Aimanong\Form\Fields;
 
 use Aimanong\Form\Concerns\ResolvesDictionary;
+use Aimanong\Schema\Ast\FieldNode;
+use Aimanong\Support\EnumLabel;
 
 class Select extends Field
 {
@@ -35,14 +37,14 @@ class Select extends Field
      * 修在 `toNode()` 里（而不是覆写 `using()`）是为了让
      * `using()` 与 `options()` 的**调用顺序无关**。
      */
-    public function toNode(): \Aimanong\Schema\Ast\FieldNode
+    public function toNode(): FieldNode
     {
         $enum = $this->props['enum'] ?? null;
 
         if (is_string($enum) && enum_exists($enum) && ($this->props['options'] ?? []) === []) {
             $normalized = [];
 
-            foreach (\Aimanong\Support\EnumLabel::map($enum) as $value => $label) {
+            foreach (EnumLabel::map($enum) as $value => $label) {
                 $normalized[] = ['value' => $value, 'label' => $label];
             }
 
@@ -73,8 +75,8 @@ class Select extends Field
              */
             if ($value instanceof \UnitEnum) {
                 $normalized[] = [
-                    'value' => \Aimanong\Support\EnumLabel::value($value),
-                    'label' => \Aimanong\Support\EnumLabel::of($value),
+                    'value' => EnumLabel::value($value),
+                    'label' => EnumLabel::of($value),
                 ];
             } elseif (is_string($value) || is_numeric($value)) {
                 $normalized[] = ['value' => $key, 'label' => (string) $value];

@@ -61,6 +61,49 @@ jobs:
         run: composer test
 
   #
+  # 内核 aimanong/core 的质量门禁。
+  #
+  # ⚠️ 为什么单独开一个 job：core 是**两个驱动共用的那一半**
+  # （99 个类 / 10843 行），但此前 **0 单测 / 0 PHPStan / 0 Pint**。
+  #
+  # 两个驱动的 PHPStan 都把 `../core/src` 加进了 paths，所以它间接过了
+  # 静态分析 —— 但用的是**各自的配置与忽略规则**，core 自己的问题
+  # 可能被别人的 ignore 盖住；单测则完全没有。
+  #
+  # core 是**框架无关**的（`check-core-purity.sh` 保证不依赖 illuminate），
+  # 所以它能独立测试：不需要容器、不需要数据库。
+  #
+  core:
+    name: 内核 core 门禁
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: packages/core
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, json
+          coverage: none
+
+      - name: 安装依赖
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Pint 代码风格
+        run: composer pint -- --test
+
+      - name: PHPStan Level 8
+        run: composer phpstan
+
+      - name: PHPUnit
+        run: composer test
+
+  #
   # 官方扩展 aimanong/region 的质量门禁。
   #
   # ⚠️ 为什么单独开一个 job：这个包此前 **0 单测 / 0 phpstan / 0 CI**，

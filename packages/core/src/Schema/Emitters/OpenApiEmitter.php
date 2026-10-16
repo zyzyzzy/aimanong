@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aimanong\Schema\Emitters;
 
+use Aimanong\Aimanong;
 use Aimanong\Schema\Ast\FieldNode;
 use Aimanong\Schema\Ast\ResourceNode;
 use Aimanong\Support\FieldType;
@@ -29,7 +30,7 @@ class OpenApiEmitter
     protected function path(string $suffix): string
     {
         try {
-            return \Aimanong\Aimanong::url($suffix);
+            return Aimanong::url($suffix);
         } catch (\Throwable) {
             return '/admin/'.ltrim($suffix, '/');
         }

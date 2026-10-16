@@ -7,8 +7,10 @@ namespace Aimanong\Ai;
 use Aimanong\Aimanong;
 use Aimanong\Exceptions\AiReadableException;
 use Aimanong\Resource;
+use Aimanong\Schema\Ast\ResourceNode;
 use Aimanong\Schema\Compiler;
 use Aimanong\Support\Drivers;
+use Aimanong\Support\Str;
 
 /**
  * 声明校验器。
@@ -190,7 +192,7 @@ class Verifier
      *
      * @return array<int, array<string, mixed>>
      */
-    protected function checkRules(\Aimanong\Schema\Ast\ResourceNode $node): array
+    protected function checkRules(ResourceNode $node): array
     {
         $issues = [];
 
@@ -278,11 +280,11 @@ class Verifier
             return null;
         }
 
-        $short = class_basename($class);
+        $short = Str::classBasename($class);
 
         // 精确匹配短名（大小写不敏感，AI 常写成全小写）
         foreach ($all as $registered) {
-            if (strcasecmp(class_basename($registered), $short) === 0) {
+            if (strcasecmp(Str::classBasename($registered), $short) === 0) {
                 return $registered;
             }
         }
@@ -292,7 +294,7 @@ class Verifier
         $shortest = -1;
 
         foreach ($all as $registered) {
-            $candidate = class_basename($registered);
+            $candidate = Str::classBasename($registered);
             $lev = levenshtein(strtolower($short), strtolower($candidate));
 
             // 阈值：距离越小越像；按长度放宽，避免长类名误判

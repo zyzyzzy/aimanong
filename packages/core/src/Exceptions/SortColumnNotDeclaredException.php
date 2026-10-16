@@ -81,7 +81,7 @@ class SortColumnNotDeclaredException extends AiReadableException
             'sortable_columns' => $this->sortable,
             'known_columns' => $this->known,
             'hint' => $this->existsButNotSortable()
-                ? "在 grid() 里给这一列加 ->sortable()："
+                ? '在 grid() 里给这一列加 ->sortable()：'
                     ."\$grid->column('{$this->sort}')->sortable();"
                 : ($this->sortable === []
                     ? '该 Resource 还没有任何列标记为可排序 —— '

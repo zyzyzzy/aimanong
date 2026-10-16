@@ -166,6 +166,52 @@ else
 fi
 
 #
+# 内核 packages/core —— 它是**两个驱动共用的那一半**，
+# 但此前 **0 单测 / 0 PHPStan / 0 Pint**。
+#
+# ⚠️ 注意：laravel 与 thinkphp 的 PHPStan 都把 `../core/src` 加进了 paths，
+# 所以它**间接**过了静态分析。但那有两个问题：
+#   1. 用的是各自的配置与忽略规则 —— core 自己的问题可能被别人的 ignore 盖住
+#   2. 单测完全没有：core 有 99 个类，只有被驱动测试顺带覆盖的那些有保障
+#
+# core 是**框架无关**的（`check-core-purity.sh` 保证不依赖 illuminate），
+# 所以它能独立测试 —— 不需要容器、不需要数据库。
+#
+if [ -x "$ROOT/packages/core/vendor/bin/phpunit" ]; then
+  if (cd "$ROOT/packages/core" && vendor/bin/phpunit > /tmp/amn-co-ut.log 2>&1); then
+    CO_LINE=$(grep -oE 'OK \([0-9]+ tests, [0-9]+ assertions\)' /tmp/amn-co-ut.log | head -1)
+    ok "core PHPUnit ${CO_LINE:-(通过)}"
+  else
+    bad "core PHPUnit 失败"
+    tail -20 /tmp/amn-co-ut.log | sed 's/^/      /'
+  fi
+else
+  warn "packages/core 未装 phpunit，跳过其单测（CI 会跑）"
+fi
+
+if [ -x "$ROOT/packages/core/vendor/bin/phpstan" ]; then
+  if (cd "$ROOT/packages/core" && vendor/bin/phpstan analyse --no-progress --memory-limit=1G > /tmp/amn-co-stan.log 2>&1); then
+    ok "core PHPStan Level 8"
+  else
+    bad "core PHPStan 未通过"
+    tail -12 /tmp/amn-co-stan.log | sed 's/^/      /'
+  fi
+else
+  warn "packages/core 未装 phpstan，跳过其静态分析（CI 会跑）"
+fi
+
+if [ -x "$ROOT/packages/core/vendor/bin/pint" ]; then
+  if (cd "$ROOT/packages/core" && vendor/bin/pint --test > /tmp/amn-co-pint.log 2>&1); then
+    ok "core Pint 代码风格"
+  else
+    bad "core Pint 未通过"
+    tail -6 /tmp/amn-co-pint.log | sed 's/^/      /'
+  fi
+else
+  warn "packages/core 未装 pint，跳过其代码风格（CI 会跑）"
+fi
+
+#
 # 官方扩展 region —— 它已经发布到 Packagist（v1.0.1），
 # 但此前 **0 单测 / 0 PHPStan / 0 CI**：改坏了没人知道。
 #

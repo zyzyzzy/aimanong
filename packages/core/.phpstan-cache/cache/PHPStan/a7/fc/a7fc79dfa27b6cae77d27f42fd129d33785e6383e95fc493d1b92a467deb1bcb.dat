@@ -1,0 +1,22 @@
+O:23:"PHPStan\Cache\CacheItem":2:{s:11:"variableKey";s:83:"v2-6.73.0.5-8.2.29-490479fffa2808f56c20d6b5c96e1b360105bd48b7b6770f61c5bf436984e4a8";s:4:"data";a:22:{s:13:"locatedSource";a:2:{s:5:"class";s:60:"PHPStan\BetterReflection\SourceLocator\Located\LocatedSource";s:4:"data";a:2:{s:4:"name";s:41:"Aimanong\Form\Concerns\ResolvesDictionary";s:8:"filename";s:92:"/Users/zhangyang/dsh_work/01/aimanong/packages/core/src/Form/Concerns/ResolvesDictionary.php";}}s:9:"namespace";s:22:"Aimanong\Form\Concerns";s:4:"name";s:41:"Aimanong\Form\Concerns\ResolvesDictionary";s:9:"shortName";s:18:"ResolvesDictionary";s:11:"isInterface";b:0;s:7:"isTrait";b:1;s:6:"isEnum";b:0;s:12:"isBackedEnum";b:0;s:9:"modifiers";i:0;s:10:"docComment";s:627:"/**
+ * 给选项类字段（select / multiselect / radio / checkbox）加上
+ * 「从数据字典取选项」的能力。
+ *
+ * ```php
+ * $form->select('status')->dict('order_status');
+ * ```
+ *
+ * ## 现在是编译期展开，不是运行期拉取
+ *
+ * Schema 每次打开页面都会重新生成，所以字典改完刷新即生效，
+ * 前端不需要额外的请求，也不需要处理「选项加载中」状态。
+ *
+ * ## 字典为空 = 抛异常，不是给空下拉框
+ *
+ * 拼错 code 的后果是「一个永远选不了值的必填框」，
+ * 用户和 AI 都拿不到任何反馈。宁可当场报错。
+ */";s:10:"attributes";a:0:{}s:9:"startLine";i:28;s:7:"endLine";i:62;s:11:"startColumn";i:1;s:9:"endColumn";i:1;s:15:"parentClassName";N;s:20:"implementsClassNames";a:0:{}s:15:"traitClassNames";a:0:{}s:18:"immediateConstants";a:0:{}s:19:"immediateProperties";a:0:{}s:16:"immediateMethods";a:1:{s:4:"dict";a:20:{s:4:"name";s:4:"dict";s:10:"parameters";a:1:{s:4:"code";a:13:{s:4:"name";s:4:"code";s:7:"default";N;s:4:"type";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:6:"string";s:12:"isIdentifier";b:1;}}s:10:"isVariadic";b:0;s:5:"byRef";b:0;s:10:"isPromoted";b:0;s:10:"attributes";a:0:{}s:9:"startLine";i:35;s:7:"endLine";i:35;s:11:"startColumn";i:26;s:9:"endColumn";i:37;s:14:"parameterIndex";i:0;s:10:"isOptional";b:0;}}s:16:"returnsReference";b:0;s:10:"returnType";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:6:"static";s:12:"isIdentifier";b:0;}}s:10:"attributes";a:0:{}s:10:"docComment";s:126:"/**
+ * 用数据字典填充选项。
+ *
+ * @throws DictNotFoundException 字典不存在或没有任何启用中的条目
+ */";s:9:"startLine";i:35;s:7:"endLine";i:61;s:11:"startColumn";i:5;s:9:"endColumn";i:5;s:10:"couldThrow";b:1;s:9:"isClosure";b:0;s:11:"isGenerator";b:0;s:10:"isVariadic";b:0;s:9:"modifiers";i:1;s:9:"namespace";s:22:"Aimanong\Form\Concerns";s:18:"declaringClassName";s:41:"Aimanong\Form\Concerns\ResolvesDictionary";s:21:"implementingClassName";s:41:"Aimanong\Form\Concerns\ResolvesDictionary";s:16:"currentClassName";s:41:"Aimanong\Form\Concerns\ResolvesDictionary";s:9:"aliasName";N;}}s:10:"traitsData";a:4:{s:7:"aliases";a:0:{}s:9:"modifiers";a:0:{}s:11:"precedences";a:0:{}s:6:"hashes";a:0:{}}}}

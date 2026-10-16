@@ -67,6 +67,37 @@ if [ -n "$fqcns" ]; then
 fi
 
 # ── 结果 ──────────────────────────────────────
+# ── ③ 框架的**全局助手函数** ───────────────────
+#
+# ## 为什么要有这一类（2026-10-16 补）
+#
+# 前面两类查的是 `use Illuminate\...` 与全限定名 —— 都查不到**全局函数**。
+# 而全局函数是**隐式**依赖：没有 use、没有 FQN，但一样把 core 钉在框架上。
+#
+# 真实漏洞：core 里有 5 处调了 `class_basename()` —— Laravel 的助手。
+# 之所以没炸，是因为 ThinkPHP 通过 `topthink/think-helper` **也**定义了
+# 同名函数 ——「恰好两边都有」，而不是「core 自己能站住」。
+#
+# 但 `aimanong/core` 是**独立发布**的包。谁把它单独装进一个非
+# Laravel/TP 的项目，就是 `Call to undefined function class_basename()`。
+#
+# 判定逻辑（含「方法调用不误报」的处理）在独立的 Python 脚本里 ——
+# 那边注释说明了为什么要排除字符串字面量与方法声明。
+# 反例验证过：加回 class_basename() / 加 config() 都会红；
+# `->url(` / `::config(` 不误报。
+#
+helpers=$(python3 "$ROOT/scripts/check-core-helpers.py" "$CORE" || true)
+
+if [ -n "$helpers" ]; then
+    printf "${RED}❌ core 里调用了框架的全局助手函数：${NC}\n"
+    printf '%s\n' "$helpers" | sed "s|$ROOT/||;s|^|     |"
+    printf '\n'
+    printf "   → 全局函数是**隐式**依赖：没有 use、没有全限定名，\n"
+    printf "     但一样把 core 钉在某个框架上。\n"
+    printf "     正确做法：在 \`Aimanong\\Support\\\` 下自己实现（见 Str::classBasename）。\n\n"
+    fail=1
+fi
+
 if [ "$fail" -eq 0 ]; then
     n=$(find "$CORE" -name '*.php' | wc -l | tr -d ' ')
     l=$(cat $(find "$CORE" -name '*.php') 2>/dev/null | wc -l | tr -d ' ')

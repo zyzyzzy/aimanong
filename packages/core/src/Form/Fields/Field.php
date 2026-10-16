@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Aimanong\Form\Fields;
 
-use Aimanong\Support\SuggestsMethods;
 use Aimanong\Exceptions\UnknownFieldTypeException;
 use Aimanong\Schema\Ast\FieldNode;
 use Aimanong\Support\FieldType;
+use Aimanong\Support\SuggestsMethods;
 
 /**
  * 字段基类。

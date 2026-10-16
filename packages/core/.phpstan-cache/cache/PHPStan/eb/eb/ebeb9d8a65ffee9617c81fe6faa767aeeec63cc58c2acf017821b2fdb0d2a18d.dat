@@ -1,0 +1,48 @@
+O:23:"PHPStan\Cache\CacheItem":2:{s:11:"variableKey";s:83:"v2-6.73.0.5-8.2.29-8e0f4a4ea7deac2e10469a4d66d351deb32612b2f01a5b322752ba7789238011";s:4:"data";a:22:{s:13:"locatedSource";a:2:{s:5:"class";s:60:"PHPStan\BetterReflection\SourceLocator\Located\LocatedSource";s:4:"data";a:2:{s:4:"name";s:33:"Aimanong\Extend\ExtensionPlatform";s:8:"filename";s:84:"/Users/zhangyang/dsh_work/01/aimanong/packages/core/src/Extend/ExtensionPlatform.php";}}s:9:"namespace";s:15:"Aimanong\Extend";s:4:"name";s:33:"Aimanong\Extend\ExtensionPlatform";s:9:"shortName";s:17:"ExtensionPlatform";s:11:"isInterface";b:1;s:7:"isTrait";b:0;s:6:"isEnum";b:0;s:12:"isBackedEnum";b:0;s:9:"modifiers";i:0;s:10:"docComment";s:1423:"/**
+ * 扩展机制里「只有驱动才知道」的几件事。
+ *
+ * ## 为什么需要它
+ *
+ * `Extension` / `ExtensionManager` 共 474 行，其中 **99% 是框架无关的**：
+ * 依赖解析、注册时序、失败隔离、字段类型注入、自省输出……
+ * 真正碰框架的只有 4 个点：
+ *
+ * | 点 | Laravel | ThinkPHP |
+ * |---|---|---|
+ * | `routes()` | `Route::middleware('admin')->prefix(...)` | `Route::group(...)` |
+ * | `views()` | `app('view')->addNamespace()` | `View::addNamespace()` |
+ * | `translations()` | `app('translator')->addNamespace()` | `Lang::load()` |
+ * | 失败日志 | `Log::warning()` | `Log::warning()`（TP 同名但不同类） |
+ *
+ * ## 为什么不能各写一份
+ *
+ * **用户写的扩展类只有一个 FQN**：
+ *
+ *     class MyExtension extends \Aimanong\Extend\Extension
+ *
+ * 两个驱动包不可能都定义它。所以基类**必须只存在于 core**，
+ * 而这 4 个点通过本接口由驱动注入。
+ *
+ * 这也是「同一份声明多框架行为一致」在扩展机制上的落地：
+ * 用户写一次扩展，装到 Laravel 或 TP 上都能跑。
+ *
+ * ## 未注册平台时
+ *
+ * `current()` 抛 `ExtensionPlatformMissingException` —— 不静默退化。
+ * 理由：这些方法一旦不生效，扩展的路由/视图会**静默消失**，
+ * 症状是「装了扩展但页面 404」，极难查。宁可启动就报清楚的错。
+ */";s:10:"attributes";a:0:{}s:9:"startLine";i:41;s:7:"endLine";i:68;s:11:"startColumn";i:1;s:9:"endColumn";i:1;s:15:"parentClassName";N;s:20:"implementsClassNames";a:0:{}s:15:"traitClassNames";a:0:{}s:18:"immediateConstants";a:0:{}s:19:"immediateProperties";a:0:{}s:16:"immediateMethods";a:4:{s:6:"routes";a:20:{s:4:"name";s:6:"routes";s:10:"parameters";a:3:{s:9:"extension";a:13:{s:4:"name";s:9:"extension";s:7:"default";N;s:4:"type";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:25:"Aimanong\Extend\Extension";s:12:"isIdentifier";b:0;}}s:10:"isVariadic";b:0;s:5:"byRef";b:0;s:10:"isPromoted";b:0;s:10:"attributes";a:0:{}s:9:"startLine";i:49;s:7:"endLine";i:49;s:11:"startColumn";i:28;s:9:"endColumn";i:47;s:14:"parameterIndex";i:0;s:10:"isOptional";b:0;}s:8:"callback";a:13:{s:4:"name";s:8:"callback";s:7:"default";N;s:4:"type";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:7:"Closure";s:12:"isIdentifier";b:0;}}s:10:"isVariadic";b:0;s:5:"byRef";b:0;s:10:"isPromoted";b:0;s:10:"attributes";a:0:{}s:9:"startLine";i:49;s:7:"endLine";i:49;s:11:"startColumn";i:50;s:9:"endColumn";i:67;s:14:"parameterIndex";i:1;s:10:"isOptional";b:0;}s:6:"prefix";a:13:{s:4:"name";s:6:"prefix";s:7:"default";N;s:4:"type";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:6:"string";s:12:"isIdentifier";b:1;}}s:10:"isVariadic";b:0;s:5:"byRef";b:0;s:10:"isPromoted";b:0;s:10:"attributes";a:0:{}s:9:"startLine";i:49;s:7:"endLine";i:49;s:11:"startColumn";i:70;s:9:"endColumn";i:83;s:14:"parameterIndex";i:2;s:10:"isOptional";b:0;}}s:16:"returnsReference";b:0;s:10:"returnType";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:4:"void";s:12:"isIdentifier";b:1;}}s:10:"attributes";a:0:{}s:10:"docComment";s:201:"/**
+ * 注册扩展路由（自动带后台前缀与鉴权中间件）。
+ *
+ * @param  \Closure():void  $callback
+ * @param  string  $prefix  后台路由前缀（多应用下每个后台不同）
+ */";s:9:"startLine";i:49;s:7:"endLine";i:49;s:11:"startColumn";i:5;s:9:"endColumn";i:91;s:10:"couldThrow";b:0;s:9:"isClosure";b:0;s:11:"isGenerator";b:0;s:10:"isVariadic";b:0;s:9:"modifiers";i:1;s:9:"namespace";s:15:"Aimanong\Extend";s:18:"declaringClassName";s:33:"Aimanong\Extend\ExtensionPlatform";s:21:"implementingClassName";s:33:"Aimanong\Extend\ExtensionPlatform";s:16:"currentClassName";s:33:"Aimanong\Extend\ExtensionPlatform";s:9:"aliasName";N;}s:5:"views";a:20:{s:4:"name";s:5:"views";s:10:"parameters";a:2:{s:9:"namespace";a:13:{s:4:"name";s:9:"namespace";s:7:"default";N;s:4:"type";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:6:"string";s:12:"isIdentifier";b:1;}}s:10:"isVariadic";b:0;s:5:"byRef";b:0;s:10:"isPromoted";b:0;s:10:"attributes";a:0:{}s:9:"startLine";i:54;s:7:"endLine";i:54;s:11:"startColumn";i:27;s:9:"endColumn";i:43;s:14:"parameterIndex";i:0;s:10:"isOptional";b:0;}s:4:"path";a:13:{s:4:"name";s:4:"path";s:7:"default";N;s:4:"type";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:6:"string";s:12:"isIdentifier";b:1;}}s:10:"isVariadic";b:0;s:5:"byRef";b:0;s:10:"isPromoted";b:0;s:10:"attributes";a:0:{}s:9:"startLine";i:54;s:7:"endLine";i:54;s:11:"startColumn";i:46;s:9:"endColumn";i:57;s:14:"parameterIndex";i:1;s:10:"isOptional";b:0;}}s:16:"returnsReference";b:0;s:10:"returnType";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:4:"void";s:12:"isIdentifier";b:1;}}s:10:"attributes";a:0:{}s:10:"docComment";s:47:"/**
+ * 注册扩展的视图命名空间。
+ */";s:9:"startLine";i:54;s:7:"endLine";i:54;s:11:"startColumn";i:5;s:9:"endColumn";i:65;s:10:"couldThrow";b:0;s:9:"isClosure";b:0;s:11:"isGenerator";b:0;s:10:"isVariadic";b:0;s:9:"modifiers";i:1;s:9:"namespace";s:15:"Aimanong\Extend";s:18:"declaringClassName";s:33:"Aimanong\Extend\ExtensionPlatform";s:21:"implementingClassName";s:33:"Aimanong\Extend\ExtensionPlatform";s:16:"currentClassName";s:33:"Aimanong\Extend\ExtensionPlatform";s:9:"aliasName";N;}s:12:"translations";a:20:{s:4:"name";s:12:"translations";s:10:"parameters";a:2:{s:9:"namespace";a:13:{s:4:"name";s:9:"namespace";s:7:"default";N;s:4:"type";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:6:"string";s:12:"isIdentifier";b:1;}}s:10:"isVariadic";b:0;s:5:"byRef";b:0;s:10:"isPromoted";b:0;s:10:"attributes";a:0:{}s:9:"startLine";i:59;s:7:"endLine";i:59;s:11:"startColumn";i:34;s:9:"endColumn";i:50;s:14:"parameterIndex";i:0;s:10:"isOptional";b:0;}s:4:"path";a:13:{s:4:"name";s:4:"path";s:7:"default";N;s:4:"type";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:6:"string";s:12:"isIdentifier";b:1;}}s:10:"isVariadic";b:0;s:5:"byRef";b:0;s:10:"isPromoted";b:0;s:10:"attributes";a:0:{}s:9:"startLine";i:59;s:7:"endLine";i:59;s:11:"startColumn";i:53;s:9:"endColumn";i:64;s:14:"parameterIndex";i:1;s:10:"isOptional";b:0;}}s:16:"returnsReference";b:0;s:10:"returnType";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:4:"void";s:12:"isIdentifier";b:1;}}s:10:"attributes";a:0:{}s:10:"docComment";s:47:"/**
+ * 注册扩展的翻译命名空间。
+ */";s:9:"startLine";i:59;s:7:"endLine";i:59;s:11:"startColumn";i:5;s:9:"endColumn";i:72;s:10:"couldThrow";b:0;s:9:"isClosure";b:0;s:11:"isGenerator";b:0;s:10:"isVariadic";b:0;s:9:"modifiers";i:1;s:9:"namespace";s:15:"Aimanong\Extend";s:18:"declaringClassName";s:33:"Aimanong\Extend\ExtensionPlatform";s:21:"implementingClassName";s:33:"Aimanong\Extend\ExtensionPlatform";s:16:"currentClassName";s:33:"Aimanong\Extend\ExtensionPlatform";s:9:"aliasName";N;}s:10:"logFailure";a:20:{s:4:"name";s:10:"logFailure";s:10:"parameters";a:3:{s:4:"name";a:13:{s:4:"name";s:4:"name";s:7:"default";N;s:4:"type";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:6:"string";s:12:"isIdentifier";b:1;}}s:10:"isVariadic";b:0;s:5:"byRef";b:0;s:10:"isPromoted";b:0;s:10:"attributes";a:0:{}s:9:"startLine";i:67;s:7:"endLine";i:67;s:11:"startColumn";i:32;s:9:"endColumn";i:43;s:14:"parameterIndex";i:0;s:10:"isOptional";b:0;}s:5:"phase";a:13:{s:4:"name";s:5:"phase";s:7:"default";N;s:4:"type";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:6:"string";s:12:"isIdentifier";b:1;}}s:10:"isVariadic";b:0;s:5:"byRef";b:0;s:10:"isPromoted";b:0;s:10:"attributes";a:0:{}s:9:"startLine";i:67;s:7:"endLine";i:67;s:11:"startColumn";i:46;s:9:"endColumn";i:58;s:14:"parameterIndex";i:1;s:10:"isOptional";b:0;}s:1:"e";a:13:{s:4:"name";s:1:"e";s:7:"default";N;s:4:"type";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:9:"Throwable";s:12:"isIdentifier";b:0;}}s:10:"isVariadic";b:0;s:5:"byRef";b:0;s:10:"isPromoted";b:0;s:10:"attributes";a:0:{}s:9:"startLine";i:67;s:7:"endLine";i:67;s:11:"startColumn";i:61;s:9:"endColumn";i:73;s:14:"parameterIndex";i:2;s:10:"isOptional";b:0;}}s:16:"returnsReference";b:0;s:10:"returnType";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:4:"void";s:12:"isIdentifier";b:1;}}s:10:"attributes";a:0:{}s:10:"docComment";s:214:"/**
+ * 记录扩展启动失败。
+ *
+ * 实现**必须自己吞掉异常** —— 它是在失败隔离路径上调用的，
+ * 再抛一次会把「一个扩展坏了」升级成「整个后台起不来」。
+ */";s:9:"startLine";i:67;s:7:"endLine";i:67;s:11:"startColumn";i:5;s:9:"endColumn";i:81;s:10:"couldThrow";b:0;s:9:"isClosure";b:0;s:11:"isGenerator";b:0;s:10:"isVariadic";b:0;s:9:"modifiers";i:1;s:9:"namespace";s:15:"Aimanong\Extend";s:18:"declaringClassName";s:33:"Aimanong\Extend\ExtensionPlatform";s:21:"implementingClassName";s:33:"Aimanong\Extend\ExtensionPlatform";s:16:"currentClassName";s:33:"Aimanong\Extend\ExtensionPlatform";s:9:"aliasName";N;}}s:10:"traitsData";a:4:{s:7:"aliases";a:0:{}s:9:"modifiers";a:0:{}s:11:"precedences";a:0:{}s:6:"hashes";a:0:{}}}}

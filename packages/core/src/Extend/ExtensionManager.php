@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Aimanong\Extend;
 
-
 /**
  * 扩展管理器。
  *

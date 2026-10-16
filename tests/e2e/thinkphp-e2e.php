@@ -1598,6 +1598,54 @@ t(
     "HTTP {$adminAsAgentCode}"
 );
 
+echo "\n═══ 未移植动作：必须明确 501，不能落进 CRUD ═══\n";
+
+/*
+ * 🔴 这一段锁的是一个「**悄悄做错事**」的 bug（2026-10-16 实测）。
+ *
+ * `export` / `move` 在 TP 侧没有实现，文档说「调时返回 501」——
+ * 但**根本没挂路由**，实际行为是：
+ *
+ *     GET  /admin/api/departments/export → 404 NOT_FOUND
+ *          被 `:uri/:id` 当成 id="export"，报「不存在 id=export 的记录」
+ *
+ *     POST /admin/api/departments/move   → 走进了 store()
+ *          实测返回的校验错误是 "name长度不能超过 20" —— 创建接口的校验。
+ *          **载荷合法时它会真的插一条记录，而且不报错。**
+ *
+ * 根因：TP 路由默认不完整匹配，`api/:uri` 会把多余的段吞掉。
+ * 修法是给 api 组加 `->completeMatch()` + 给这两个动作挂显式 501 路由。
+ *
+ * 最后一条断言（记录数不变）是**真正的护栏** ——
+ * 前三条只验「返回码对」，它验「没有偷偷写库」。
+ */
+foreach ([['GET', 'export'], ['POST', 'export'], ['POST', 'move']] as [$m, $act]) {
+    [$st, $r] = $api($m, "customers/{$act}");
+    t(
+        "TP {$m} customers/{$act} → 501（不是 404/422，更不是创建）",
+        $st === 501 && ($r['error']['code'] ?? '') === 'NOT_IMPLEMENTED_ON_THINKPHP',
+        "HTTP {$st} ".($r['error']['code'] ?? '')
+    );
+}
+
+// 记录数不能因为一个 move 请求而变 —— 载荷刻意合法，模拟「真的想调 move」
+//
+// ⚠️ 载荷必须**能通过 store 的校验**，否则这条护栏是假的：
+// 第一版传了 `code`（表里没这列）且漏了 `industry`（requiredOnCreate），
+// 于是即使 move 真的走进了 store()，它也在校验阶段就被拒，
+// 记录数当然不变 —— **断言绿了，但它什么都没验到**。
+// 反例验证时发现（3 条状态断言红了、这条没红），才回头补的教训。
+[, $tpBefore] = $api('GET', 'customers');
+$tpN0 = $tpBefore['meta']['total'] ?? -1;
+$api('POST', 'customers/move', ['name' => 'MOVE_PROBE', 'industry' => 'PROBE']);
+[, $tpAfter] = $api('GET', 'customers');
+$tpN1 = $tpAfter['meta']['total'] ?? -1;
+t(
+    'move 没有被 store() 接走（记录数不变）',
+    $tpN0 >= 0 && $tpN1 === $tpN0,
+    "{$tpN0} → {$tpN1}"
+);
+
 exec('rm -rf '.escapeshellarg($fresh));
 
 if (is_resource($proc)) {

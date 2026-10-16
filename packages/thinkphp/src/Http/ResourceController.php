@@ -31,10 +31,18 @@ use think\Validate;
  * 声明（Resource 的 grid/form/show）**完全同一套**，由 core 的 Compiler
  * 编译成 `ResourceNode`；差别只在这里怎么执行它。
  *
- * 本控制器覆盖核心 CRUD：index / show / store / update / destroy。
- * **尚未移植**：batch / export / tree / move（见类尾注释）。
- * 这些在 TP 侧目前**返回 501 而不是静默成功** —— 声明了却悄悄不做事，
- * 正是宪法第三条禁止的幽灵能力。
+ * 本控制器覆盖：index / show / store / update / destroy / tree / batch
+ *（以 `IMPLEMENTED` 常量为准 —— 那段清单以前和这里对不上，
+ *  文档说 tree/batch「尚未移植」而代码早就实现了）。
+ *
+ * **真正尚未移植的**：export / move。
+ * 它们在路由层挂了显式的 501 —— 不是为了好看，是因为**不挂的后果是错的**：
+ *
+ *     GET  /api/{uri}/export  → 404「不存在 id=export 的记录」（误导）
+ *     POST /api/{uri}/move    → 走进 store()，**载荷合法就会真的建一条记录**
+ *
+ * 声明了却悄悄不做事，正是宪法第三条禁止的幽灵能力；而「悄悄做错事」
+ * 比「悄悄不做」更糟。
  */
 final class ResourceController
 {
@@ -473,14 +481,41 @@ final class ResourceController
 
     public function unimplemented(Request $request, string $uri, string $action): Response
     {
-        return Response::create([
+        return Response::create(self::notImplementedPayload($action), 'json', 501);
+    }
+
+    /**
+     * 未移植动作的统一 501 载荷。
+     *
+     * ⚠️ **路由层与控制器层必须共用这一份**。
+     *
+     * 原先只有控制器里有这段 JSON，而 `export` / `move` **根本没挂路由** ——
+     * 于是「返回 501」这句话是假的。实测（2026-10-16，TP demo 8896）：
+     *
+     *     GET  /admin/api/departments/export  → 404 NOT_FOUND
+     *          （被 `:uri/:id` 当成 id="export" 吃掉了）
+     *     POST /admin/api/departments/move    → 走进了 **store()**
+     *          （返回的校验错误是 "name长度不能超过 20" —— 创建接口的校验）
+     *
+     * 第二条尤其危险：**一个 move 请求会被当成创建**。
+     * 只要载荷合法，它就会真的插一条记录，而且不报错。
+     *
+     * 根因是 TP 的路由默认**不完整匹配**（`buildRuleRegex` 只在
+     * completeMatch 为真时才补 `$`），所以 `api/:uri` 会把
+     * `api/departments/move` 整条吃掉、uri 取 `departments`、多余的段丢弃。
+     *
+     * @return array<string, mixed>
+     */
+    public static function notImplementedPayload(string $action): array
+    {
+        return [
             'error' => [
                 'code' => 'NOT_IMPLEMENTED_ON_THINKPHP',
                 'message' => "动作 [{$action}] 尚未在 ThinkPHP 驱动上实现。",
                 'implemented' => self::IMPLEMENTED,
                 'hint' => '这不是「没有数据」，而是「还没做」——故意返回 501 而不是空结果。',
             ],
-        ], 'json', 501);
+        ];
     }
 
     // ─────────────────────────────────────────────

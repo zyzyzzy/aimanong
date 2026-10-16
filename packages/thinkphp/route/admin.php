@@ -7,8 +7,11 @@ declare(strict_types=1);
  *
  * 与 Laravel 侧的 `routes/admin.php` 结构对应。
  *
- * 已落地：控制台首页 · 资源页面（HTML）· 数据 API（JSON）· 认证。
- * 未移植：batch / export / tree / move（调时由 unimplemented() 回 501）。
+ * 已落地：控制台首页 · 资源页面（HTML）· 数据 API（JSON）· 认证 ·
+ *         tree · batch。
+ * 未移植：export · move —— 挂显式 501 路由，**不**让它们落进 CRUD。
+ *         （原先不挂的后果是错的：move 会被 store() 接走。
+ *          详见 API 组里那段注释。）
  */
 
 use Aimanong\Aimanong;
@@ -103,12 +106,44 @@ Route::group(function (): void {
         Route::get(':uri/tree', [ResourceController::class, 'tree'])->pattern(['uri' => $uri]);
         // 批量动作：同样必须排在 `:uri/:id` 之前
         Route::post(':uri/batch', [ResourceController::class, 'batch'])->pattern(['uri' => $uri]);
+
+        /*
+         * ── 未移植的动作：显式 501 ──
+         *
+         * 🔴 这几条**必须有**，不是为了好看。
+         *
+         * 实测（2026-10-16，TP demo 8896）没有它们时的真实行为：
+         *
+         *     GET  /admin/api/departments/export → 404 NOT_FOUND
+         *          被 `:uri/:id` 当成 id="export"，报「不存在 id=export 的记录」——
+         *          调用方会以为是数据问题，而其实是「这个功能没做」。
+         *
+         *     POST /admin/api/departments/move   → 走进了 store()
+         *          返回的校验错误是 "name长度不能超过 20"（创建接口的校验）。
+         *          **载荷合法时它会真的插一条记录，而且不报错。**
+         *
+         * 根因：TP 路由默认**不完整匹配**（`buildRuleRegex` 只在 completeMatch
+         * 为真时才补 `$`），`api/:uri` 会把多余的段吞掉。
+         *
+         * 载荷由 `ResourceController::notImplementedPayload()` 统一提供 ——
+         * 路由层与控制器层共用一份，避免两处措辞漂移。
+         */
+        foreach (['export', 'move'] as $pending) {
+            Route::get(":uri/{$pending}", function () use ($pending) {
+                return json(ResourceController::notImplementedPayload($pending), 501);
+            })->pattern(['uri' => $uri]);
+
+            Route::post(":uri/{$pending}", function () use ($pending) {
+                return json(ResourceController::notImplementedPayload($pending), 501);
+            })->pattern(['uri' => $uri]);
+        }
+
         Route::get(':uri/:id', [ResourceController::class, 'show'])->pattern(['uri' => $uri]);
         Route::get(':uri', [ResourceController::class, 'index'])->pattern(['uri' => $uri]);
         Route::post(':uri', [ResourceController::class, 'store'])->pattern(['uri' => $uri]);
         Route::put(':uri/:id', [ResourceController::class, 'update'])->pattern(['uri' => $uri]);
         Route::delete(':uri/:id', [ResourceController::class, 'destroy'])->pattern(['uri' => $uri]);
-    });
+    })->completeMatch();
 
     /*
     | 资源页面（HTML）—— 兜底路由

@@ -165,6 +165,58 @@ else
   warn "packages/thinkphp 未安装依赖，跳过其静态分析（CI 会跑）"
 fi
 
+#
+# 官方扩展 region —— 它已经发布到 Packagist（v1.0.1），
+# 但此前 **0 单测 / 0 PHPStan / 0 CI**：改坏了没人知道。
+#
+# ⚠️ 上面第【2】段的 PHPUnit 跑在 `packages/laravel` 下，
+# **看不到 region 的测试** —— 所以这里必须单独跑一次。
+# 补上后立刻抓到两个真 bug（详见 commit）：
+#   · useData([]) 会让内置数据永久消失且无法恢复
+#   · storeCode() 零消费方（文档说能存编码，实际永远存名称）
+#
+#
+# ⚠️ 三个工具**各自判断**是否存在。
+#
+# 第一版只判断了 `vendor/bin/phpunit`，然后无条件跑 phpstan / pint ——
+# 本地 vendor 只装了 phpunit 时，会输出两条**假的** ❌
+# （「region PHPStan 未通过」但其实是没装）。
+# 假红比不检查更糟：它会让人去查一个不存在的错误。
+#
+if [ -x "$ROOT/packages/region/vendor/bin/phpunit" ]; then
+  if (cd "$ROOT/packages/region" && vendor/bin/phpunit > /tmp/amn-rg-ut.log 2>&1); then
+    RG_LINE=$(grep -oE 'OK \([0-9]+ tests, [0-9]+ assertions\)' /tmp/amn-rg-ut.log | head -1)
+    ok "region PHPUnit ${RG_LINE:-(通过)}"
+  else
+    bad "region PHPUnit 失败"
+    tail -20 /tmp/amn-rg-ut.log | sed 's/^/      /'
+  fi
+else
+  warn "packages/region 未装 phpunit，跳过其单测（CI 会跑）"
+fi
+
+if [ -x "$ROOT/packages/region/vendor/bin/phpstan" ]; then
+  if (cd "$ROOT/packages/region" && vendor/bin/phpstan analyse --no-progress > /tmp/amn-rg-stan.log 2>&1); then
+    ok "region PHPStan Level 8"
+  else
+    bad "region PHPStan 未通过"
+    tail -12 /tmp/amn-rg-stan.log | sed 's/^/      /'
+  fi
+else
+  warn "packages/region 未装 phpstan，跳过其静态分析（CI 会跑）"
+fi
+
+if [ -x "$ROOT/packages/region/vendor/bin/pint" ]; then
+  if (cd "$ROOT/packages/region" && vendor/bin/pint --test > /tmp/amn-rg-pint.log 2>&1); then
+    ok "region Pint 代码风格"
+  else
+    bad "region Pint 未通过"
+    tail -6 /tmp/amn-rg-pint.log | sed 's/^/      /'
+  fi
+else
+  warn "packages/region 未装 pint，跳过其代码风格（CI 会跑）"
+fi
+
 # 许可证一致性 —— 三处必须一致（根 LICENSE / composer.json 字段 / 包内 LICENSE）。
 # 漏改一个包，Packagist 上那个包就显示旧许可；包里没有 LICENSE，
 # 用户就拿不到许可全文（Apache-2.0 §4(a) 是明确义务）。

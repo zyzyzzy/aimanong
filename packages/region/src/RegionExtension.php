@@ -6,6 +6,7 @@ namespace Aimanong\Region;
 
 use Aimanong\Extend\Extension;
 use Aimanong\Region\Fields\RegionField;
+use Illuminate\Support\Facades\Route;
 
 /**
  * 省市区扩展。
@@ -72,15 +73,15 @@ class RegionExtension extends Extension
         $this->fieldScript('aimanong-region::script');
 
         $this->routes(function (): void {
-            \Illuminate\Support\Facades\Route::get('cities/{province}', function (string $province) {
+            Route::get('cities/{province}', function (string $province) {
                 return response()->json(['data' => Region::cities($province)]);
             });
 
-            \Illuminate\Support\Facades\Route::get('districts/{city}', function (string $city) {
+            Route::get('districts/{city}', function (string $city) {
                 return response()->json(['data' => Region::districts($city)]);
             });
 
-            \Illuminate\Support\Facades\Route::get('provinces', function () {
+            Route::get('provinces', function () {
                 return response()->json(['data' => Region::provinces()]);
             });
         });

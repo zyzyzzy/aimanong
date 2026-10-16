@@ -57,7 +57,27 @@ public static function form(Form $form): void
 }
 ```
 
-三级联动（省 → 市 → 区），提交的是**编码**（如 `110108`），不是名称。
+三级联动（省 → 市 → 区）。
+
+### 存进去的是什么
+
+**默认存名称路径**（如 `广东省/深圳市/南山区`）。
+想要编码路径（如 `440000/440300/440305`）就加 `->storeCode()`：
+
+```php
+$form->region('area')->label('所在地区');            // 存「广东省/深圳市/南山区」
+$form->region('area_code')->label('地区编码')->storeCode();  // 存「440000/440300/440305」
+```
+
+> ⚠️ **这里原先写的是「提交的是编码（如 `110108`），不是名称」—— 是错的。**
+> `storeCode()` 当时**没有任何消费方**：字段类设了 prop，前端视图从不读它，
+> 于是无论加不加 `->storeCode()`，库里存的都是名称路径。
+> 不报错、也从界面上看不出来。
+> 2026-10-16 补 region 门禁时发现并修好，同一天加了
+> `RegionPropConsumerTest` 防止再出现「声明了但没人消费」。
+>
+> 另外：编辑器字段的两种路径**都认得**（按「首段是不是纯数字」判断），
+> 所以改默认值不会让历史数据打不开。
 
 ### 辅助函数
 
@@ -76,8 +96,31 @@ region_provinces();      // [['code' => '110000', 'name' => '北京市'], ...]
 Region::tree();                          // 完整树
 Region::provinces();                     // 省级列表
 Region::cities('110000');                // 某省下的市
+Region::districts('110100');             // 某市下的区县
+Region::fullName('110108');              // '北京市/市辖区/海淀区'
 Region::useData($tree);                  // 注入自定义数据（生产用这个）
+Region::reset();                         // 恢复内置数据
 ```
+
+> ⚠️ **`useData([])` 之后必须用 `reset()` 才能拿回内置数据。**
+> 因为 `tree()` 是 `$custom ?? builtin()`，而空数组不是 `null`，
+> `??` 不会回落 —— 传了空数组，内置数据就永久消失且无法恢复。
+> （这个坑是补单测时踩出来的：`tearDown` 里用 `useData([])` 复位，
+> 结果第一个用例之后全是空数据。真实场景里「配置读失败 / 缓存为空 /
+> 远程返回 `[]`」都会撞上它，症状是下拉框一个省都没有、且无报错。）
+
+## 测试
+
+```bash
+cd packages/region && composer install   # 首次
+composer test        # PHPUnit
+composer phpstan     # Level 8
+composer pint -- --test
+```
+
+`RegionExtension` 的注册链路（`FieldType` 注册、`composer.json` 里声明的
+扩展类存在性）也在单测范围内；视图渲染由 `scripts/setup-demo.sh` 建的
+demo + e2e 覆盖。
 
 ## 环境要求
 

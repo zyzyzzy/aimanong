@@ -27,8 +27,12 @@
   </select>
 
   {{-- 区级也必须 @change 回写：漏了它，area 只会存到「市」
-       （实测：选完省/市/区，库里是「北京市/市辖区」—— 区没了且不报错） --}}
-  <select v-if="(f.props.level || 3) === 3"
+       （实测：选完省/市/区，库里是「北京市/市辖区」—— 区没了且不报错）
+
+       这里用 `f.props.level === 3`，不再用 `(f.props.level || 3)` ——
+       level 现在由 RegionField 的构造函数保证一定下发，
+       前端不该再用 `|| 3` 猜默认值（改了默认值两边会不一致）。 --}}
+  <select v-if="f.props.level === 3"
           v-model="regionState(f.name).district"
           @change="regionSync(f.name)" class="am-select">
     <option value="">请选择区</option>

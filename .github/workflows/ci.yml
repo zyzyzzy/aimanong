@@ -60,6 +60,51 @@ jobs:
       - name: PHPUnit
         run: composer test
 
+  #
+  # 官方扩展 aimanong/region 的质量门禁。
+  #
+  # ⚠️ 为什么单独开一个 job：这个包此前 **0 单测 / 0 phpstan / 0 CI**，
+  # 却已经发布到 Packagist（v1.0.1）。已发布的包没有门禁，等于
+  # 「改坏了也没人知道」—— 它是别人 composer require 装进生产的东西。
+  #
+  # 顺带把一条文档事故钉成断言：README 标题曾写「内置数据只有 3 个省」、
+  # 正文写「只有 5 个省」（framework/README 又抄了错的 3）。
+  # 现在 5 省 / 37 节点写死在 RegionDataTest 里，改数据不改文档会红。
+  #
+  region:
+    name: 官方扩展 region 门禁
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: packages/region
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, json, pdo, sqlite3
+          coverage: none
+
+      #
+      # region 的 path 仓库同时指向 ../core / ../laravel / ../framework，
+      # 三者都在本仓库里，无需网络。
+      #
+      - name: 安装依赖
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Pint 代码风格
+        run: composer pint -- --test
+
+      - name: PHPStan Level 8
+        run: composer phpstan
+
+      - name: PHPUnit
+        run: composer test
+
   # 发布前检查脚本（版本一致性 / 必需文件 / 命名一致性）
   release-check:
     name: 发布前检查

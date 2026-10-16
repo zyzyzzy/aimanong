@@ -23,7 +23,6 @@
         "php": "^8.2",
         "ext-json": "*",
         "ext-mbstring": "*",
-        "aimanong/aimind-client": "@dev",
         "aimanong/core": "^1.6.3",
         "illuminate/console": "^12.0|^13.0",
         "illuminate/container": "^12.0|^13.0",
@@ -39,20 +38,8 @@
     "conflict": {
         "topthink/framework": "*"
     },
-    "repositories": [
-        {
-            "type": "path",
-            "url": "../core",
-            "options": {
-                "symlink": true
-            }
-        },
-        {
-            "type": "path",
-            "url": "../aimind-client"
-        }
-    ],
     "suggest": {
+        "aimanong/aimind-client": "接入 Aimind 互助平台（AI 之间共享经验）。不装也能用框架。",
         "aimanong/region": "中国省市区三级联动字段（->region()）。不装也能用框架，只是没有这个字段类型"
     },
     "require-dev": {

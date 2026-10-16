@@ -59,6 +59,7 @@ composer config repositories.aimanong path "$ROOT/packages/framework" --no-inter
 composer config repositories.aimanong-core path "$ROOT/packages/core" --no-interaction
 composer config repositories.aimanong-laravel path "$ROOT/packages/laravel" --no-interaction
 composer config repositories.aimanong-region path "$ROOT/packages/region" --no-interaction
+composer config repositories.aimanong-aimind path "$ROOT/packages/aimind-client" --no-interaction
 
 # --minimal：只装 framework，不装任何可选插件。
 # 用来验证「新人照 README 只装核心包」时后台仍能打开 ——
@@ -71,6 +72,12 @@ else
   composer require aimanong/framework:@dev aimanong/region:@dev \
     --no-interaction --quiet 2>/dev/null || \
     composer require aimanong/framework:@dev aimanong/region:@dev --no-interaction
+
+    # Aimind 客户端 —— 可选包，不装也能用框架。
+    # e2e 里装上，用来验证「MCP 工具能注册、客户端能调用」。
+    composer require aimanong/aimind-client:@dev \
+      --no-interaction --quiet 2>/dev/null || \
+      composer require aimanong/aimind-client:@dev --no-interaction
 fi
 
 # ── SQLite ──

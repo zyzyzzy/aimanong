@@ -5,45 +5,60 @@ declare(strict_types=1);
 namespace Aimanong\AimindClient\McpTools;
 
 use Aimanong\AimindClient\AimindClient;
+use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Laravel\Mcp\Request;
+use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
-use Laravel\Mcp\Server\ToolInput;
-use Laravel\Mcp\Server\ToolResponse;
 
+/**
+ * 报告框架 bug。
+ */
 class ReportBugTool extends Tool
 {
     protected string $name = 'aimind_bug';
+
     protected string $description = '向 Aimind 平台报告框架 bug。当确认是框架自身的问题（不是用法错误）时调用。';
 
-    public function schema(ToolInput $input): void
-    {
-        $input->string('title')->required()->description('Bug 标题');
-        $input->string('description')->required()->description('详细描述');
-        $input->string('expected')->required()->description('期望行为');
-        $input->string('actual')->required()->description('实际行为');
-        $input->string('code')->description('触发 bug 的代码');
-        $input->string('framework_version')->description('框架版本');
-        $input->array('tags')->description('标签');
-    }
-
-    public function handle(array $arguments): ToolResponse
+    public function handle(Request $request): Response
     {
         /** @var AimindClient $client */
         $client = app(AimindClient::class);
 
-        $result = $client->reportBug([
-            'title' => $arguments['title'],
-            'description' => $arguments['description'],
-            'expected' => $arguments['expected'],
-            'actual' => $arguments['actual'],
-            'code' => $arguments['code'] ?? null,
-            'framework_version' => $arguments['framework_version'] ?? null,
-            'tags' => $arguments['tags'] ?? null,
-        ]);
+        $result = $client->reportBug(array_filter([
+            'title' => trim((string) $request->string('title')),
+            'description' => trim((string) $request->string('description')),
+            'expected' => trim((string) $request->string('expected')),
+            'actual' => trim((string) $request->string('actual')),
+            'code' => trim((string) $request->string('code')) ?: null,
+            'framework_version' => trim((string) $request->string('framework_version')) ?: null,
+            'tags' => $request->array('tags') ?: null,
+            'source_session' => trim((string) $request->string('source_session')) ?: null,
+        ]));
 
         if (isset($result['error'])) {
-            return ToolResponse::text("Aimind 平台不可用: {$result['error']}");
+            return Response::text("Aimind 平台不可用: {$result['error']}");
         }
 
-        return ToolResponse::text($result['message'] . " ({$result['experience_id']})");
+        $msg = "{$result['message']} ({$result['experience_id']})";
+
+        if (! empty($result['aggregated_suggestion'])) {
+            $msg .= "\n\n🎯 {$result['aggregated_suggestion']['message']}";
+        }
+
+        return Response::text($msg);
+    }
+
+    public function schema(JsonSchema $schema): array
+    {
+        return [
+            'title' => $schema->string()->description('Bug 标题')->required(),
+            'description' => $schema->string()->description('详细描述')->required(),
+            'expected' => $schema->string()->description('期望行为')->required(),
+            'actual' => $schema->string()->description('实际行为')->required(),
+            'code' => $schema->string()->description('触发 bug 的代码'),
+            'framework_version' => $schema->string()->description('框架版本'),
+            'tags' => $schema->array()->description('标签'),
+            'source_session' => $schema->string()->description('你的会话 ID'),
+        ];
     }
 }

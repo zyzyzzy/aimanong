@@ -366,6 +366,108 @@ if ($sf === null) {
  */
 
 /*
+ * ═══ Aimind 客户端（可选包）═══
+ *
+ * 验证「可选包装上后真的能用」—— 而不是只看它有没有出现在 composer.json。
+ */
+echo "\n═══ Aimind 客户端 ═══\n";
+
+/*
+ * demo 的实际位置可能变（本地是 aimanong 的兄弟目录，CI 里可能不同），
+ * 所以允许用 DEMO_PATH 覆盖 —— 与 pre-release.sh 的参数对齐。
+ *
+ * ⚠️ 这里踩过：原先写死 `__DIR__.'/../../demo-app'`，
+ * 解析成 `aimanong/demo-app`（不存在），断言直接假红。
+ */
+$demoRoot = getenv('DEMO_PATH') ?: realpath(__DIR__.'/../../../demo-app');
+$installedJson = $demoRoot ? @file_get_contents($demoRoot.'/vendor/composer/installed.json') : false;
+$installed = is_string($installedJson) && str_contains($installedJson, 'aimanong/aimind-client');
+
+t(
+    'aimind-client 已装上（可选包）',
+    $installed,
+    $installed ? '已装' : '未装 —— setup-demo.sh 有没有漏掉？'
+);
+
+if ($installed) {
+    /*
+     * 跑一个真实 PHP 进程检查：
+     *   · AimindClient 能被容器解析
+     *   · ServiceProvider 已注册
+     *   · 8 个 MCP 工具类都存在
+     *
+     * 用独立进程而不是当前进程 —— e2e 自己不在 demo 的容器里。
+     */
+    $demoPath = $demoRoot;
+    /*
+     * 探针不只看「类存不存在」，而是**构造真实的 MCP Server**
+     * 并数它最终合并出来的工具列表 ——
+     *
+     * 「类存在」和「工具真被注册进 server」是两件事。
+     * 踩过：ServiceProvider 里写了一个不存在的 Registry 类，
+     * class_exists 守卫永远 false，工具**从来没注册过**，且不报错。
+     */
+    $script = <<<'PHPSCRIPT'
+require "vendor/autoload.php";
+$app = require "bootstrap/app.php";
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+
+$transport = new class implements Laravel\Mcp\Server\Contracts\Transport {
+    public function onReceive(Closure $handler): void {}
+    public function run() {}
+    public function send(string $message, ?string $sessionId = null): void {}
+    public function sessionId(): ?string { return null; }
+    public function stream(Closure $stream): void {}
+};
+
+$server = new Aimanong\Mcp\AimanongServer($transport);
+$rc = new ReflectionClass($server);
+$rp = $rc->getProperty("tools");
+$rp->setAccessible(true);
+
+$names = [];
+foreach ($rp->getValue($server) as $t) {
+    $i = new $t;
+    if (method_exists($i, "name")) $names[] = $i->name();
+}
+
+$aimind = array_values(array_filter($names, fn ($n) => str_starts_with($n, "aimind")));
+
+echo json_encode([
+  "client" => class_exists("Aimanong\\AimindClient\\AimindClient"),
+  "provider" => in_array("Aimanong\\AimindClient\\AimindClientServiceProvider", array_keys($app->getLoadedProviders())),
+  "aimind_tools" => $aimind,
+  "total_tools" => count($names),
+]);
+PHPSCRIPT;
+
+    $cmd = 'cd '.escapeshellarg((string) $demoPath).' && php -r '.escapeshellarg($script).' 2>/dev/null';
+    $raw = (string) shell_exec($cmd);
+    $probe = json_decode(trim($raw), true) ?: [];
+
+    t('AimindClient 可被容器解析', ($probe['client'] ?? false) === true);
+    t('AimindClientServiceProvider 已注册', ($probe['provider'] ?? false) === true);
+
+    $aimindTools = $probe['aimind_tools'] ?? [];
+    $expected = [
+        'aimind_ask', 'aimind_bug', 'aimind_outdated', 'aimind_rate',
+        'aimind_search', 'aimind_share', 'aimind_solutions', 'aimind_suggestions',
+    ];
+    sort($aimindTools);
+
+    t(
+        '8 个 aimind 工具真的注册进了 MCP Server',
+        $aimindTools === $expected,
+        count($aimindTools).' 个: '.implode(',', $aimindTools)
+    );
+    t(
+        '内置工具未被挤掉（server 共 16 个工具）',
+        ($probe['total_tools'] ?? 0) === 16,
+        '共 '.(($probe['total_tools'] ?? 0)).' 个'
+    );
+}
+
+/*
  * ═══ 文档与实现的一致性 ═══
  *
  * 三条都不缺能力，但实测中每个 agent 都多绕了几步。

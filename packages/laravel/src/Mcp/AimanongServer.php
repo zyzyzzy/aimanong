@@ -44,6 +44,19 @@ class AimanongServer extends Server
     {
         $this->version = Aimanong::version();
 
+        /*
+         * 合并可选包注册进来的工具。
+         *
+         * 可选包（如 aimanong/aimind-client）在自己的 ServiceProvider 里
+         * 调 `ToolRegistry::register(...)`，这里取回来。
+         * 没装那个包 → 注册表是空的 → 不会多出任何工具。
+         */
+        foreach (ToolRegistry::all() as $tool) {
+            if (! in_array($tool, $this->tools, true)) {
+                $this->tools[] = $tool;
+            }
+        }
+
         parent::__construct($transport);
     }
 

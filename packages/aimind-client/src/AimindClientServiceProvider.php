@@ -39,9 +39,18 @@ class AimindClientServiceProvider extends ServiceProvider
             __DIR__ . '/../config/aimind.php' => config_path('aimind.php'),
         ], 'aimind-config');
 
-        // 注册 MCP 工具到 Laravel MCP Server
-        if (class_exists(\Laravel\Mcp\Server\Registry::class)) {
-            \Laravel\Mcp\Server\Registry::addTools([
+        /*
+         * 把工具注册进 Aimanong 的 MCP Server。
+         *
+         * ⚠️ 原先这里写的是 `Laravel\Mcp\Server\Registry::addTools()` ——
+         * 那个类**不存在**（真实类名是 Registrar，而且它注册的是 server 不是 tool）。
+         * `class_exists` 守卫于是永远为 false，**工具从来没被注册过**，
+         * 而且不报错。这正是本项目最反对的「静默失效」。
+         *
+         * 现在用 Aimanong 自己的 ToolRegistry，AimanongServer 构造时合并。
+         */
+        if (class_exists(\Aimanong\Mcp\ToolRegistry::class)) {
+            \Aimanong\Mcp\ToolRegistry::register(
                 SearchKnowledgeTool::class,
                 AskPeerTool::class,
                 ShareExperienceTool::class,
@@ -50,7 +59,7 @@ class AimindClientServiceProvider extends ServiceProvider
                 ReportBugTool::class,
                 GetSuggestionsTool::class,
                 MarkOutdatedTool::class,
-            ]);
+            );
         }
     }
 }

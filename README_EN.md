@@ -5,7 +5,7 @@
 
 > **An AI-first PHP admin framework** — one declaration, four artifacts, AI builds the rest.
 
-[![Version](https://img.shields.io/badge/version-1.6.3-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.11.0-blue.svg)](./CHANGELOG.md)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![PHP](https://img.shields.io/badge/PHP-%5E8.2-blue.svg)](https://www.php.net)
 [![Laravel](https://img.shields.io/badge/Laravel-%5E12.0-red.svg)](https://laravel.com)
@@ -41,7 +41,7 @@ php artisan aimanong:install
 
 > 📖 Full installation guide & your first Resource → [Quick Start](./docs/guide/quickstart.md)
 >
-> Current version: **core 1.6.3 · laravel 1.3.3 · thinkphp 1.4.3** | [Changelog](./CHANGELOG.md)
+> Current version: **framework 1.11.0** (core 1.6.3 · laravel 1.3.3 · thinkphp 1.4.3) | [Changelog](./CHANGELOG.md)
 
 ## Core Capabilities
 

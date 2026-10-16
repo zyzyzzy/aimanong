@@ -5,7 +5,7 @@
 
 > **AI 优先的 PHP 后台开发框架** —— 一份声明，四份产物，AI 独立完成开发。
 
-[![Version](https://img.shields.io/badge/version-1.6.3-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.11.0-blue.svg)](./CHANGELOG.md)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![PHP](https://img.shields.io/badge/PHP-%5E8.2-blue.svg)](https://www.php.net)
 [![Laravel](https://img.shields.io/badge/Laravel-%5E12.0-red.svg)](https://laravel.com)
@@ -41,7 +41,7 @@ php artisan aimanong:install
 
 > 📖 完整安装指南与第一个 Resource 的写法 → [快速上手](./docs/guide/quickstart.md)
 >
-> 当前版本：**core 1.6.3 · laravel 1.3.3 · thinkphp 1.4.3** | [更新日志](./CHANGELOG.md)
+> 当前版本：**framework 1.11.0**（core 1.6.3 · laravel 1.3.3 · thinkphp 1.4.3）| [更新日志](./CHANGELOG.md)
 
 ## 核心能力
 

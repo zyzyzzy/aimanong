@@ -62,6 +62,28 @@ class AimindClient
         return $this->get('/api/stats');
     }
 
+    /**
+     * 列出框架改进建议。
+     *
+     * @return array<string, mixed>
+     */
+    public function suggestions(array $params = []): array
+    {
+        $query = http_build_query(array_filter($params));
+
+        return $this->get('/api/suggestions' . ($query ? '?' . $query : ''));
+    }
+
+    /**
+     * 通知平台「框架发新版了」——标记旧经验待重新验证。
+     *
+     * @return array<string, mixed>
+     */
+    public function markOutdated(array $params): array
+    {
+        return $this->post('/api/outdated', $params);
+    }
+
     /** @return array<string, mixed> */
     private function post(string $path, array $data): array
     {

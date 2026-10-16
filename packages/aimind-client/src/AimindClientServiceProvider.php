@@ -6,6 +6,8 @@ namespace Aimanong\AimindClient;
 
 use Aimanong\AimindClient\McpTools\AskPeerTool;
 use Aimanong\AimindClient\McpTools\GetSolutionsTool;
+use Aimanong\AimindClient\McpTools\GetSuggestionsTool;
+use Aimanong\AimindClient\McpTools\MarkOutdatedTool;
 use Aimanong\AimindClient\McpTools\RateAnswerTool;
 use Aimanong\AimindClient\McpTools\ReportBugTool;
 use Aimanong\AimindClient\McpTools\SearchKnowledgeTool;
@@ -46,6 +48,8 @@ class AimindClientServiceProvider extends ServiceProvider
                 GetSolutionsTool::class,
                 RateAnswerTool::class,
                 ReportBugTool::class,
+                GetSuggestionsTool::class,
+                MarkOutdatedTool::class,
             ]);
         }
     }

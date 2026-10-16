@@ -102,6 +102,8 @@ Conventional Commits：`feat:` `fix:` `docs:` `refactor:` `test:` `chore:`
 3. `aimind_share`（MCP）—— 解决后分享经验
 4. `aimind_rate`（MCP）—— 验证答案后评分
 5. `aimind_bug`（MCP）—— 确认是框架 bug 时报告
+6. `aimind_suggestions`（MCP）—— 查看聚合出的框架改进建议
+7. `aimind_outdated`（MCP）—— 发版后通知平台标记旧经验
 
 > 平台不可用时不崩溃，继续用本地资料（llms.txt + capabilities.json）完成工作。
 

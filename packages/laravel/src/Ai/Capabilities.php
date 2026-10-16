@@ -44,6 +44,39 @@ class Capabilities
      *
      * @return array<string, mixed>
      */
+    /**
+     * 「声明了但前端不消费」的 prop 清单。
+     *
+     * ## 为什么这份清单是常量而不是扫出来的
+     *
+     * 「有没有消费方」只有**静态扫前端**才知道 —— 运行期看不见。
+     * 所以真相在 `tests/Unit/PropConsumerTest.php` 里：
+     * 那边扫 `props.X` 读法，并用这个清单做差集。
+     *
+     * ⚠️ 两处必须**完全一致**（`PropConsumerTest::test_known_unwired_list_is_exposed`
+     * 会断言 key 相同）。两处各写一遍必然漂移 —— 所以要有一个测试钉住。
+     *
+     * @return array<string, string> prop 名 => 它对用户是什么体验
+     */
+    public static function unwiredProps(): array
+    {
+        return [
+            'allowHalf' => '->rate()->allowHalf()：界面只画整星，半星选择无效',
+            'decimals' => '->money()->decimals(n)：界面固定两位小数；导出侧也写死 2',
+            'disk' => '->disk(盘名)：上传盘只取 config，不读字段声明',
+            'display' => '->display()：前端未按此渲染只读展示（走的是字段 type 分支）',
+            'format' => '->dateTime(格式)：时间格式写死 slice(0,19)',
+            'height' => '->image(n)：图片高度未接到样式绑定',
+            'min' => '->number()->min(n)：最小值未下发到 input 的 min 属性',
+            'placeholder' => '->placeholder()：文案未接到 input 的 placeholder',
+            'relation' => '->relation(关联路径)：前端只认列名里的点号；显式声明是空操作',
+            'separator' => '->tags()->separator()：分隔符未接线',
+            'symbol' => '->money(符号)：界面不显示货币符号（导出侧读了）',
+            'text' => '->link(文案)：链接文案写死「打开 ↗」',
+            'width' => '->width(n)：列宽未接到样式绑定',
+        ];
+    }
+
     public function toArray(): array
     {
         return [
@@ -83,6 +116,21 @@ class Capabilities
                     .'参数名是 sort + direction（不是 order / sort_order）。',
             ],
             'cannot_verify' => $this->cannotVerify(),
+            /*
+             * ⚠️ **下发了但前端不消费的 prop**。
+             *
+             * 2026-10-16 审计发现 13 个这样的 API（->width() / ->money()->symbol() /
+             * ->placeholder() / ->rate()->allowHalf() …）：声明能写、schema 里也有、
+             * `ai:verify` 报 valid:true，但前端一次都没读过 —— 既不生效也不报错。
+             *
+             * AI 读到 column_options / form_options 会以为这些都可用，
+             * 于是写出「看起来配了、实际没效果」的代码。这一节就是把这个坑明说出来。
+             *
+             * 「为什么不用 ai:verify 拦」：verify 校验的是**声明本身合法**，
+             * 它看不见有没有消费方。真正拦得住的是单测
+             * （tests/Unit/PropConsumerTest.php）：新增未接线的 prop 会让它红。
+             */
+            'unwired_props' => self::unwiredProps(),
             'scope_hooks' => ScopeHooks::introspect(),
             'rbac' => $this->rbacCapabilities(),
             'ui' => ThemeConfig::introspect(),

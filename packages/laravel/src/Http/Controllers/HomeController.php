@@ -12,6 +12,7 @@ use Aimanong\Models\Permission;
 use Aimanong\Schema\Ast\ResourceNode;
 use Aimanong\Schema\Compiler;
 use Aimanong\Schema\Emitters\JsonSchemaEmitter;
+use Aimanong\Support\Drivers;
 use Aimanong\Support\FieldType;
 use Aimanong\Ui\ThemeConfig;
 use Illuminate\Contracts\View\View;
@@ -99,6 +100,28 @@ class HomeController extends Controller
         $class = Aimanong::registry()->find($uri);
 
         if ($class === null) {
+            abort(404, "Resource [{$uri}] 未注册");
+        }
+
+        /*
+         * 🔴 多应用的**归属校验必须排在最前**（返回 404 而不是 403）。
+         *
+         * 审计发现（2026-10-16）：`ResourceController::authorize_()` 有这一步，
+         * 但**页面路由**（本方法）漏了 —— 于是多应用隔离在页面上失效：
+         *
+         *     GET /agent/admin-roles   （该 Resource 只属于 admin）
+         *     → 403「没有权限访问『角色』」
+         *
+         * 403 等于告诉对方「这个资源**存在**，只是你没权限」——
+         * 把总后台的结构泄露给了代理商后台。
+         * API 侧返回的是正确的 404，两端行为不一致。
+         *
+         * TP 侧的 HomeController 本来就有这个检查（那边先踩到），
+         * 说明这类「两端各写一遍、同一类 bug 各犯一遍」需要对称修。
+         */
+        $apps = Drivers::application();
+
+        if ($apps->enabled() && ! Aimanong::registry()->belongsTo($uri, $apps->current())) {
             abort(404, "Resource [{$uri}] 未注册");
         }
 

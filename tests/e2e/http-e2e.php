@@ -1323,6 +1323,56 @@ t(
     "HTTP {$crossCode}".($crossCode === 403 ? '（403 会泄露资源存在）' : '')
 );
 
+/*
+ * 🔴 **页面路由**也要隔离 —— 审计发现（2026-10-16）这一半漏了。
+ *
+ * 原先只有 ResourceController::authorize_() 做归属校验，
+ * HomeController::resource()（页面）没有，于是：
+ *
+ *     GET /agent/admin-roles  →  403「没有权限访问『角色』」
+ *
+ * 403 等于告诉代理商「这个资源**存在**，只是你没权限」——
+ * 把总后台的结构泄露了出去。API 侧返回的才是正确的 404。
+ *
+ * ⚠️ 必须用**已登录**的 agent 会话：未登录会先 302 到登录页，
+ * 那验的不是归属校验。
+ */
+$agentPage = function (string $url) {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_COOKIEJAR => '/tmp/e2e-agent-cookie.txt',
+        CURLOPT_COOKIEFILE => '/tmp/e2e-agent-cookie.txt',
+    ]);
+    $b = (string) curl_exec($ch);
+    $c = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    unset($ch);
+
+    return ['code' => $c, 'body' => $b];
+};
+
+$pageCross = $agentPage("$base/agent/admin-roles");
+t(
+    "跨后台访问页面路由 /agent/admin-roles → {$expectCross}（页面也要隔离）",
+    $pageCross['code'] === $expectCross,
+    "HTTP {$pageCross['code']}"
+    .($pageCross['code'] === 403 ? '（403 会泄露资源存在，且页面里带资源中文名）' : '')
+);
+
+/*
+ * 对照：属于该后台、只是**未授权**的 Resource 仍应是 403
+ *（不是 404 —— 它确实属于这里，只是没给权限）。
+ * 否则就是「一律 404」，把归属校验做成了「什么都不给」。
+ */
+$pageOwn = $agentPage("$base/agent/orders");
+t(
+    '同后台未授权的 Resource 仍是 403（对照，不是一律 404）',
+    $pageOwn['code'] === 403,
+    "HTTP {$pageOwn['code']}"
+);
+
 t("admin 后台含「登录日志」（对照）", str_contains($adBody, '登录日志'));
 t("admin 后台含「管理员」菜单（对照）", str_contains($adBody, '管理员'));
 

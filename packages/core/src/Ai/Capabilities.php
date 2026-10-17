@@ -164,10 +164,17 @@ class Capabilities
                 .'首页的统计卡片是框架自己的 Blade 模板，不是声明出来的 —— '
                 .'要改它只能改视图，或用扩展注册路由自己渲染。',
 
-            '详情页' => '⚠️ `Show` 类**存在但没有任何渲染方** —— '
-                .'`Show::fields([...])` 会进 schema，但页面上不会出现只读详情页。'
-                .'这是已知缺口（与 unwired_props 同类）。'
-                .'当下要看明细请用列表页的列，或扩展里自己渲染。',
+            /*
+             * 2026-10-17 更新：**详情页已经有渲染方了**（列表页的详情弹窗）。
+             * 这条原先写的是「Show 存在但没有任何渲染方」—— 那是当时的实情，
+             * 现在补上了，所以必须改掉，否则能力面在撒谎。
+             */
+            '详情页' => '✅ **已支持**：`Resource::show(Show $show)` 声明字段，'
+                .'列表页每行出现「详情」按钮，点开是只读弹窗。'
+                .'结构用 `Resource::layout(Layout $layout)` 分组：'
+                .'`$layout->tabs([\'基本\' => [\'name\',\'code\']])`（还有 sections / cards）。'
+                .'⚠️ 详情字段是**只读展示**，不做格式化（日期原样显示）——'
+                .'要格式化请在列表列上声明。',
 
             '条件表达式' => '`visibleWhen(字段, 值|数组)` **只支持等值 / 包含**，'
                 .'不是任意表达式（不支持 > < && 之类的运算）。'
@@ -248,6 +255,30 @@ class Capabilities
              */
             'cannot_express' => $this->cannotExpress(),
             'scope_hooks' => ScopeHooks::introspect(),
+            /*
+             * 详情页结构（2026-10-17 新增）。
+             *
+             * `show()` 说有哪些字段，`layout()` 说怎么摆 —— 两件事分开，
+             * 因为「字段清单」在别处（本文件 resources 段的 show）已经能查到，
+             * 这里只说明**结构能力**。
+             */
+            'show_layout' => [
+                'how' => 'Resource 覆盖 layout() 方法声明详情页结构（可选，不实现则平铺）',
+                'signature' => 'public static function layout(\Aimanong\Layout\Layout $layout): void',
+                'use' => 'use Aimanong\\Layout\\Layout;',
+                'kinds' => 'tabs（标签页，组间切换）| sections（全部展开带小标题，默认）| '
+                    .'cards（卡片网格）',
+                'example' => "\$layout->tabs([\n"
+                    ."    '基本' => ['name', 'code', 'status'],\n"
+                    ."    '联系' => ['phone', 'email', 'address'],\n"
+                    .']);',
+                'exhaustive' => '只支持这三种容器 —— 每多一种就多一个要维护、要对拍的渲染分支。'
+                    .'需要更复杂的结构请用扩展。',
+                'leftover' => '`show()` 里声明了、但没进任何分组的字段会**自动追加到最后一组**，'
+                    .'不会静默消失',
+                'unknown_field' => 'layout 里引用了 `show()` 未声明的字段 → **编译期报错**'
+                    .'（附可用字段清单），不会在页面上少一块',
+            ],
             'rbac' => $this->rbacCapabilities(),
             'ui' => ThemeConfig::introspect(),
             'menu' => [
@@ -494,6 +525,12 @@ class Capabilities
 
             // 列表整体配置（写在 grid() 中，不属于任何单列）
             'perPage' => '每页条数，参数: int。写法: $grid->perPage(15); 不传则用框架默认 20',
+            'mode' => '列表展示形态，参数: table|list|cards（默认 table）。'
+                ."写法: \$grid->mode('cards'); "
+                .'三种形态**共用同一份数据、列声明与权限**，只是排版不同：'
+                .'table 表格（信息密度最高）/ list 纵向列表（适合移动与阅读）/ '
+                .'cards 网格卡片（适合图片类，第一个 image 列自动当封面）。'
+                .'传未知值会在声明期直接抛异常，不会静默退回表格',
             'actions' => '是否显示行操作按钮，参数: bool',
             'batchActions' => '批量操作，参数: 动作名数组。'
                 .'支持 delete（批量删除，复用 destroy 权限）与 '

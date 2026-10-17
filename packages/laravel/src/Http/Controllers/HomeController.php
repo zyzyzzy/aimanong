@@ -182,7 +182,7 @@ class HomeController extends Controller
      * RBAC 关闭时全为 true（与 PermissionGate::check 的行为一致）——
      * 「没启用权限系统」不该导致按钮全消失。
      *
-     * @return array{create: bool, update: bool, destroy: bool}
+     * @return array{create: bool, update: bool, destroy: bool, show: bool}
      */
     protected function abilities(string $uri): array
     {
@@ -194,6 +194,14 @@ class HomeController extends Controller
             'create' => $can('create'),
             'update' => $can('update'),
             'destroy' => $can('destroy'),
+            /*
+             * 详情页权限。
+             *
+             * ⚠️ 必须与 show 接口（GET /api/{uri}/{id}）用**同一个权限节点** ——
+             * 否则会出现「按钮能点、点了 403」这种自相矛盾的界面，
+             * 而那正是本项目反复在修的「静默失效」的近亲。
+             */
+            'show' => $can('show'),
         ];
     }
 

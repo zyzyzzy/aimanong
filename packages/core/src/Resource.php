@@ -7,6 +7,7 @@ namespace Aimanong;
 use Aimanong\Contracts\Resource as ResourceContract;
 use Aimanong\Form\Form;
 use Aimanong\Grid\Grid;
+use Aimanong\Layout\Layout;
 use Aimanong\Show\Show;
 use Aimanong\Tree\Tree;
 
@@ -94,6 +95,31 @@ abstract class Resource implements ResourceContract
     public static function show(Show $show): void
     {
         // 默认不定义字段，子类覆盖
+    }
+
+    /**
+     * 详情页**结构**定义（分组 / 标签页）。子类覆盖。
+     *
+     * ```php
+     * public static function layout(Layout $layout): void
+     * {
+     *     $layout->tabs([
+     *         '基本' => ['name', 'level', 'industry'],
+     *         '联系' => ['phone', 'website', 'address'],
+     *     ]);
+     * }
+     * ```
+     *
+     * ⚠️ 与 `show()` 的分工：`show()` 说**有哪些字段**，
+     * `layout()` 说**怎么摆**。只在 `show()` 里声明、没进任何分组的字段
+     * 会被**追加到最后一组**（不会静默消失）；引用了不存在的字段则
+     * **编译期报错**。
+     *
+     * 不声明时详情页按平铺渲染 —— 与加这个能力之前完全一致。
+     */
+    public static function layout(Layout $layout): void
+    {
+        // 默认不分组，子类覆盖
     }
 
     /**

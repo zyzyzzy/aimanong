@@ -199,22 +199,33 @@ final class HomeController
      *
      * RBAC 关闭时全为 true —— 「没启用权限系统」不该让按钮全消失。
      *
-     * @return array{create: bool, update: bool, destroy: bool}
+     * @return array{create: bool, update: bool, destroy: bool, show: bool}
      */
     protected function abilities(string $uri): array
     {
         $checker = new ThinkPermissionChecker;
 
         if (! $checker->rbacEnabled()) {
-            return ['create' => true, 'update' => true, 'destroy' => true];
+            return ['create' => true, 'update' => true, 'destroy' => true, 'show' => true];
         }
 
         $can = static fn (string $action): bool => $checker->check($checker->slug($uri, $action));
 
+        /*
+         * ⚠️ 这四个键必须与 Laravel 侧的 HomeController::abilities() **完全一致**。
+         *
+         * 模板是同一份（blade2think 从 Blade 生成），少一个键就是
+         * 「Undefined array key」→ 整个资源页面 500。
+         *
+         * 实测踩到过：给 Laravel 侧加了 show（详情页权限）却忘了这里，
+         * thinkphp-e2e 立刻整片红 —— 两端共用模板时，
+         * **模板用到的每个变量都是一份隐式契约**。
+         */
         return [
             'create' => $can('create'),
             'update' => $can('update'),
             'destroy' => $can('destroy'),
+            'show' => $can('show'),
         ];
     }
 

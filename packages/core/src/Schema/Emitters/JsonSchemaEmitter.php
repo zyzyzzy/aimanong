@@ -60,6 +60,13 @@ class JsonSchemaEmitter
     {
         return [
             'perPage' => $node->meta['perPage'] ?? 20,
+            /*
+             * 列表展示形态。前端据此选渲染分支（表格 / 列表 / 卡片）。
+             *
+             * 与 batchActions 同理：这一项在 Compiler 与 Emitter 两处
+             * 任一漏掉，`$grid->mode('cards')` 就成空操作。
+             */
+            'mode' => $node->meta['mode'] ?? 'table',
             'exportable' => $node->meta['exportable'] ?? false,
             /*
              * 批量操作按钮。前端据此决定是否渲染选择列与批量按钮。
@@ -140,6 +147,13 @@ class JsonSchemaEmitter
                 fn (FieldNode $f): array => $this->field($f),
                 $node->detailFields
             ),
+            /*
+             * 详情页的**结构**（分组 / 标签页）。
+             *
+             * kind = flat 表示没声明 layout()，前端按平铺渲染 ——
+             * 「没声明」与「声明了空结构」是两件事，不能混。
+             */
+            'layout' => $node->meta['layout'] ?? ['kind' => 'flat', 'groups' => []],
         ];
     }
 

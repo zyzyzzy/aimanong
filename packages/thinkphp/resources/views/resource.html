@@ -83,6 +83,70 @@
       {/if}
     </div>
 
+    {/* ══ 列表 / 卡片形态 ══
+         与表格**共用同一份数据、同一批列声明、同一个单元格渲染器**（am-cell）——
+         换的只是外层排版。选择与操作按钮的行为也完全一致。
+
+         没有把三种形态各写一套单元格渲染，是因为那会让
+         「某个 formatter 只在表格里生效」这类分叉很容易发生。 */}
+    <div v-else-if="gridMode === 'list'" class="am-list">
+      <div v-for="row in displayRows" :key="row.id" class="am-list__item"
+           :class="{'is-selected': isSelected(row.id)}">
+        <div class="am-list__main">
+          <div v-for="col in columns" :key="col.name" class="am-list__field">
+            <span class="am-list__label">{{ col.label }}</span>
+            <span class="am-list__value"><am-cell :col="col" :row="row" :tree-title-column="isTree ? treeTitleColumn : ''" :collapsed="isTree && isCollapsed(row.id)"></am-cell></span>
+          </div>
+        </div>
+        <div class="am-list__aside">
+          <input v-if="hasBatch" type="checkbox" :checked="isSelected(row.id)"
+                 @change="toggleSelect(row.id)" :aria-label="'选择 ' + rowLabel(row)">
+          <div class="am-flex am-gap-1 am-nowrap" v-if="!readonly">
+            {if $abilities['show']}
+            <button class="am-btn am-btn--sm am-btn--ghost" @click="showRow(row)">详情</button>
+            {/if}
+            {if $abilities['update']}
+            <button class="am-btn am-btn--sm am-btn--ghost" @click="edit(row)">编辑</button>
+            {/if}
+            {if $abilities['destroy']}
+            <button class="am-btn am-btn--sm am-btn--ghost" @click="remove(row)">删除</button>
+            {/if}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-else-if="gridMode === 'cards'" class="am-cards">
+      <div v-for="row in displayRows" :key="row.id" class="am-card-item"
+           :class="{'is-selected': isSelected(row.id)}">
+        {/* 卡片形态下，第一个 image 列当封面（没有就退化成纯文字卡片） */}
+        <div v-if="cardCover(row)" class="am-card-item__cover">
+          <img :src="uploadUrl(cardCover(row))" alt="">
+        </div>
+        <div class="am-card-item__body">
+          <div v-for="col in cardFields" :key="col.name" class="am-card-item__field">
+            <span class="am-card-item__label">{{ col.label }}</span>
+            <span><am-cell :col="col" :row="row" :tree-title-column="isTree ? treeTitleColumn : ''" :collapsed="isTree && isCollapsed(row.id)"></am-cell></span>
+          </div>
+        </div>
+        <div class="am-card-item__foot">
+          <input v-if="hasBatch" type="checkbox" :checked="isSelected(row.id)"
+                 @change="toggleSelect(row.id)" :aria-label="'选择 ' + rowLabel(row)">
+          <div class="am-flex am-gap-1 am-nowrap" v-if="!readonly">
+            {if $abilities['show']}
+            <button class="am-btn am-btn--sm am-btn--ghost" @click="showRow(row)">详情</button>
+            {/if}
+            {if $abilities['update']}
+            <button class="am-btn am-btn--sm am-btn--ghost" @click="edit(row)">编辑</button>
+            {/if}
+            {if $abilities['destroy']}
+            <button class="am-btn am-btn--sm am-btn--ghost" @click="remove(row)">删除</button>
+            {/if}
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div v-else class="am-table-wrap am-table-wrap--stack">
       {/* min-width 按列数动态算（CSS 见 design-system 的 --col-count 规则）：
            固定的 980px 只够 9 列，12 列的表格仍会把中文压成竖排。 */}
@@ -131,74 +195,14 @@
                 :data-l="col.label"
                 :style="col.props.width ? {maxWidth: col.props.width + 'px'} : null"
                 :class="[cellClass(col, row), {'am-num': isNumeric(col)}]">
-              <template v-if="col.formatter === 'datetime'">
-                <span class="am-nowrap">{{ formatDate(cellValue(col, row), col) }}</span>
-              </template>
-              <template v-else-if="col.formatter === 'money'">
-                <template v-if="formatMoney(cellValue(col, row), col) !== ''">{{ formatMoney(cellValue(col, row), col) }}</template>
-                <span v-else class="am-text-muted">—</span>
-              </template>
-              <template v-else-if="col.formatter === 'bool'">
-                <span class="am-badge" :class="cellValue(col, row) ? 'am-badge--success' : 'am-badge--muted'">
-                  <i style="width:5px;height:5px;border-radius:50%;background:currentColor;display:inline-block"></i>{{ cellValue(col, row) ? (col.props.trueLabel || '是') : (col.props.falseLabel || '否') }}
-                </span>
-              </template>
-              <template v-else-if="col.formatter === 'badge' || col.formatter === 'map' || col.formatter === 'enum'">
-                <span class="am-badge" :class="tagClass(col, row)">{{ mapLabel(col, cellValue(col, row)) }}</span>
-              </template>
-              {/* ⚠️ 图片高度接线（2026-10-17）：原先写死 am-avatar--sm（32px），->image(48) 不生效 */}
-              <template v-else-if="col.formatter === 'image'">
-                <img v-if="cellValue(col, row)" :src="uploadUrl(cellValue(col, row))"
-                     class="am-avatar am-avatar--sm"
-                     :style="col.props.height ? {width: col.props.height + 'px', height: col.props.height + 'px', borderRadius: '6px'} : {borderRadius: '6px'}">
-                <span v-else class="am-text-muted">—</span>
-              </template>
-              <template v-else-if="col.formatter === 'file'">
-                <a v-if="cellValue(col, row)" :href="uploadUrl(cellValue(col, row))"
-                   target="_blank" rel="noopener" class="am-text-brand">{{ uploadName(cellValue(col, row)) }}</a>
-                <span v-else class="am-text-muted">—</span>
-              </template>
-              {/* ⚠️ 链接文案接线（2026-10-17）：原先写死「打开 ↗」，->link('查看') 不生效 */}
-              <template v-else-if="col.formatter === 'link'">
-                <a v-if="cellValue(col, row)" :href="cellValue(col, row)" target="_blank" class="am-text-brand">{{ col.props.text || '打开 ↗' }}</a>
-                <span v-else class="am-text-muted">—</span>
-              </template>
-              <template v-else-if="col.formatter === 'progress'">
-                <span class="am-progress"><i :style="{width: Math.min(100, Number(cellValue(col,row)) || 0) + '%'}"></i></span>
-              </template>
-              {/*
-                树形列：按 _depth 缩进 + 展开/折叠。
-                用到的 .am-tree-indent / .am-tree-toggle 样式**早就写在 design-system 里了**
-                （连 aria-expanded=false 的旋转动画都有），此前只是模板没用它们。
-              */}
-              <template v-else-if="isTree && col.name === treeTitleColumn">
-                <span class="am-tree-cell" :style="{ paddingLeft: (row._depth || 0) * 16 + 'px' }">
-                  <button v-if="row._hasChildren" type="button" class="am-tree-toggle"
-                          :aria-expanded="isCollapsed(row.id) ? 'false' : 'true'"
-                          :aria-label="(isCollapsed(row.id) ? '展开 ' : '折叠 ') + cellValue(col, row)"
-                          @click="toggleCollapse(row.id)">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
-                         fill="none" stroke="currentColor" stroke-width="2.5"
-                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="m6 9 6 6 6-6"/>
-                    </svg>
-                  </button>
-                  {/* 叶子节点占同样的宽度，保证同层文字左对齐 */}
-                  <span v-else class="am-tree-indent" style="width:18px" aria-hidden="true"></span>
-                  <span :class="{'am-text-muted': cellValue(col, row) === '' || cellValue(col, row) === null}">
-                    {{ cellValue(col, row) === '' || cellValue(col, row) === null ? '—' : cellValue(col, row) }}
-                  </span>
-                </span>
-              </template>
-              <template v-else>
-                <span :class="{'am-text-muted': cellValue(col, row) === '' || cellValue(col, row) === null}">
-                  {{ cellValue(col, row) === '' || cellValue(col, row) === null ? '—' : cellValue(col, row) }}
-                </span>
-              </template>
+              <am-cell :col="col" :row="row" :tree-title-column="isTree ? treeTitleColumn : ''" :collapsed="isTree && isCollapsed(row.id)"></am-cell>
             </td>
             {if $abilities['update'] || $abilities['destroy']}
             <td class="am-table__actions" data-l="" v-if="!readonly">
               <div class="am-flex am-gap-1 am-nowrap">
+                {if $abilities['show']}
+                <button class="am-btn am-btn--sm am-btn--ghost" @click="showRow(row)">详情</button>
+                {/if}
                 {if $abilities['update']}
                 <button class="am-btn am-btn--sm am-btn--ghost" @click="edit(row)">编辑</button>
                 {/if}
@@ -333,6 +337,91 @@
         <button v-if="isStepped && currentStep < steps.length - 1" class="am-btn am-btn--primary"
                 @click="currentStep++">下一步</button>
         <button v-else class="am-btn am-btn--primary" @click="save">保存</button>
+      </div>
+    </div>
+  </div>
+
+  {/*
+    ══ 详情弹窗 ══
+
+    消费 `Resource::show(Show $show)` 的声明（schema.show.fields）。
+
+    ⚠️ 这个渲染方**此前不存在** —— `Show` 类、编译、四产物、自省接口
+    全都齐全，五个内置 Resource 也都在用 `show()`，但前端一次都没读过。
+    属于「声明了但没有渲染方」：写了不生效，也不报错。
+
+    权限与 show 接口同源（abilities.show）—— 没有权限时
+    列表里**根本不出现**「详情」按钮，直接调接口也是 403。
+  */}
+  <div class="am-overlay" v-if="showDetail" @click.self="showDetail = false">
+    <div class="am-modal">
+      <div class="am-modal__head">
+        <span class="am-modal__title">{{ detailTitle }}</span>
+        <button class="am-modal__close" @click="showDetail = false" aria-label="关闭">
+          {include file="partials/icon" /}
+        </button>
+      </div>
+      <div class="am-modal__body">
+        <div v-if="detailLoading" class="am-skeleton am-skeleton--text"></div>
+        <div v-else-if="detailError" class="am-alert am-alert--danger">{{ detailError }}</div>
+
+        {/*
+          ⚠️ 三种结构分支：
+            flat     —— 没声明 layout()，平铺（= 老行为，默认）
+            tabs     —— 标签页切换
+            sections / cards —— 分块展示（cards 用卡片网格包一层）
+
+          结构由 `Resource::layout()` 声明，字段来自 `show()`。
+          两者都不声明时这里渲染一个空列表 + 一句说明（不白屏）。
+        */}
+        <div v-else-if="detailLayout.kind === 'flat'">
+          <dl class="am-detail">
+            <div v-for="f in detailFields" :key="f.name" class="am-detail__row">
+              <dt class="am-detail__label">{{ f.label }}</dt>
+              <dd class="am-detail__value">
+                <span :class="{'am-text-muted': isDetailEmpty(f)}">{{ isDetailEmpty(f) ? '—' : detailValue(f) }}</span>
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <div v-else-if="detailLayout.kind === 'tabs'">
+          <div class="am-tabs">
+            <button v-for="(g, i) in detailLayout.groups" :key="g.title"
+                    type="button" class="am-tabs__tab"
+                    :class="{'is-active': detailTab === i}"
+                    @click="detailTab = i">{{ g.title }}</button>
+          </div>
+          <dl class="am-detail">
+            <div v-for="f in detailFieldsOf(detailLayout.groups[detailTab])" :key="f.name" class="am-detail__row">
+              <dt class="am-detail__label">{{ f.label }}</dt>
+              <dd class="am-detail__value">
+                <span :class="{'am-text-muted': isDetailEmpty(f)}">{{ isDetailEmpty(f) ? '—' : detailValue(f) }}</span>
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <div v-else class="am-detail-sections">
+          <section v-for="g in detailLayout.groups" :key="g.title" class="am-detail-section">
+            <h4 class="am-detail-section__title">{{ g.title }}</h4>
+            <dl class="am-detail">
+              <div v-for="f in detailFieldsOf(g)" :key="f.name" class="am-detail__row">
+                <dt class="am-detail__label">{{ f.label }}</dt>
+                <dd class="am-detail__value">
+                  <span :class="{'am-text-muted': isDetailEmpty(f)}">{{ isDetailEmpty(f) ? '—' : detailValue(f) }}</span>
+                </dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+
+        <div v-if="detailFields.length === 0" class="am-text-muted">
+          该 Resource 未声明 show()，没有可展示的详情字段。
+        </div>
+      </div>
+      <div class="am-modal__foot">
+        <button class="am-btn" @click="showDetail = false">关闭</button>
       </div>
     </div>
   </div>
@@ -494,7 +583,188 @@ const app = createApp({
         const editing = ref(false);
         const form = ref({});
 
+        /*
+         * ══ 详情弹窗 ══
+         *
+         * 数据来自 show 接口（GET /api/{uri}/{id}），字段来自
+         * `Resource::show()` 的声明（schema.show.fields）。
+         *
+         * 走接口而不是直接用列表行数据，是因为详情要看的东西
+         * 列表接口不一定返回（未列入 grid 的列、关联字段）。
+         */
+        const showDetail = ref(false);
+        const detailRow = ref(null);
+        const detailLoading = ref(false);
+        const detailError = ref('');
+
+        const detailFields = computed(() => {
+            const fields = schema.show?.fields ?? [];
+
+            /*
+             * ⚠️ 标签回退：`$show->fields(['id','name'])` 只给字段名，
+             * 没给中文标签 —— 直接渲染会显示 `short_name` 这种原始列名。
+             *
+             * 这里回退到**列表列的同名列标签**（同一个 Resource 里
+             * 那个字段多半已经在 grid 里声明过中文名了）。
+             * 找不到才用字段名本身 —— 至少不是空白。
+             *
+             * 这是"框架替使用者补上"而不是"要求使用者多写一遍"：
+             * 同一个字段的中文名，没有理由让人写第二次。
+             */
+            const labelOf = {};
+            for (const c of columns.value) {
+                labelOf[c.name] = c.label;
+            }
+
+            return fields.map(f => ({
+                ...f,
+                label: (f.label && f.label !== f.name) ? f.label : (labelOf[f.name] || f.label || f.name),
+            }));
+        });
+
+        const detailTitle = computed(() => {
+            if (!detailRow.value) return '详情';
+
+            // 有 name/title 列就用它当标题，否则退回「详情」
+            const titleCol = columns.value.find(c => c.name === 'title' || c.name === 'name');
+            const v = titleCol ? cellValue(titleCol, detailRow.value) : null;
+
+            return v ? String(v) : '详情';
+        });
+
+        async function showRow(row) {
+            showDetail.value = true;
+            detailLoading.value = true;
+            detailError.value = '';
+            detailRow.value = null;
+            detailTab.value = 0;
+
+            try {
+                const res = await fetch(base + '/' + row.id, {
+                    headers: { Accept: 'application/json' },
+                });
+
+                if (!res.ok) {
+                    throw new Error('HTTP ' + res.status);
+                }
+
+                const json = await res.json();
+                detailRow.value = json.data ?? json;
+            } catch (e) {
+                /*
+                 * 错误必须**说出来**。
+                 *
+                 * 列表页的 load() 曾经只 console.error，于是
+                 * 「网络挂了」和「真的没数据」长得一模一样 ——
+                 * 这里不重复那个错误。
+                 */
+                detailError.value = '加载详情失败：' + e.message;
+            } finally {
+                detailLoading.value = false;
+            }
+        }
+
+        /**
+         * 详情页结构。
+         *
+         * kind = 'flat' 表示 Resource 没声明 layout() —— 平铺渲染，
+         * 与加这个能力之前**完全一致**。
+         */
+        const detailLayout = computed(
+            () => schema.show?.layout ?? { kind: 'flat', groups: [] }
+        );
+
+        // 当前标签页（tabs 结构用）。切换详情对象时复位，避免停在上一次的页签上
+        const detailTab = ref(0);
+
+        /**
+         * 取某个分组里的字段对象。
+         *
+         * 分组里只有字段**名**，这里映射回完整字段（标签、类型…）。
+         * 映射不到的跳过 —— 编译期已经校验过引用合法性，
+         * 这里是防御（例如 layout 引用了别的 Resource 的字段）。
+         */
+        function detailFieldsOf(group) {
+            if (!group || !Array.isArray(group.fields)) return [];
+
+            const byName = {};
+            for (const f of detailFields.value) {
+                byName[f.name] = f;
+            }
+
+            return group.fields.map(n => byName[n]).filter(Boolean);
+        }
+
+        /** 详情值是否为空（空值统一显示 —） */
+        function isDetailEmpty(f) {
+            const v = detailValue(f);
+
+            return v === '' || v === null || v === undefined;
+        }
+
+        /**
+         * 取详情字段的值。
+         *
+         * 详情是**只读展示**，所以只做取值，不做格式化 ——
+         * 原样更可信；把日期之类"格式化得像数据"反而会让人误判。
+         */
+        function detailValue(f) {
+            if (!detailRow.value) return '';
+
+            const v = detailRow.value[f.name];
+
+            if (v === null || v === undefined) return '';
+
+            // 关联：详情接口返回嵌套对象，取它的 name/title/label
+            if (typeof v === 'object' && !Array.isArray(v)) {
+                return v.name ?? v.title ?? v.label ?? '';
+            }
+
+            // 多对多：数组拼成可读文本（与列表的口径一致）
+            if (Array.isArray(v)) {
+                return v
+                    .map(item => (item && typeof item === 'object')
+                        ? (item.name ?? item.title ?? item.label ?? '')
+                        : item)
+                    .filter(x => x !== '' && x !== null && x !== undefined)
+                    .join(' / ');
+            }
+
+            return v;
+        }
+
         const columns = computed(() => schema.grid?.columns ?? []);
+
+        /*
+         * ══ 列表展示形态 ══
+         *
+         * 来自 `$grid->mode('table'|'list'|'cards')`。
+         * 默认 table —— 老资源不改一行就是原样。
+         *
+         * 只改**外层排版**；数据、列、选择、操作、分页全部复用。
+         */
+        const gridMode = computed(() => schema.grid?.mode || 'table');
+
+        /*
+         * 卡片形态的封面：取第一个 image 列的值。
+         *
+         * 「第一列图片当封面」是本项目唯一的隐式约定，写在这里而不是让
+         * 使用者再声明一次 —— 因为卡片没封面就是普通列表，等于白配。
+         * 没有 image 列时返回 null，模板退化成纯文字卡片。
+         */
+        const cardCoverColumn = computed(
+            () => columns.value.find(c => c.formatter === 'image') || null
+        );
+
+        function cardCover(row) {
+            if (!cardCoverColumn.value) return '';
+            return cellValue(cardCoverColumn.value, row);
+        }
+
+        /* 卡片正文里不重复放封面本身那张图 */
+        const cardFields = computed(
+            () => columns.value.filter(c => c !== cardCoverColumn.value)
+        );
 
         /*
          * ══ 批量操作 ══
@@ -1439,13 +1709,17 @@ const app = createApp({
             if (isTree) { loadTree(); } else { load(1); }
         });
 
-        return {
+        const exposed = {
             rows, loading, total, currentPage, lastPage, keyword,
             filterValues, filterableColumns, filterOptions, hasFilter, clearFilter,
             batchActions, hasBatch, selectedIds, allSelected, isSelected, toggleSelect,
             toggleSelectAll, runBatch, confirmRun, batchLabels, rowLabel,
             sortField, direction, showCreate, editing, form,
             columns, formFields, hasSearch,
+            gridMode, cardCover, cardFields,
+            showDetail, detailRow, detailLoading, detailError,
+            detailFields, detailTitle, showRow, detailValue,
+            detailLayout, detailTab, detailFieldsOf, isDetailEmpty,
             load, toggleSort, formatDate, edit, save, remove,
             exportable, doExport, isTree, treeTitleColumn, loadTree,
             displayRows, toggleCollapse, isCollapsed,
@@ -1458,10 +1732,138 @@ const app = createApp({
             fieldOptions, readonly, isUploadField, uploadUrl, uploadName,
             isNumeric,
         };
+
+        /*
+         * 把同一批 helper 交给 `am-cell` 组件用。
+         *
+         * ⚠️ 必须在这里注入（而不是文件顶层）：setup() 运行时这些函数
+         * 才真的存在。文件顶层那句 Object.assign 读到的是 undefined，
+         * 结果是**卡片只有标签、没有值，且控制台不报错**。
+         *
+         * 递的是**同一批函数引用**，所以 formatDate 之类只可能有一份实现，
+         * 不存在「组件里那份偷偷过期」的可能。
+         */
+        if (app.config && app.config.globalProperties) {
+            Object.assign(app.config.globalProperties, exposed);
+        }
+
+        return exposed;
     },
 });
 
 app.component('am-upload', window.AimanongUpload.component);
+
+/*
+ * ══ 单元格渲染器（三种展示形态共用）══
+ *
+ * ## 为什么要抽出来
+ *
+ * table / list / cards 三种形态换的只是**外层排版**，单元格内容完全一样。
+ * 复制三份模板的话，将来给某个 formatter 加分支就要改三处 ——
+ * 而漏改一处的结果是「表格里有、卡片里没有」，正好是那种
+ * 「只有把两种视图并排看才发现」的缺陷。
+ *
+ * ## ⚠️ helper 的注入点在 setup() 里，不在这里
+ *
+ * setup() 要等 app.mount() 才执行，而 mount 在本文件**末尾**。
+ * 第一版在这里写 `Object.assign(app.config.globalProperties,
+ * window.__aimanongCellHelpers)` —— 那时 setup 还没跑，
+ * 读到的是 undefined → globalProperties 是空的 →
+ * 组件里 this.cellValue 为 undefined。
+ *
+ * **症状极具迷惑性**：卡片只有标签、没有值，而且**控制台一个字都不报**
+ *（prod 版 Vue 把渲染错误吞掉了）。只看得见"值不见了"。
+ *
+ * 所以注入写在 setup() 内部（搜索 __aimanongCellHelpers 的赋值处）。
+ */
+
+app.component('am-cell', {
+    props: {
+        col: { type: Object, required: true },
+        row: { type: Object, required: true },
+        /*
+         * 树形页的两个上下文。
+         *
+         * 组件拿不到根组件的 computed，所以由模板显式传。
+         * 默认值保证非树形页调用时不传也不报错。
+         */
+        treeTitleColumn: { type: String, default: '' },
+        collapsed: { type: Boolean, default: false },
+    },
+    computed: {
+        value() {
+            return this.cellValue(this.col, this.row);
+        },
+        isEmpty() {
+            return this.value === '' || this.value === null || this.value === undefined;
+        },
+        /** 当前列是不是树形页的标题列（只有它渲染缩进与开关） */
+        isTreeCol() {
+            return this.treeTitleColumn !== '' && this.col.name === this.treeTitleColumn;
+        },
+    },
+    template: `
+      <span v-if="col.formatter === 'datetime'" class="am-nowrap">{{ formatDate(value, col) }}</span>
+
+      <template v-else-if="col.formatter === 'money'">
+        <template v-if="formatMoney(value, col) !== ''">{{ formatMoney(value, col) }}</template>
+        <span v-else class="am-text-muted">—</span>
+      </template>
+
+      <span v-else-if="col.formatter === 'bool'" class="am-badge"
+            :class="value ? 'am-badge--success' : 'am-badge--muted'">
+        <i style="width:5px;height:5px;border-radius:50%;background:currentColor;display:inline-block"></i>{{ value ? (col.props.trueLabel || '是') : (col.props.falseLabel || '否') }}
+      </span>
+
+      <span v-else-if="col.formatter === 'badge' || col.formatter === 'map' || col.formatter === 'enum'"
+            class="am-badge" :class="tagClass(col, row)">{{ mapLabel(col, value) }}</span>
+
+      <template v-else-if="col.formatter === 'image'">
+        <img v-if="value" :src="uploadUrl(value)" class="am-avatar am-avatar--sm"
+             :style="col.props.height ? {width: col.props.height + 'px', height: col.props.height + 'px', borderRadius: '6px'} : {borderRadius: '6px'}">
+        <span v-else class="am-text-muted">—</span>
+      </template>
+
+      <template v-else-if="col.formatter === 'file'">
+        <a v-if="value" :href="uploadUrl(value)" target="_blank" rel="noopener"
+           class="am-text-brand">{{ uploadName(value) }}</a>
+        <span v-else class="am-text-muted">—</span>
+      </template>
+
+      <template v-else-if="col.formatter === 'link'">
+        <a v-if="value" :href="value" target="_blank" class="am-text-brand">{{ col.props.text || '打开 ↗' }}</a>
+        <span v-else class="am-text-muted">—</span>
+      </template>
+
+      <span v-else-if="col.formatter === 'progress'" class="am-progress">
+        <i :style="{width: Math.min(100, Number(value) || 0) + '%'}"></i>
+      </span>
+
+      {/*
+        ⚠️ 树形分支**必须留在这里**。
+        把单元格抽成组件时漏掉过一次 —— 树形页的行不再缩进、
+        也没有展开/折叠按钮，而 e2e 立刻抓到（「需页面里出现 am-tree-cell」）。
+        那段样式（.am-tree-indent / .am-tree-toggle）本来早就写在设计系统里。
+      */}
+      <span v-else-if="isTreeCol" class="am-tree-cell" :style="{ paddingLeft: (row._depth || 0) * 16 + 'px' }">
+        <button v-if="row._hasChildren" type="button" class="am-tree-toggle"
+                :aria-expanded="collapsed ? 'false' : 'true'"
+                :aria-label="(collapsed ? '展开 ' : '折叠 ') + value"
+                @click="toggleCollapse(row.id)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2.5"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m6 9 6 6 6-6"/>
+          </svg>
+        </button>
+        {/* 叶子节点占同样的宽度，保证同层文字左对齐 */}
+        <span v-else class="am-tree-indent" style="width:18px" aria-hidden="true"></span>
+        <span :class="{'am-text-muted': isEmpty}">{{ isEmpty ? '—' : value }}</span>
+      </span>
+
+      <span v-else :class="{'am-text-muted': isEmpty}">{{ isEmpty ? '—' : value }}</span>
+    `,
+});
 
 app.mount('#app');
 </script>

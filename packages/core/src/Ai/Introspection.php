@@ -95,6 +95,15 @@ final class Introspection
             'model' => $node->model,
             'grid' => [
                 'perPage' => $node->meta['perPage'] ?? 20,
+                /*
+                 * 列表展示形态（table / list / cards）。
+                 *
+                 * ⚠️ 这里是**第三个**独立组装 grid 段的地方
+                 * （另两处是 Compiler 与 JsonSchemaEmitter）。
+                 * 漏掉它 → 自省接口谎报「没有 mode」，而页面确实按 mode 渲染 ——
+                 * AI 自查时看到的与实际不符，比完全不知道更糟。
+                 */
+                'mode' => $node->meta['mode'] ?? 'table',
                 'exportable' => $node->meta['exportable'] ?? false,
                 'exportColumns' => array_column($node->meta['exportColumns'] ?? [], 'name'),
                 'tree' => $node->meta['tree'] ?? null,
@@ -107,6 +116,12 @@ final class Introspection
             ],
             'show' => [
                 'fields' => array_map(fn ($f): array => $f->toArray(), $node->detailFields),
+                /*
+                 * 详情页结构。kind=flat 表示没声明 layout()。
+                 * 与 JsonSchemaEmitter 保持同一形状 —— 两处不一致
+                 * 会让 AI 自省到的结构与页面实际不符。
+                 */
+                'layout' => $node->meta['layout'] ?? ['kind' => 'flat', 'groups' => []],
             ],
             'rules' => $node->meta['rules'] ?? [],
             'capabilities' => [

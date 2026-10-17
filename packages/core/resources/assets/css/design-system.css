@@ -2014,3 +2014,227 @@ hr {
   color: var(--text-on-brand);
   background: var(--brand-solid);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   列表展示形态：列表 / 卡片
+   ═══════════════════════════════════════════════════════════════
+
+   与表格共用同一份数据与列声明（`$grid->mode('list'|'cards')`），
+   换的只是外层排版。三种形态的 token 全部取自本文件顶部，
+   没有写死色值/尺寸 —— 换主题时它们跟着一起变。
+   =============================================================== */
+
+/* --- 列表形态：一行一个卡片，适合阅读与窄屏 --- */
+.am-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.am-list__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-xs);
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+
+.am-list__item:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 选中态与表格同源（.is-selected）—— 两种形态的视觉反馈必须一致 */
+.am-list__item.is-selected,
+.am-card-item.is-selected {
+  border-color: var(--brand-ring);
+  background: var(--brand-subtle-bg);
+}
+
+.am-list__main {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--sp-2) var(--sp-4);
+}
+
+.am-list__field { min-width: 0; }
+
+.am-list__label {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  line-height: var(--lh-tight);
+}
+
+.am-list__value {
+  display: block;
+  font-size: var(--fs-base);
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.am-list__aside {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+
+/* --- 卡片形态：网格铺开，适合图片类内容 --- */
+.am-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--sp-4);
+}
+
+.am-card-item {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+
+.am-card-item:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 封面固定比例：不写死高度，让不同尺寸的图看起来一样整齐 */
+.am-card-item__cover {
+  aspect-ratio: 16 / 9;
+  background: var(--bg-subtle);
+  overflow: hidden;
+}
+
+.am-card-item__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.am-card-item__body {
+  flex: 1;
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.am-card-item__field { min-width: 0; }
+
+.am-card-item__label {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+
+.am-card-item__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-subtle);
+}
+
+/* 窄屏：列表形态的两栏塌成一栏 */
+@media (max-width: 640px) {
+  .am-list__item { flex-direction: column; }
+  .am-list__main { grid-template-columns: 1fr; }
+  .am-list__aside { width: 100%; justify-content: space-between; }
+}
+
+/* --- 详情页字段列表（Show 的渲染方） ---
+   只读展示：标签在左、值在右，值不格式化（原样更可信）。
+   窄屏塌成上下排列，与 .am-list 的响应式策略一致。 */
+.am-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+}
+
+.am-detail__row {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: var(--sp-4);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.am-detail__row:last-child { border-bottom: 0; }
+
+.am-detail__label {
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-base);
+}
+
+.am-detail__value {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--fs-base);
+  line-height: var(--lh-base);
+  word-break: break-word;
+}
+
+@media (max-width: 640px) {
+  .am-detail__row { grid-template-columns: 1fr; gap: var(--sp-1); }
+}
+
+/* --- 详情页结构：标签页 / 分块 ---
+   容器只负责「怎么摆」，字段的视觉仍由 .am-detail 统一负责 ——
+   三种结构下同一字段长得一样，不会因为换容器就变样。 */
+.am-tabs {
+  display: flex;
+  gap: var(--sp-1);
+  border-bottom: 1px solid var(--border-default);
+  margin-bottom: var(--sp-4);
+  overflow-x: auto;
+}
+
+.am-tabs__tab {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: var(--sp-2) var(--sp-4);
+  font-size: var(--fs-base);
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+.am-tabs__tab:hover { color: var(--text-primary); }
+
+.am-tabs__tab.is-active {
+  color: var(--brand-text);
+  border-bottom-color: var(--brand-solid);
+  font-weight: var(--fw-semibold);
+}
+
+.am-detail-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
+.am-detail-section__title {
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}

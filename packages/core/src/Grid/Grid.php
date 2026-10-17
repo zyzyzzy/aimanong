@@ -9,6 +9,7 @@ use Aimanong\Grid\Actions\BatchAction;
 use Aimanong\Grid\Concerns\CanExport;
 use Aimanong\Schema\Ast\ColumnNode;
 use Aimanong\Support\SuggestsMethods;
+use InvalidArgumentException;
 
 /**
  * 列表页定义。
@@ -44,6 +45,50 @@ class Grid
     protected int $perPage = 20;
 
     protected bool $withActions = true;
+
+    /**
+     * 列表展示形态。
+     *
+     * 三种形态共用**同一份数据源与同一批列声明** —— 换的只是排版：
+     *
+     *   table  表格（默认）—— 信息密度最高，适合管理端
+     *   list   纵向列表 —— 每行一个卡片，适合移动端/阅读场景
+     *   cards  网格卡片 —— 适合图片类（商品、文章封面）
+     *
+     * 声明方式与 amis 的 `crud.mode` 同源（同一份数据换个排法），
+     * 但只保留这三种 —— 每多一种就多一个要维护、要对拍的渲染分支。
+     */
+    public const MODES = ['table', 'list', 'cards'];
+
+    protected string $mode = 'table';
+
+    /**
+     * 声明列表展示形态。
+     *
+     * ```php
+     * $grid->mode('cards');   // 商品列表用卡片看封面
+     * ```
+     *
+     * 传不认识的值会**立刻抛异常**，而不是静默退回表格 ——
+     * 静默退化成"看起来配了、实际没效果"，正是本项目最反对的那类问题。
+     */
+    public function mode(string $mode): static
+    {
+        if (! in_array($mode, self::MODES, true)) {
+            throw new InvalidArgumentException(
+                "未知的列表展示形态 '{$mode}'，可选：".implode(' / ', self::MODES)
+            );
+        }
+
+        $this->mode = $mode;
+
+        return $this;
+    }
+
+    public function getMode(): string
+    {
+        return $this->mode;
+    }
 
     /**
      * 定义一列。签名唯一，无重载。
@@ -112,7 +157,7 @@ class Grid
         $unsupported = array_diff($actions, self::BATCH_ACTIONS);
 
         if ($unsupported !== []) {
-            throw new \InvalidArgumentException(sprintf(
+            throw new InvalidArgumentException(sprintf(
                 '不支持的批量动作 [%s]。当前仅支持：%s。'
                 .'（自定义批量动作需可执行逻辑，而声明层刻意不接收闭包，见 ADR-003）',
                 implode(', ', $unsupported),
@@ -149,7 +194,7 @@ class Grid
     public function batchAction(string $name, string $label): BatchAction
     {
         if (in_array($name, self::BATCH_ACTIONS, true)) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 "批量动作 [{$name}] 是内置动作，不要用 batchAction() 重定义。"
                 .'用 batchActions([...]) 声明即可。'
             );
@@ -190,7 +235,7 @@ class Grid
              * （本项目最反对的情况）是同一个问题。
              */
             if ($action->getHandler() === null) {
-                throw new \InvalidArgumentException(
+                throw new InvalidArgumentException(
                     "自定义批量动作 [{$action->getName()}] 没有指定处理器。"
                     .'用 ->handler(SomeHandler::class) 指定 —— 它需要实现 '
                     .BatchActionHandler::class
@@ -225,6 +270,7 @@ class Grid
     {
         return [
             'perPage' => $this->perPage,
+            'mode' => $this->mode,
             'withActions' => $this->withActions,
             'batchActions' => $this->batchActions,
             'exportable' => $this->exportable,

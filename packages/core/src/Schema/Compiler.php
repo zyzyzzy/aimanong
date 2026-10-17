@@ -10,6 +10,7 @@ use Aimanong\Exceptions\GhostColumnException;
 use Aimanong\Exceptions\InvalidQueryColumnException;
 use Aimanong\Form\Form;
 use Aimanong\Grid\Grid;
+use Aimanong\Layout\Layout;
 use Aimanong\Resource;
 use Aimanong\Schema\Ast\ColumnNode;
 use Aimanong\Schema\Ast\FieldNode;
@@ -79,6 +80,18 @@ class Compiler
             $resource::show($show);
         }
 
+        /*
+         * 详情页结构（可选）。
+         *
+         * 必须在 show() **之后**跑 —— 它要拿 show() 声明的字段名做校验
+         *（layout 引用了不存在的字段要编译期报错，而不是静默少显示一块）。
+         */
+        $layout = new Layout;
+
+        if (method_exists($resource, 'layout')) {
+            $resource::layout($layout);
+        }
+
         $tree = null;
         if (method_exists($resource, 'tree')) {
             $candidate = new Tree;
@@ -114,7 +127,24 @@ class Compiler
             fields: $fields,
             detailFields: $show->toNodes(),
             meta: [
+                /*
+                 * 详情页结构（可选）。
+                 *
+                 * 未声明时是 `['kind' => 'flat', 'groups' => []]` ——
+                 * 前端据此走**平铺**渲染（= 老行为），而不是渲染空页面。
+                 */
+                'layout' => $layout->toArray(
+                    array_map(fn (FieldNode $f): string => $f->name, $show->toNodes())
+                ),
                 'perPage' => $grid->toArray()['perPage'],
+                /*
+                 * 列表展示形态（table / list / cards）。
+                 *
+                 * ⚠️ 与 batchActions 同类：meta 是**逐项挑**进去的，
+                 * 声明面加了而这里漏了，schema 就到不了前端 ——
+                 * 一个彻底的空操作。由 GridModeTest 钉住。
+                 */
+                'mode' => $grid->getMode(),
                 'rules' => $form->validationRules(),
                 // 导出配置随编译产物下发，控制器无需重复声明
                 'exportable' => $grid->isExportable(),

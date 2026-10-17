@@ -576,6 +576,63 @@ hr {
   margin-top: var(--sp-1);
 }
 
+/*
+ * 页头右侧的操作区（搜索框 / 筛选器 / 刷新 / 新增）。
+ *
+ * ⚠️ 这条规则**原本不存在** —— 于是这个 div 只是个普通块容器：
+ * 里面的 `.am-input` 是 `display: block; width: 100%`，
+ * 每个控件各占满一整行、竖着堆，按钮再互相挤在一起。
+ *
+ * 实测症状（2026-10-17 用户截图）：
+ *   搜索框、刷新、新增三样在右上角**挤成一团并且互相压住**。
+ *
+ * 为什么之前没被发现：模板类覆盖门禁当时把它登记成「良性语义标记」
+ * （理由是「布局由 .am-page-head 的 flex 负责」）——
+ * **那个理由是错的**：flex 只作用在直接子元素（标题块 vs 操作区），
+ * 操作区内部的排布它管不着。
+ *
+ * 教训：门禁的「允许例外」必须逐条验证，不能凭印象放行。
+ * 现在这条断言改成「凡被登记为例外的类，必须有明确理由且理由可核对」。
+ */
+.am-page-head__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  /* 允许收缩：标题很长时操作区不该被挤出容器 */
+  min-width: 0;
+}
+
+/*
+ * 操作区里的控件不能各占一整行。
+ *
+ * `.am-input` 的 `width: 100%` 在表单里是对的（表单要占满），
+ * 但在页头工具条里会把每个控件拉成整行 —— 所以这里收窄。
+ * 用 `width: auto` 而不是固定值：让内联 `style="width:220px"`
+ * 与 `min-width:120px` 之类继续生效。
+ */
+.am-page-head__actions .am-input,
+.am-page-head__actions .am-select {
+  width: auto;
+}
+
+/* 搜索框保持一个合理的固定宽度（不写死 220px，交给内联 style） */
+.am-page-head__actions .am-input--search {
+  flex: 0 1 220px;
+  min-width: 140px;
+}
+
+/* 窄屏：操作区整行铺开，控件均分 */
+@media (max-width: 640px) {
+  .am-page-head__actions {
+    width: 100%;
+  }
+
+  .am-page-head__actions .am-input--search {
+    flex: 1 1 auto;
+  }
+}
+
 /* --- 工具条（列表页筛选区） --- */
 .am-toolbar {
   display: flex;

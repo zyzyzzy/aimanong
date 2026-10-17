@@ -43,43 +43,68 @@ use PHPUnit\Framework\TestCase;
 class TemplateClassCoverageTest extends TestCase
 {
     /**
-     * 允许「模板用了但 CSS 里没有」的类。
+     * 允许「模板用了但 CSS 里没有」的类 —— **例外清单，越小越好**。
      *
-     * 每一项都要写清理由。空数组是理想状态 —— 有例外就说明
-     * 要么该补 CSS，要么该把这个类从模板里去掉。
+     * ## ⚠️ 这份清单曾经骗过我（2026-10-17 用户第二次报同一类问题）
+     *
+     * 第一版把 `.am-page-head__actions` 登记成
+     * 「语义标记：页头操作区，布局由 .am-page-head 的 flex 负责」。
+     * **那个理由是错的** —— flex 只作用于直接子元素，
+     * 管不到操作区**内部**的排布。于是搜索框 / 刷新 / 新增
+     * 挤成一团还互相压住，而门禁是绿的。
+     *
+     * 根因不在这一条豁免，而在**豁免太容易写**：
+     * 只要写一句听起来合理的话，任何类都能通过。
+     *
+     * ## 现在两道约束
+     *
+     * 1. 扫描器只认真实 `class=` 属性（组件名 / id / 注释不再误报），
+     *    所以例外不再需要为「假阳性」买单
+     * 2. `test_exception_list_stays_small` 钉住条数上限 ——
+     *    想加例外就必须先删一条，逼人真的去补 CSS
      *
      * @var array<string, string>
      */
     private const ALLOWED_MISSING = [
-        // 由插件字段片段自带样式，不在设计系统里
+        /*
+         * 真正的插件样式：region 的字段 UI 由插件自己的视图提供，
+         * 设计系统不该假装认识它。
+         */
         'am-region-field' => 'region 插件的字段 UI，样式随插件走',
 
         /*
-         * `am-cell` 是**本项目的 Vue 组件名**，不是 CSS 类。
-         * 它出现在 `<am-cell ...>` 标签与说明注释里，被扫描器当成了类名。
-         * 组件本身没有专属样式（单元格的视觉由 .am-detail / .am-table 等负责）。
+         * 纯语义标记：**已逐个核对过**，样式确实全在基类上，
+         * 且不存在「本该有布局却没有」的情况。
          */
-        'am-cell' => 'Vue 组件名（<am-cell>），不是 CSS 类',
-        'am-upload' => 'Vue 组件名（<am-upload>），样式在 partials/upload.blade.php',
-        'am-nav-toggle' => '元素 id（getElementById("am-nav-toggle")），不是 CSS 类',
-
-        /*
-         * 纯语义标记：样式全在基类上，修饰符只用来表达"这是什么"，
-         * 目前没有也不需要有独立规则。留着它们是有价值的 ——
-         * 将来要微调时不必改模板。
-         */
-        'am-input--search' => '语义标记：样式在 .am-input，搜索框只额外加了内联宽度',
-        'am-upload--multiple' => '语义标记：样式在 .am-upload，多选态目前无独立规则',
-        'am-page-head__actions' => '语义标记：页头操作区，布局由 .am-page-head 的 flex 负责',
-        'am-table__select' => '语义标记：选择列，宽度用内联 style 给定',
-
-        /*
-         * ⚠️ `am-hl` 本身不是类 —— 真正使用的是 `.am-hl-danger` / `.am-hl-warning`
-         *（见 highlightClass() 的注释：它曾经返回 `hl-danger` 而 CSS 定义的是
-         * `.am-hl-danger`，颜色一直不生效）。这里出现的是**注释里的名字**。
-         */
-        'am-hl' => '只是注释里提到的前缀；实际类是 .am-hl-danger / .am-hl-warning',
+        'am-upload--multiple' => '状态标记：多图布局由 .am-upload__grid 负责，该修饰符无独立规则',
+        'am-table__select' => '选择列：宽度由内联 style="width:40px" 给定，无需独立规则',
     ];
+
+    /**
+     * 例外清单的条数上限。
+     *
+     * 上限存在的意义：例外只能**替换**不能**累加**。
+     * 每次想加一条，就得先证明另一条已经不需要了 ——
+     * 这会逼人回去补 CSS，而不是写一句理由放行。
+     */
+    private const MAX_ALLOWED_MISSING = 3;
+
+    /**
+     * 例外清单必须保持精简 —— 想加就必须先删。
+     *
+     * 这条存在的唯一目的：**堵住「写一句理由就放行」这条捷径**。
+     * 2026-10-17 就是这么放过了 `.am-page-head__actions`，
+     * 结果用户看到搜索框/刷新/新增挤成一团。
+     */
+    public function test_exception_list_stays_small(): void
+    {
+        $this->assertLessThanOrEqual(
+            self::MAX_ALLOWED_MISSING,
+            count(self::ALLOWED_MISSING),
+            '例外清单超限了。想加一条就必须先证明另一条已经不需要 —— '
+            .'例外只能替换，不能累加。'
+        );
+    }
 
     public function test_every_template_class_exists_in_css(): void
     {
@@ -161,10 +186,59 @@ class TemplateClassCoverageTest extends TestCase
 
             $src = (string) file_get_contents($file->getPathname());
 
-            // class="a b c" / :class="[...]" —— 抓所有 am- 开头的词
-            preg_match_all('/\b(am-[a-z0-9_-]+)\b/', $src, $m);
+            /*
+             * ⚠️ 只从 **class 属性**里取，不扫整个文件。
+             *
+             * 第一版是 `preg_match_all('/\b(am-[a-z0-9_-]+)\b/', $src)` ——
+             * 把三类「不是 CSS 类」的东西也当成类名了：
+             *   · Vue 组件标签  `<am-cell>` / `<am-upload>`
+             *   · 元素 id      `id="am-nav-toggle"`
+             *   · 注释里提到的名字
+             *
+             * 于是产生了大量假阳性，而我的应对是往 ALLOWED_MISSING 里写理由
+             * 一个个豁免 —— **豁免变成了免死金牌**。
+             *
+             * 后果很严重：`.am-page-head__actions` 被登记成
+             * 「语义标记，布局由 .am-page-head 的 flex 负责」，
+             * 而那个理由是**错的**（flex 只管直接子元素，管不到它内部）。
+             * 用户于是看到「搜索框 / 刷新 / 新增 挤成一团」。
+             *
+             * 现在只认真实的 class 属性：`class="..."` 与 `:class="..."`。
+             */
+            $out += $this->classesInAttributes($src);
+        }
 
-            foreach ($m[1] as $class) {
+        return $out;
+    }
+
+    /**
+     * 从 `class="..."` / `:class="..."` 里取 `am-*` 类名。
+     *
+     * @return array<string, true>
+     */
+    private function classesInAttributes(string $src): array
+    {
+        // 先把 HTML/Blade 注释去掉 —— 注释里提到的类名不算使用
+        $src = (string) preg_replace('/\{\{--.*?--\}\}/s', '', $src);
+
+        $out = [];
+
+        /*
+         * 匹配 class="..." 与 :class="..."（含单引号写法）。
+         * `:class` 是动态绑定，值可能是 `{'am-x': cond}` 这种，
+         * 里面的引号也会被下面的字符类覆盖到。
+         */
+        preg_match_all(
+            '/(?::class|class)\s*=\s*(["\'])(.*?)\1/s',
+            $src,
+            $m,
+            PREG_SET_ORDER
+        );
+
+        foreach ($m as $match) {
+            preg_match_all('/\b(am-[a-z0-9_-]+)\b/', $match[2], $tokens);
+
+            foreach ($tokens[1] as $class) {
                 $out[$class] = true;
             }
         }

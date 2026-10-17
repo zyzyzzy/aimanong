@@ -10,6 +10,7 @@ use Aimanong\Http\Controllers\HomeController;
 use Aimanong\Http\Controllers\ResourceController;
 use Aimanong\Http\Controllers\UiController;
 use Aimanong\Support\Asset;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -35,7 +36,7 @@ Route::get('/', [HomeController::class, 'index'])->name('index');
 /*
 | 框架内置资源（LOGO 等）—— 免 publish 直接可用
 */
-Route::get('assets/{path}', function (string $path) {
+Route::get('assets/{path}', function (Request $request, string $path) {
     $base = realpath(Asset::path());
     $full = realpath(Asset::path($path));
 
@@ -66,7 +67,32 @@ Route::get('assets/{path}', function (string $path) {
         default => 'application/octet-stream',
     };
 
-    return response()->file($full, ['Content-Type' => $mime]);
+    /*
+     * 缓存策略。
+     *
+     * ## 为什么不能只靠 `response()->file()` 的默认值
+     *
+     * 它给的是 `Cache-Control: public` —— **没有 max-age**。
+     * 浏览器对这种响应会做**启发式缓存**（拿 Last-Modified 估算一个有效期），
+     * 即「服务端说可以缓存，但没说多久」，于是各浏览器缓存时长不同。
+     * 升级后拿到旧 CSS 就不奇怪了。
+     *
+     * ## 现在的规则
+     *
+     * 带指纹（`&h=`）→ 内容变了 URL 就变，可以放心长期缓存；
+     * 不带指纹    → 只允许**协商缓存**（no-cache + ETag），
+     *              每次问服务端，没变就 304，不会白传。
+     *
+     * 这样「改了 CSS 但还没发版」也不会再让用户停在旧样式上。
+     */
+    $fingerprinted = $request->query('h') !== null;
+
+    return response()->file($full, [
+        'Content-Type' => $mime,
+        'Cache-Control' => $fingerprinted
+            ? 'public, max-age=31536000, immutable'
+            : 'no-cache, must-revalidate',
+    ]);
 })->where('path', '.*')->name('asset');
 
 /*

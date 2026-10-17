@@ -1894,6 +1894,9 @@ hr {
 .am-text-xs { font-size: var(--fs-xs); }
 .am-text-sm { font-size: var(--fs-sm); }
 .am-text-muted { color: var(--text-tertiary); }
+/* ⚠️ am-text-tertiary 原先**没有定义** —— 首页用它标注「按你的权限显示」，
+   而它一直按默认正文色渲染（本该是更浅的三级色）。由模板类覆盖门禁发现。 */
+.am-text-tertiary { color: var(--text-tertiary); }
 .am-text-secondary { color: var(--text-secondary); }
 .am-text-brand { color: var(--brand-text); }
 .am-text-danger { color: var(--danger-text); }
@@ -2230,6 +2233,12 @@ hr {
   display: flex;
   flex-direction: column;
   gap: var(--sp-6);
+}
+
+.am-detail-section {
+  /* 分组之间的间距由父容器 .am-detail-sections 的 gap 负责，
+     这里只保证分组自身不塌陷（它是 <section>）。 */
+  min-width: 0;
 }
 
 .am-detail-section__title {

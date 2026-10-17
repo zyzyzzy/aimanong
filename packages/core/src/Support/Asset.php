@@ -90,16 +90,57 @@ class Asset
         $url = Aimanong::url('assets/'.ltrim($path, '/'));
 
         /*
-         * 带上版本号做缓存击穿。
+         * 带上缓存击穿用的参数。
          *
          * 资源路由返回的是 `Cache-Control: public`，浏览器会长期缓存 ——
-         * 用户升级框架后**仍然加载旧 CSS**，表现为「改的样式没生效」，
+         * 用户升级后**仍然加载旧 CSS**，表现为「改的样式没生效」，
          * 而服务端查什么都对（实测踩过：修好的高亮样式在浏览器里
          * 依旧是旧规则，排查了很久）。
          *
-         * 用版本号而不是 mtime：多应用/多机部署时文件时间戳不一致。
+         * ## ⚠️ 为什么不能只用框架版本号（2026-10-17 修正）
+         *
+         * 原先这里只写 `?v=` + `Aimanong::version()`。那份注释已经指出
+         * 「升级框架后仍加载旧 CSS」，但**没堵住另一条路**：
+         *
+         *   框架版本号**只在发版时变**，而 CSS 是随代码一起改的 ——
+         *   于是「改了 CSS 但还没发版」这段时间里，所有在用项目
+         *   都会继续拿**旧 CSS**（缓存键没变），而新模板已经在渲染新结构
+         *   → 页面直接错版。
+         *
+         * 实测症状（批 2 加 list/cards 形态后，用户截图报的）：
+         *   卡片**彼此贴在一起、内部也没有间距** ——
+         *   因为 `.am-cards` / `.am-card-item` 在旧 CSS 里根本不存在，
+         *   而服务端查什么都对、单测也全绿。
+         *
+         * 修法：把**文件自身的指纹**编进缓存键（`&h=<内容哈希前 8 位>`）。
+         * 内容变了 → h 变 → 浏览器必然重新拉取，不必等发版。
+         *
+         * 为什么用内容哈希而不是 mtime：多应用/多机部署时
+         * 文件时间戳不一致，会让不同机器给出不同 URL —— 缓存反而更乱。
          */
-        return $url.'?v='.rawurlencode(Aimanong::version());
+        $version = '?v='.rawurlencode(Aimanong::version());
+        $hash = self::fingerprint($path);
+
+        return $hash === '' ? $url.$version : $url.$version.'&h='.$hash;
+    }
+
+    /**
+     * 资源文件的**内容指纹**（md5 前 8 位）。
+     *
+     * 取不到文件时返回空串 —— 退化成「只带框架版本号」的旧行为，
+     * 而不是拼出一个半截的 `&h=`（那会让缓存键抖动）。
+     */
+    public static function fingerprint(string $path): string
+    {
+        $file = self::path($path);
+
+        if (! is_file($file)) {
+            return '';
+        }
+
+        $hash = @md5_file($file);
+
+        return $hash === false ? '' : substr($hash, 0, 8);
     }
 
     /**
